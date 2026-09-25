@@ -344,7 +344,28 @@ def _profile_stats(line, token):
     up = sum(max(0, sm[i] - sm[i - 1]) for i in range(1, len(sm)))
     down = sum(max(0, sm[i - 1] - sm[i]) for i in range(1, len(sm)))
     start_low = z[0] <= z[-1]
-    return {"lo": min(z), "hi": max(z), "gain": up if start_low else down, "flip": not start_low}
+    if not start_low:   # the profile runs from the low end, like the published line
+        total = d[-1]
+        d, sm = [total - x for x in reversed(d)], sm[::-1]
+    return {"lo": min(z), "hi": max(z), "gain": up if start_low else down, "flip": not start_low,
+            "prof": _sample_profile(d, sm)}
+
+
+PROFILE_STEP_M = 160.934   # the page's elevation profile: one sample every 0.1 mile, in feet
+
+
+def _sample_profile(d, z):
+    """Elevation (ft) every 0.1 mile along the trail, plus the far end."""
+    out, j, x = [], 0, 0.0
+    while x <= d[-1]:
+        while j < len(d) - 2 and d[j + 1] < x:
+            j += 1
+        f = 0 if d[j + 1] == d[j] else min(1, max(0, (x - d[j]) / (d[j + 1] - d[j])))
+        out.append(round((z[j] + (z[j + 1] - z[j]) * f) * 3.28084))
+        x += PROFILE_STEP_M
+    if d[-1] - (x - PROFILE_STEP_M) > 1:
+        out.append(round(z[-1] * 3.28084))
+    return out
 
 
 def _elevations(trails, token):
@@ -358,7 +379,7 @@ def _elevations(trails, token):
     todo = []
     for t in trails:
         t["key"] = hashlib.sha1(json.dumps(t["line"]).encode()).hexdigest()[:16]
-        if t["key"] not in cache:
+        if "prof" not in cache.get(t["key"], {}):   # new trail, or cached before profiles existed
             todo.append(t)
     if todo and token:
         need = {tuple(int(v) for v in _txy(*p)) for t in todo for p in _densify(t["line"], 200)}
@@ -403,6 +424,19 @@ def _encode(line):   # Google encoded polyline, precision 5, from [lon, lat]
     return "".join(out)
 
 
+def _encode_ints(vals):   # the same character scheme, for one delta-coded integer series
+    out, prev = [], 0
+    for v in vals:
+        d = v - prev
+        d = ~(d << 1) if d < 0 else d << 1
+        while d >= 0x20:
+            out.append(chr((0x20 | (d & 0x1f)) + 63))
+            d >>= 5
+        out.append(chr(d + 63))
+        prev = v
+    return "".join(out)
+
+
 def build(out_dir, token):
     """Write <out_dir>/explorer/trails.json; returns the number of trails (0 if unavailable)."""
     trails = _stitch(_pieces())
@@ -418,11 +452,12 @@ def build(out_dir, token):
                      round(ev["gain"] * 3.28084) if ev else None,
                      round(ev["hi"] * 3.28084) if ev else None,
                      round(ev["lo"] * 3.28084) if ev else None,
-                     _encode(line), [_encode(b) for b in t["branches"]], t["diff"]])
+                     _encode(line), [_encode(b) for b in t["branches"]], t["diff"],
+                     _encode_ints(ev["prof"]) if ev and ev.get("prof") else ""])
     rows.sort(key=lambda r: r[0])
     os.makedirs(os.path.join(out_dir, "explorer"), exist_ok=True)
     with open(os.path.join(out_dir, "explorer", "trails.json"), "w", encoding="utf-8") as f:
-        json.dump({"fields": ["name", "num", "src", "mi", "uses", "gain", "hi", "lo", "line", "branches", "diff"],
+        json.dump({"fields": ["name", "num", "src", "mi", "uses", "gain", "hi", "lo", "line", "branches", "diff", "prof"],
                    "built": time.strftime("%Y-%m-%d"), "trails": rows}, f, separators=(",", ":"))
     return len(rows)
 
@@ -494,6 +529,18 @@ TRAILS_CSS = r"""
 .ex-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin:10px 0; }
 .ex-stats div { font-size:10px; color:#8A8F9C; text-transform:uppercase; letter-spacing:.04em; }
 .ex-stats b { display:block; font-size:14px; color:#111; letter-spacing:0; text-transform:none; font-variant-numeric:tabular-nums; }
+.ex-prof { position:relative; margin:2px 0 10px; }
+.ex-prof-t { font-size:11px; font-weight:700; color:#111; margin-bottom:2px; }
+.ex-prof-t span { font-weight:400; color:#8A8F9C; }
+.ex-prof svg { display:block; width:100%; height:auto; overflow:visible; touch-action:none; }
+.ex-prof svg text { font-family:inherit; font-size:9.5px; font-weight:700; fill:#3F4450; font-variant-numeric:tabular-nums; }
+.ex-prof svg text.ax { font-weight:400; fill:#8A8F9C; }
+.ex-ptip { position:absolute; top:14px; right:0; background:rgba(17,17,17,.86); color:#fff; border-radius:6px; padding:3px 7px; font-size:11px; font-variant-numeric:tabular-nums; pointer-events:none; }
+.ex-ptip[hidden] { display:none !important; }
+.ex-leg { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:4px; font-size:10.5px; color:#3F4450; }
+.ex-leg span { display:inline-flex; align-items:center; gap:4px; }
+.ex-leg i { width:10px; height:10px; border-radius:2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+.ex-leg em { font-style:normal; color:#8A8F9C; }
 .ex-uses { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
 .ex-uses span { font-size:11px; font-weight:600; color:#5A5F6B; background:#F2F3F6; border-radius:999px; padding:2px 8px; }
 .ex-acts { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -521,6 +568,13 @@ var AG={fs:'National Forest',nps:'National Park',blm:'BLM',wsp:'WA State Park',f
   odf:'Oregon State Forest',local:'City & county',mine:'Your trail',other:'Other'};
 var USE={h:'Hiking',b:'Bikes',r:'Horses',m:'Motorized'};
 var MINE_KEY='wx-mytrails',DATA=null;
+// average grade of a mile of climb: one orange ramp, light to dark (downhill/flat miles stay grey)
+var GR=[{max:8,k:'Easy',r:'<8%',c:'#FCD5AE'},{max:15,k:'Medium',r:'8–15%',c:'#F59A55'},
+  {max:22,k:'Hard',r:'15–22%',c:'#D9580F'},{max:1e9,k:'Strenuous',r:'22%+',c:'#8A3107'}];
+function gradeOf(g){g=Math.round(g);   // classify the number shown, so label and colour agree
+  if(g<1)return null;for(var k=0;k<GR.length;k++)if(g<GR[k].max)return GR[k];}
+function decodeInts(str){var i=0,v=0,out=[];while(i<str.length){var b,sh=0,r=0;
+  do{b=str.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5;}while(b>=32);v+=r&1?~(r>>1):r>>1;out.push(v);}return out;}
 function fmt(n){return n==null?'\u2013':Math.round(n).toLocaleString('en-US');}
 function esc(s){return String(s).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});}
 function decode(str){var i=0,lat=0,lng=0,out=[];while(i<str.length){for(var k=0;k<2;k++){var b,sh=0,v=0;
@@ -542,9 +596,10 @@ window.TrailsLayer=function(map,opt){
   function trail(r,ix,i){var parts=[decode(r[ix.line])].concat((r[ix.branches]||[]).map(decode)),bb=[180,90,-180,-90];
     parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
     var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
-      diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,link:r[11]||''};   // [11]: your trail's source page
+      diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,
+      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||''};   // [12]: your trail's source page
     t.lc=(t.name+' '+t.num).toLowerCase();return t;}
-  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null,m.link||''];});}
+  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||''];});}
   function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
     properties:{i:t.i,lc:t.lc,src:t.src,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
       b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
@@ -563,9 +618,13 @@ window.TrailsLayer=function(map,opt){
     map.addLayer({id:'trl-sel',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
       paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2.5,14,5.5]}},before);
     map.addLayer({id:'trl-hit',type:'line',source:'trl',layout:{visibility:'none'},paint:{'line-color':'#000','line-opacity':0,'line-width':14}},before);
+    // the spot under the pointer on the selected trail's elevation profile
+    map.addSource('trl-pt',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+    map.addLayer({id:'trl-pt',type:'circle',source:'trl-pt',layout:{visibility:'none'},
+      paint:{'circle-radius':6,'circle-color':'#FE5000','circle-stroke-color':'#fff','circle-stroke-width':2}});
     map.on('click','trl-hit',function(e){if(on)select(e.features[0].properties.i,false);});
     map.on('moveend',function(){if(on)list();});}
-  function vis(v){['trl-line','trl-hover','trl-sel-case','trl-sel','trl-hit'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',v?'visible':'none');});}
+  function vis(v){['trl-line','trl-hover','trl-sel-case','trl-sel','trl-hit','trl-pt'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',v?'visible':'none');});}
 
   // ---------- filters (the panel's controls; without a panel everything shows) ----------
   function crit(){var c={uses:[]};if(!P)return c;
@@ -610,15 +669,58 @@ window.TrailsLayer=function(map,opt){
     var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');
     card.innerHTML='<h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+AG[t.src]+'</div>'+
       '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
-      '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
+      '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
+      '<div class="ex-prof"></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
       '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
       (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+(/onxmaps\.com/.test(t.link)?'onX':'AllTrails')+' \u2197</a>':'')+
         '<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
     card.hidden=false;
+    chart(card.querySelector('.ex-prof'),t);
     card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
     var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
     var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
+  // ---------- the selected trail's elevation profile, each mile coloured by its average grade ----------
+  function lineMiles(p){var m=0;for(var i=1;i<p.length;i++){var a=p[i-1],b=p[i],la=(a[1]+b[1])/2*Math.PI/180;
+    m+=Math.hypot((b[0]-a[0])*Math.cos(la),b[1]-a[1])*69.093;}return m;}
+  function pointAt(p,mi){var m=0;for(var i=1;i<p.length;i++){var a=p[i-1],b=p[i],la=(a[1]+b[1])/2*Math.PI/180,
+    s=Math.hypot((b[0]-a[0])*Math.cos(la),b[1]-a[1])*69.093;if(m+s>=mi){var f=s?(mi-m)/s:0;return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];}m+=s;}
+    return p[p.length-1];}
+  function chart(el,t){var e=typeof t.prof==='string'?(t.prof?decodeInts(t.prof):[]):(t.prof||[]);
+    if(e.length<2){el.innerHTML='';return;}
+    var n=e.length,L=lineMiles(t.parts[0]),xs=e.map(function(_,i){return i===n-1?L:Math.min(i*0.1,L);});
+    var W=300,H=128,pl=36,pr=6,pt=14,pb=16,lo=Math.min.apply(null,e),hi=Math.max.apply(null,e),span=Math.max(hi-lo,80);
+    var y0=lo-span*0.04,y1=hi+span*0.14,X=function(v){return pl+v/L*(W-pl-pr);},Y=function(v){return H-pb-(v-y0)/(y1-y0)*(H-pt-pb);};
+    var segs=[],svg='';
+    for(var m=0;m*10<n-1;m++){var i0=m*10,i1=Math.min((m+1)*10,n-1),dx=xs[i1]-xs[i0];if(dx<0.05)continue;
+      var g=(e[i1]-e[i0])/(dx*5280)*100,c=gradeOf(g),poly=[X(xs[i0])+','+(H-pb)];
+      for(var i=i0;i<=i1;i++)poly.push(X(xs[i]).toFixed(1)+','+Y(e[i]).toFixed(1));poly.push(X(xs[i1])+','+(H-pb));
+      segs.push({m:m,i0:i0,i1:i1,g:g,c:c});
+      svg+='<polygon points="'+poly.join(' ')+'" fill="'+(c?c.c:'#E7E9EE')+'" stroke="#fff" stroke-width="1"/>';}
+    svg+='<path d="M'+e.map(function(v,i){return X(xs[i]).toFixed(1)+','+Y(v).toFixed(1);}).join('L')+'" fill="none" stroke="#1F2937" stroke-width="1.4" stroke-linejoin="round"/>';
+    segs.forEach(function(s){if(!s.c||X(xs[s.i1])-X(xs[s.i0])<20)return;var top=Math.max.apply(null,e.slice(s.i0,s.i1+1));
+      svg+='<text x="'+((X(xs[s.i0])+X(xs[s.i1]))/2).toFixed(1)+'" y="'+(Y(top)-4).toFixed(1)+'" text-anchor="middle">'+Math.round(s.g)+'%</text>';});
+    svg+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+(H-pb)+'" y2="'+(H-pb)+'" stroke="#D5D8DE"/>'+
+      '<text class="ax" x="'+(pl-4)+'" y="'+(Y(hi)+3).toFixed(1)+'" text-anchor="end">'+fmt(hi)+'′</text>'+
+      '<text class="ax" x="'+(pl-4)+'" y="'+(Y(lo)+3).toFixed(1)+'" text-anchor="end">'+fmt(lo)+'′</text>'+
+      '<text class="ax" x="'+pl+'" y="'+(H-3)+'">0</text><text class="ax" x="'+(W-pr)+'" y="'+(H-3)+'" text-anchor="end">'+L.toFixed(1)+' mi</text>'+
+      '<line class="cur" x1="0" x2="0" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#111" stroke-width="1" visibility="hidden"/>'+
+      '<circle class="cur" r="3.5" fill="#FE5000" stroke="#fff" stroke-width="1.5" visibility="hidden"/>'+
+      '<rect x="'+pl+'" y="0" width="'+(W-pl-pr)+'" height="'+H+'" fill="transparent"/>';
+    el.innerHTML='<div class="ex-prof-t">Elevation profile <span>from the low end · grade per mile of climb</span></div>'+
+      '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Elevation profile of '+esc(t.name)+'">'+svg+'</svg>'+
+      '<div class="ex-ptip" hidden></div><div class="ex-leg">'+GR.map(function(g){return '<span><i style="background:'+g.c+'"></i>'+g.k+' <em>'+g.r+'</em></span>';}).join('')+'</div>';
+    var sv=el.querySelector('svg'),line=sv.querySelector('line.cur'),dot=sv.querySelector('circle.cur'),tipEl=el.querySelector('.ex-ptip');
+    function at(ev){var r=sv.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*W,mi=Math.max(0,Math.min(L,(vx-pl)/(W-pl-pr)*L));
+      var i=Math.min(n-1,Math.round(mi/0.1)),v=e[i],s=segs.find(function(s){return i>=s.i0&&i<=s.i1&&(i<s.i1||s===segs[segs.length-1]);});
+      line.setAttribute('x1',X(xs[i]));line.setAttribute('x2',X(xs[i]));dot.setAttribute('cx',X(xs[i]));dot.setAttribute('cy',Y(v));
+      line.setAttribute('visibility','visible');dot.setAttribute('visibility','visible');
+      tipEl.innerHTML='<b>'+xs[i].toFixed(1)+' mi</b> · '+fmt(v)+'′'+(s?' · mile '+(s.m+1)+': '+(s.g>=0?'':'−')+Math.abs(Math.round(s.g))+'% '+(s.c?s.c.k.toLowerCase():s.g<0?'downhill':'flat'):'');
+      tipEl.hidden=false;
+      var p=pointAt(t.parts[0],xs[i]);if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'Point',coordinates:p});}
+    function off(){line.setAttribute('visibility','hidden');dot.setAttribute('visibility','hidden');tipEl.hidden=true;
+      if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'FeatureCollection',features:[]});}
+    sv.addEventListener('pointermove',at);sv.addEventListener('pointerleave',off);}
   function refresh(){loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();});}
 
   // ---------- your GPX trails (this browser only) ----------
@@ -629,7 +731,7 @@ window.TrailsLayer=function(map,opt){
       var pts=await W.fillElevation(g.pts.map(function(p){return{lat:p.lat,lon:p.lon,ele:p.ele};})),st=W.trailStats(pts);
       var step=Math.max(1,Math.ceil(g.pts.length/1500)),keepPts=g.pts.filter(function(p,i){return i%step===0||i===g.pts.length-1;});
       var mine=readMine();mine.push({name:name,p:encode(keepPts),mi:Math.round(st.km*0.621371*10)/10,gain:Math.round(st.gain*3.28084),
-        hi:Math.round(pts[st.hi].ele*3.28084),lo:Math.round(pts[st.lo].ele*3.28084),added:Date.now()});
+        hi:Math.round(pts[st.hi].ele*3.28084),lo:Math.round(pts[st.lo].ele*3.28084),prof:W.profile?W.profile(pts):[],added:Date.now()});
       if(!writeMine(mine))throw new Error('this browser won\u2019t store it (private window or storage full)');
       loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();select(T.length-1,true);});
     }catch(e){lab.lastChild.textContent=' Couldn\u2019t add it: '+(e.message||e);setTimeout(function(){lab.lastChild.textContent=keep;},5000);lab.classList.remove('busy');return;}

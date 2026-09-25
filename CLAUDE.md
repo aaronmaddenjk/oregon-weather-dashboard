@@ -55,6 +55,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   trails (OSM is the planned fill). The Map tab's "Trails" button (RegionLayers) creates
   `window.TrailsLayer`; the Trail Forecast map gets lines + tips but no panel. GPX uploads live in
   localStorage `wx-mytrails` (per browser), measured via `window.WxTrail` from trail_live.py.
+  The trail card's elevation profile: build stores elevation every 0.1 mi (ft, 100 m-smoothed,
+  from the low end; `prof` field, delta-encoded) - each mile coloured by its average grade:
+  Easy <8%, Medium 8-15%, Hard 15-22%, Strenuous 22%+ (one orange ramp; `GR` in TRAILS_JS);
+  hover moves a dot along the trail on the map. Your trails get `prof` from `WxTrail.profile`.
   Trails arriving from the Chrome extension (#trail=) are also kept there (`keepTrail` in
   trail_live.py, one entry per link, saved before the forecast fetch so a failed forecast keeps it).
   Pieces stitched by name+number+agency (ends within 150 m),

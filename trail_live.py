@@ -370,11 +370,20 @@ function drawMap(){
 // keep: also add it to "your trails" (the Map tab's Trails layer, localStorage 'wx-mytrails').
 // The Chrome extension's trails are kept, so every trail you forecast from AllTrails or onX
 // builds up your own list; one entry per link (a repeat replaces the old one).
+// elevation (ft) every 0.1 mile, averaged over 100 m of trail: the same profile the build stores
+// for the Trails layer's graded elevation chart
+function profile(pts){var d=[0],i;for(i=1;i<pts.length;i++)d.push(d[i-1]+km(pts[i-1],pts[i])*1000);
+  var sm=[],a=0,b=0,s=0;for(i=0;i<pts.length;i++){while(b<pts.length&&d[b]<=d[i]+50){s+=pts[b].ele;b++;}while(d[a]<d[i]-50){s-=pts[a].ele;a++;}sm.push(s/(b-a));}
+  var out=[],j=0,x=0,STEP=160.934;
+  for(;x<=d[d.length-1];x+=STEP){while(j<d.length-2&&d[j+1]<x)j++;var f=d[j+1]===d[j]?0:Math.min(1,Math.max(0,(x-d[j])/(d[j+1]-d[j])));
+    out.push(Math.round((sm[j]+(sm[j+1]-sm[j])*f)*3.28084));}
+  if(d[d.length-1]-(x-STEP)>1)out.push(Math.round(sm[sm.length-1]*3.28084));
+  return out;}
 function keepTrail(poly,name,link,pts,s){
   try{var a=JSON.parse(localStorage.getItem('wx-mytrails')||'[]')||[],key=link||poly;
     a=a.filter(function(m){return (m.link||m.p)!==key;});
     a.push({name:name,p:poly,link:link||'',mi:Math.round(s.km*0.621371*10)/10,gain:Math.round(s.gain*3.28084),
-      hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),added:Date.now()});
+      hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),prof:profile(pts),added:Date.now()});
     localStorage.setItem('wx-mytrails',JSON.stringify(a));return true;}catch(e){return false;}}
 async function load(src,link,save,keep){
   var kept=false;
@@ -405,7 +414,7 @@ if(location.hash.indexOf('#trail=')===0){
 }
 var restored=false;
 // the GPX reader and elevation method, shared with the Map tab's Trails panel ("Add your GPX")
-window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats};
+window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats,profile:profile};
 // the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
 window.openTrailForecast=function(poly,name,link){
   pending={src:{poly:poly,name:name||''},link:link||''};
