@@ -677,6 +677,7 @@ window.TrailsLayer=function(map,opt){
         '<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
     card.hidden=false;
     chart(card.querySelector('.ex-prof'),t);
+    if(t.src==='mine'&&!(t.prof&&t.prof.length))backfill(t,card);
     card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
     var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
@@ -722,6 +723,15 @@ window.TrailsLayer=function(map,opt){
     function off(){line.setAttribute('visibility','hidden');dot.setAttribute('visibility','hidden');tipEl.hidden=true;
       if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'FeatureCollection',features:[]});}
     sv.addEventListener('pointermove',at);sv.addEventListener('pointerleave',off);}
+  // your trails saved before profiles existed: measure once (a few Mapbox terrain tiles), store, draw
+  async function backfill(t,card){var box=card.querySelector('.ex-prof'),W=window.WxTrail;if(!W||!W.profile)return;
+    box.innerHTML='<div class="ex-prof-t">Elevation profile <span>measuring…</span></div>';
+    try{var pts=t.parts[0].map(function(q){return{lat:q[1],lon:q[0]};}),dense=await W.fillElevation(pts);
+      t.prof=W.profile(dense);
+      var mine=readMine(),m=mine.find(function(x){return x.p===t.line&&(x.link||'')===t.link;});
+      if(m){m.prof=t.prof;writeMine(mine);}
+      if(sel===t.i)chart(box,t);}
+    catch(e){box.innerHTML='<div class="ex-prof-t">Elevation profile <span>unavailable right now</span></div>';}}
   function refresh(){loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();});}
 
   // ---------- your GPX trails (this browser only) ----------
