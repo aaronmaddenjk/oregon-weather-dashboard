@@ -41,7 +41,9 @@ BOUNDS = (-124.8, 41.9, -116.4, 49.0)          # W, S, E, N - Oregon + Washingto
 CELL_KM = float(os.environ.get("WX_REGION_KM", 25))
 LEVELS_M = list(range(0, 4401, 200))            # 23 levels, sea level to 14,400 ft
 DAYS = 7
-BATCH = 50                                       # locations per request
+# locations per request. Small on purpose: from GitHub's shared runners Open-Meteo sometimes
+# never answers a big request, and a stalled 15-location request costs a minute, not three.
+BATCH = 15
 OM = "https://api.open-meteo.com/v1/forecast"
 TZ = "America/Los_Angeles"
 PL = (850, 700, 600, 500)                        # GFS pressure levels (~5k-18k ft)
@@ -65,7 +67,7 @@ def _batched(points, params, workers=4):
 
     def one(chunk):
         d = requests.get(OM, params={**params, "latitude": ",".join(str(p[0]) for p in chunk),
-                                     "longitude": ",".join(str(p[1]) for p in chunk)}, timeout=180).json()
+                                     "longitude": ",".join(str(p[1]) for p in chunk)}, timeout=(10, 60)).json()
         if isinstance(d, dict) and d.get("error"):
             raise RuntimeError(d.get("reason", "Open-Meteo error"))
         return d if isinstance(d, list) else [d]
