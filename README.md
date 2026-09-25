@@ -106,12 +106,15 @@ emails the result.
   Base = the track's lowest point, peak = its highest. Nothing is saved except
   the last GPX, in that browser's localStorage. AllTrails links can't be read
   (no API, bot protection), so the link field only names the trail.
-- The Trail Explorer tab (`trail_explorer.py`) maps ~7,400 official trails in
-  Oregon and Washington from the USGS National Digital Trails dataset (public
-  domain), stitched from junction-to-junction pieces into whole trails, with
-  length, allowed uses, and gain / high / low points from Mapbox terrain. The
-  terrain tiles (~2,800) download once into `.cache/terrain/`; later builds only
-  compute new or changed trails. "Forecast this trail" opens it in Trail Forecast.
+- The Map tab's Trails layer (`trail_explorer.py`) maps ~8,300 trails in
+  Oregon and Washington: USGS National Digital Trails (Forest Service, Park
+  Service, BLM, Fish & Wildlife, WA State Parks), Oregon Parks and Recreation,
+  Oregon Dept. of Forestry and Oregon Metro, stitched from junction-to-junction
+  pieces into whole trails, with length, allowed uses, difficulty (state
+  forests) and gain / high / low points from Mapbox terrain. The terrain tiles
+  (~3,000) download once into `.cache/terrain/`; later builds only compute new or
+  changed trails. Its side panel filters, lists and forecasts trails, and takes
+  your own GPX files (kept in that browser only).
 - `chrome-extension/` sends an AllTrails trail straight to that tab. Install:
   Chrome → `chrome://extensions` → turn on Developer mode → Load unpacked →
   pick the `chrome-extension` folder, then pin it. It also works in the onX

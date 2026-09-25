@@ -35,8 +35,8 @@ and asks for features in plain language. See README.md for data sources and dev 
   visually (screenshots) and with small JS checks before reporting done.
 
 ## Tabs (page ids in the shell, `build_dashboard()`)
-page0 Cities · page1 Mountain Trails · page2 Map · page3 Mt Hood · page4 Trail Explorer ·
-page5 Trail Forecast (`TRAIL_TAB=5` in trail_live.py) · page6 Accuracy.
+page0 Cities · page1 Mountain Trails · page2 Map (+ Trails layer and side panel) · page3 Mt Hood ·
+page4 Trail Forecast (`TRAIL_TAB=4` in trail_live.py) · page5 Accuracy.
 Sidebar button order must match page index. `data-init` / `data-lazy` build maps on first view
 (Mapbox bills per map load).
 
@@ -46,11 +46,16 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   (wet-bulb rain/snow, SLR, model blend), `verification.py` (SNOTEL scoring/calibration),
   `snowpack.py` (Mt Hood snow-depth estimate), `smoke.py` (NOAA smoke PNGs),
   `fires.py` (NIFC perimeters), `webcams.py` (USGS AshCam + NPS cams), `trail_live.py`
-  (Trail Forecast tab: in-browser engine), `trail_explorer.py` (Trail Explorer tab: data build +
-  page), `http_cache.py`.
-- Trail Explorer data: USGS National Digital Trails (carto.nationalmap.gov transportation
-  MapServer/37, public domain; USFS/NPS/BLM/FWS/WA State Parks; no OR state parks or city/county
-  trails yet, OSM is the planned fill). Pieces stitched by name+number+agency (ends within 40 m),
+  (Trail Forecast tab: in-browser engine), `trail_explorer.py` (the Map tab's Trails layer: data
+  build + `TrailsLayer` JS + side panel), `http_cache.py`.
+- Trails data (~8.3k trails): USGS National Digital Trails (carto.nationalmap.gov transportation
+  MapServer/37: USFS/NPS/BLM/FWS/WA State Parks) + Oregon Parks & Rec (OPRD_Rec_Trails_Hosted_view)
+  + Oregon Dept of Forestry (Recreation_Inventory_Public_View/13, has difficulty) + Oregon Metro RLIS
+  Trails (open, unpaved, not state/federal). Not covered yet: Saddle Mountain SNA, non-Metro city
+  trails (OSM is the planned fill). The Map tab's "Trails" button (RegionLayers) creates
+  `window.TrailsLayer`; the Trail Forecast map gets lines + tips but no panel. GPX uploads live in
+  localStorage `wx-mytrails` (per browser), measured via `window.WxTrail` from trail_live.py.
+  Pieces stitched by name+number+agency (ends within 150 m),
   snow routes (SNO- numbers) dropped, caps names prettified. Raw download cached a week in
   `.cache/explorer/`; elevation from Mapbox terrain-RGB z12 tiles cached forever in
   `.cache/terrain/` (~2,800 tiles, downloaded once; Mapbox serves them slowly, ~2/s) and per-trail
@@ -104,7 +109,7 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 - Wants concise status while working and a short summary of what changed at the end.
 
 ## Open ideas (not done)
-- Trail Explorer next steps: OpenStreetMap for OR state parks / city / county trails; chain
+- Trails next steps: OpenStreetMap for the remaining city / county trails; chain
   connected trails into hikes (route builder); NPS API + Recreation.gov descriptions (free keys);
   "My trails" list of everything forecasted.
 - 3-hourly drill-down in the Trail Forecast 10-day table; KML import; recent-trails list;
