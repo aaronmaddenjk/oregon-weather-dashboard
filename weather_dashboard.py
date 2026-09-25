@@ -47,6 +47,7 @@ import smoke
 import webcams
 import snowpack
 import trail_live
+import trail_explorer
 from snow_model import new_snow_in, rh_from_dew
 
 load_dotenv()  # no-op in CI; GitHub Actions injects env vars directly
@@ -881,6 +882,7 @@ ROW_ICONS = {
     "chev":  '<path d="M6 9l6 6 6-6"/>',
     "target": '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
     "map":   '<path d="M3 6.5 9 4l6 2.5 6-2.5v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/>',
+    "compass": '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
     "route": '<circle cx="6" cy="18.5" r="2"/><circle cx="18" cy="5.5" r="2"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16"/>',
 }
 WX_DEFS = ('<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'
@@ -3165,6 +3167,10 @@ def build_dashboard() -> str:
     stage("Generating mountain trails")
     trails_full_html = build_trails_page(aq)
 
+    stage("Building the trail explorer")
+    n_explorer = trail_explorer.build(os.path.dirname(OUTPUT_PATH), MAPBOX_TOKEN)
+    print(f"  {n_explorer:,} trails", flush=True)
+
     stage("Generating Mt Hood ski conditions")
     ski_full_html = build_ski_page()
 
@@ -3181,7 +3187,7 @@ def build_dashboard() -> str:
     # ---- Merge CSS (shared base + page-specific) ----
     # the Mt Hood page's stylesheet uses generic names (.map-panel, table, th...) - scope it to
     # its own tab so it can't restyle the Cities / Trails pages
-    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4')
+    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + scope_css(trail_explorer.EXPLORER_CSS, '#page4') + '\n' + scope_css(trail_live.TRAIL_CSS, '#page5')
 
     # Shell CSS: left sidebar nav, page headers, section headers (loaded last, so it wins)
     tab_css = """
@@ -3347,8 +3353,9 @@ def build_dashboard() -> str:
       <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg>Mountain Trails</button>
       <button class="tab-btn" onclick="showTab(2)"><svg class="nv" aria-hidden="true"><use href="#ri-map"/></svg>Map</button>
       <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg>Mt Hood</button>
-      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
-      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg>Accuracy</button>
+      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-compass"/></svg>Trail Explorer</button>
+      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
+      <button class="tab-btn" onclick="showTab(6)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg>Accuracy</button>
       <div class="updated"><b>Updated</b>{updated_str}</div>
     </nav>
     <main class="main">
@@ -3369,10 +3376,13 @@ def build_dashboard() -> str:
     <div class="page-section" id="page3" style="display:none" data-lazy="hood">
       <header class="page-head"><h1>Mt Hood Meadows</h1><p>Meadows Base, Top of Blue and Top of Cascade \u00B7 next 24 hours, cameras and terrain layers \u00B7 10-day forecast below</p></header>
       {k_body}</div>
-    <div class="page-section" id="page4" style="display:none" data-init="trailLiveShown">
+    <div class="page-section" id="page4" style="display:none" data-init="explorerShown">
+      <header class="page-head"><h1>Trail Explorer</h1><p>{n_explorer:,} official trails across Oregon and Washington \u00B7 filter by length, gain and high point, then send one to Trail Forecast</p></header>
+      {trail_explorer.EXPLORER_HTML}</div>
+    <div class="page-section" id="page5" style="display:none" data-init="trailLiveShown">
       <header class="page-head"><h1>Trail Forecast</h1><p>Any trail: drop in its GPX (or send it from AllTrails or onX with the Chrome extension) for a base and peak forecast and the Map tab\u2019s layers in 3D \u00B7 computed live in your browser</p></header>
       {trail_live.TRAIL_PAGE_HTML.replace("__REGION_CTL__", region_ctl)}</div>
-    <div class="page-section" id="page5" style="display:none">
+    <div class="page-section" id="page6" style="display:none">
       <header class="page-head"><h1>Forecast Accuracy</h1><p>How our precipitation forecasts compare with SNOTEL gauges near the mountains · re-scored and re-tuned every run</p></header>
       {verification.report_html(report)}</div>
     </main>
@@ -3413,6 +3423,7 @@ def build_dashboard() -> str:
     combined += '<script>' + CAMS_LIB_JS + '</script>\n'     # the camera view, used by Trails and Mt Hood
     combined += '<script>' + TERRAIN_LAYERS_JS + '</script>\n'   # terrain layers on a 3D map, Mt Hood and the trail page
     combined += '<script>' + trail_live.TRAIL_LIVE_JS + '</script>\n'   # the Trail Forecast tab's in-browser engine
+    combined += '<script>' + trail_explorer.EXPLORER_JS + '</script>\n'   # the Trail Explorer tab
     for s in c_scripts:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
     for s in trails_scripts:

@@ -121,6 +121,7 @@ TRAIL_LIVE_JS = r"""
 var root=document.getElementById('tl-root');if(!root)return;
 var OM='https://api.open-meteo.com/v1/forecast',NWS='https://api.weather.gov';
 var PL=[850,700,600,500],GF=1.25,LAPSE=6.5*1.8/1000;
+var TRAIL_TAB=5;   // this tab's index in the shell (page5)
 var $=function(id){return document.getElementById(id);};
 var st={pts:null,res:null,sel:0,map:null,layers:null,charts:null};
 
@@ -212,7 +213,9 @@ function trailStats(pts){
   return{km:d,dist:dist,gain:gain,lo:lo,hi:hi};}
 
 // ---------- fetching ----------
-async function getJSON(u){var r=await fetch(u);if(!r.ok)throw new Error(r.status+' from '+u.split('?')[0]);return r.json();}
+async function getJSON(u){var r=await fetch(u);
+  if(r.status===429&&u.indexOf('open-meteo')>=0)throw new Error('Open-Meteo’s free forecast limit is used up for this connection today. It resets daily (about 5 PM Pacific); try again after that.');
+  if(!r.ok)throw new Error(r.status+' from '+u.split('?')[0]);return r.json();}
 function q(o){return Object.keys(o).map(function(k){return k+'='+encodeURIComponent(o[k]);}).join('&');}
 async function nwsPoint(p){   // NWS gridded forecast at one point, or null (outside the US, or down)
   try{var meta=await getJSON(NWS+'/points/'+p.lat.toFixed(4)+','+p.lon.toFixed(4));
@@ -385,9 +388,15 @@ var pending=null;
 if(location.hash.indexOf('#trail=')===0){
   try{var h=JSON.parse(decodeURIComponent(location.hash.slice(7)));if(h&&h.p)pending={src:{poly:h.p,name:h.n||''},link:h.u||''};}catch(e){}
   history.replaceState(null,'',location.pathname+location.search);   // a reload shouldn't re-import it
-  window.addEventListener('load',function(){if(window.showTab)showTab(4);});
+  window.addEventListener('load',function(){if(window.showTab)showTab(TRAIL_TAB);});
 }
 var restored=false;
+// the Trail Explorer tab's "Forecast this trail": a polyline + name, opened here
+window.openTrailForecast=function(poly,name,link){
+  pending={src:{poly:poly,name:name||''},link:link||''};
+  showTab(TRAIL_TAB);   // the first visit runs trailLiveShown, which takes `pending`
+  if(pending){var pd=pending;pending=null;restored=true;$('tl-load').hidden=true;load(pd.src,pd.link,true);}
+  window.scrollTo(0,0);};
 window.trailLiveShown=function(){
   if(pending){var pd=pending;pending=null;restored=true;load(pd.src,pd.link,true);return;}
   if(!restored){restored=true;var saved=null;try{saved=JSON.parse(localStorage.getItem('wx-trail')||'null');}catch(e){}

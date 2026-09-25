@@ -35,7 +35,8 @@ and asks for features in plain language. See README.md for data sources and dev 
   visually (screenshots) and with small JS checks before reporting done.
 
 ## Tabs (page ids in the shell, `build_dashboard()`)
-page0 Cities · page1 Mountain Trails · page2 Map · page3 Mt Hood · page4 Trail Forecast · page5 Accuracy.
+page0 Cities · page1 Mountain Trails · page2 Map · page3 Mt Hood · page4 Trail Explorer ·
+page5 Trail Forecast (`TRAIL_TAB=5` in trail_live.py) · page6 Accuracy.
 Sidebar button order must match page index. `data-init` / `data-lazy` build maps on first view
 (Mapbox bills per map load).
 
@@ -45,7 +46,18 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   (wet-bulb rain/snow, SLR, model blend), `verification.py` (SNOTEL scoring/calibration),
   `snowpack.py` (Mt Hood snow-depth estimate), `smoke.py` (NOAA smoke PNGs),
   `fires.py` (NIFC perimeters), `webcams.py` (USGS AshCam + NPS cams), `trail_live.py`
-  (Trail Forecast tab: in-browser engine), `http_cache.py`.
+  (Trail Forecast tab: in-browser engine), `trail_explorer.py` (Trail Explorer tab: data build +
+  page), `http_cache.py`.
+- Trail Explorer data: USGS National Digital Trails (carto.nationalmap.gov transportation
+  MapServer/37, public domain; USFS/NPS/BLM/FWS/WA State Parks; no OR state parks or city/county
+  trails yet, OSM is the planned fill). Pieces stitched by name+number+agency (ends within 40 m),
+  snow routes (SNO- numbers) dropped, caps names prettified. Raw download cached a week in
+  `.cache/explorer/`; elevation from Mapbox terrain-RGB z12 tiles cached forever in
+  `.cache/terrain/` (~2,800 tiles, downloaded once; Mapbox serves them slowly, ~2/s) and per-trail
+  results in `.cache/explorer/elevation.json`. `WX_EXPLORER_MAX_TILES` (default 6000) caps new tile
+  fetches per build. Output `docs/explorer/trails.json` (~1.8 MB), loaded when the tab opens.
+  "Forecast this trail" → `window.openTrailForecast(poly, name, link)` in trail_live.py.
+  AllTrails' search URL ignores ?q=; the card links to `/explore?b_tl_lat=..&b_br_lng=..` instead.
 - `chrome-extension/`: MV3 extension; on an AllTrails trail page it reads the embedded route
   polyline (`"pointsData":"$xx"` in the Next.js `self.__next_f` stream; falls back to fetching
   `/explore/trail/...`) and opens `<dashboard>#trail={"n","u","p"}`. Also onX Backcountry web map
@@ -92,6 +104,9 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 - Wants concise status while working and a short summary of what changed at the end.
 
 ## Open ideas (not done)
+- Trail Explorer next steps: OpenStreetMap for OR state parks / city / county trails; chain
+  connected trails into hikes (route builder); NPS API + Recreation.gov descriptions (free keys);
+  "My trails" list of everything forecasted.
 - 3-hourly drill-down in the Trail Forecast 10-day table; KML import; recent-trails list;
   OpenStreetMap / Waymarked Trails links + trail search; verify gusts against ridge stations.
 - Move scheduled builds off the PC to an Oracle Cloud Always Free VM (own IP, so Open-Meteo
