@@ -116,6 +116,7 @@ def _om_throttle(cost):
                 _om_window.append((now, cost))
                 return
             wait = 60 - (now - _om_window[0][0]) + 0.5
+        _stats["throttle waits"] += 1
         time.sleep(max(0.5, wait))
 
 
@@ -124,12 +125,24 @@ def _om_throttle(cost):
 DEFAULT_TIMEOUT = (10, 60)
 
 
+SLOW_SECONDS = 15   # log any single request slower than this
+
+
 def _get(url, params=None, **kw):
     kw.setdefault("timeout", DEFAULT_TIMEOUT)
+    host = urlparse(url).netloc
     for attempt in range(3):
+        t0 = time.time()
         try:
-            return _real_get(url, params=params, **kw)
-        except (requests.Timeout, requests.ConnectionError):
+            r = _real_get(url, params=params, **kw)
+            dt = time.time() - t0
+            _stats[f"seconds: {host}"] += dt
+            if dt > SLOW_SECONDS:
+                print(f"  slow request: {dt:.0f}s {host}{urlparse(url).path}", flush=True)
+            return r
+        except (requests.Timeout, requests.ConnectionError) as e:
+            print(f"  {type(e).__name__} after {time.time() - t0:.0f}s: {host}{urlparse(url).path}"
+                  + ("" if attempt == 2 else ", retrying"), flush=True)
             if attempt == 2:
                 raise
             _stats["retries"] += 1
@@ -149,6 +162,17 @@ def _counting_get(url, params=None, **kw):
         time.sleep(61)
         r = _get(url, params=params, **kw)
     return r
+
+
+def progress():
+    """One line for the build log: requests so far and where the network time went."""
+    live = sum(v for k, v in _stats.items() if k.startswith("requests: "))
+    om = _stats.get("open-meteo calls (quota)", 0)
+    busiest = sorted(((v, k[9:]) for k, v in _stats.items() if k.startswith("seconds: ")), reverse=True)[:3]
+    net = ", ".join(f"{h} {s:.0f}s" for s, h in busiest)
+    waits = _stats.get("throttle waits", 0)
+    return (f"{live} requests, ~{om:,} Open-Meteo calls" + (f", {waits} throttle waits" if waits else "")
+            + (f"; network time: {net}" if net else ""))
 
 
 def summary():

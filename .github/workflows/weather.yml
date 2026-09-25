@@ -1,4 +1,4 @@
-﻿name: Generate weather dashboard
+name: Generate weather dashboard
 
 on:
   schedule:
@@ -39,6 +39,7 @@ jobs:
       - name: Generate dashboard
         env:
           MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+          PYTHONUNBUFFERED: "1"   # stream the build log live
         run: python weather_dashboard.py
 
       # --- optional: email the result instead of / in addition to Pages ---

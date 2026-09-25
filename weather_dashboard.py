@@ -23,6 +23,8 @@ import json
 import math
 import os
 import re
+import threading
+import time
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -3115,14 +3117,14 @@ def _wrap_iife(script_str):
 
 def build_dashboard() -> str:
     # verify first, so every forecast below uses the freshly tuned precipitation blend
-    print("Verifying against SNOTEL...")
+    stage("Verifying against SNOTEL")
     report = verification.run(MOUNTAINS)
     cal = (report or {}).get("calibration")
     if cal:
         print(f"  blend tuned from {cal['wet_station_days']} wet station-days "
               f"(trust {cal['trust']:.0%}, precip x{cal['qpf_scale']:.2f})")
 
-    print("Building region map fields...")
+    stage("Building region map fields")
     region_data, region_frames = region.build()
     # 3-hourly frames live next to the page, one file per day, loaded only when viewed
     for rel, body in region_frames.items():
@@ -3131,14 +3133,15 @@ def build_dashboard() -> str:
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
 
-    print("Generating Oregon cities...")
+    stage("Generating Oregon cities")
     cities_full_html = build_cities_page()
 
+    stage("Fetching air quality")
     aq = aqi_grid()
     aq_on = bool(aq)
-    print("Fetching smoke forecast...")
+    stage("Fetching smoke forecast")
     smoke_data = smoke.build(region.BOUNDS, os.path.dirname(OUTPUT_PATH))
-    print("Fetching active fire perimeters...")
+    stage("Fetching active fire perimeters")
     fire_data = fires.active_perimeters(region.BOUNDS)
     n_fires = len(fire_data["features"]) if fire_data else 0
     print(f"  {n_fires} active fires")
@@ -3159,11 +3162,13 @@ def build_dashboard() -> str:
         '<span class="lyr-mode lyr-kmode" hidden><button class="active" data-kmode="sfc" title="Smoke at breathing level">Surface</button>'
         '<button data-kmode="vert" title="All the smoke overhead">Sky</button></span></div></div>'
         '<div class="lyr-leg" hidden></div><div class="rmap-tip" hidden></div><div class="rmap-busy" hidden>Updating\u2026</div>')
+    stage("Generating mountain trails")
     trails_full_html = build_trails_page(aq)
 
-    print("Generating Mt Hood ski conditions...")
+    stage("Generating Mt Hood ski conditions")
     ski_full_html = build_ski_page()
 
+    stage("Assembling the page")
     # Page 1: Cities
     c_css, c_body, c_scripts = _extract(cities_full_html)
 
@@ -3423,8 +3428,25 @@ def build_dashboard() -> str:
     return combined
 
 
+_T0 = time.time()
+
+
+def stage(msg):
+    """Timestamped build-log line, so a slow run shows where the time went."""
+    t = int(time.time() - _T0)
+    print(f"[{t // 60:02d}:{t % 60:02d}] {msg}  ({http_cache.progress()})", flush=True)
+
+
+def _heartbeat():
+    while True:
+        time.sleep(60)
+        stage("...still working")
+
+
 def main():
+    threading.Thread(target=_heartbeat, daemon=True).start()
     html_out = build_dashboard()
+    stage("Done")
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(html_out)
