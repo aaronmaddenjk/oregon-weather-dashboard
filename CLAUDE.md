@@ -55,6 +55,8 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   trails (OSM is the planned fill). The Map tab's "Trails" button (RegionLayers) creates
   `window.TrailsLayer`; the Trail Forecast map gets lines + tips but no panel. GPX uploads live in
   localStorage `wx-mytrails` (per browser), measured via `window.WxTrail` from trail_live.py.
+  Trails arriving from the Chrome extension (#trail=) are also kept there (`keepTrail` in
+  trail_live.py, one entry per link, saved before the forecast fetch so a failed forecast keeps it).
   Pieces stitched by name+number+agency (ends within 150 m),
   snow routes (SNO- numbers) dropped, caps names prettified. Raw download cached a week in
   `.cache/explorer/`; elevation from Mapbox terrain-RGB z12 tiles cached forever in
