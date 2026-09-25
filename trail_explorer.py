@@ -588,7 +588,8 @@ function writeMine(a){try{localStorage.setItem(MINE_KEY,JSON.stringify(a));retur
 function allTrails(bb){   // AllTrails' explore map on this area (its search box doesn't take a URL query)
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
-function loadData(){if(!DATA)DATA=fetch('explorer/trails.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});return DATA;}
+// ?v= changes every build, so a browser never reuses an older trails.json it has cached
+function loadData(){if(!DATA)DATA=fetch('explorer/trails.json?v=__TRAILS_VER__').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});return DATA;}
 
 window.TrailsLayer=function(map,opt){
   var P=opt.panel||null,tip=opt.tip,T=[],on=false,ready=null,sel=-1,hov=-1;

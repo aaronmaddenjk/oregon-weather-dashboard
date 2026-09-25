@@ -3428,7 +3428,7 @@ def build_dashboard() -> str:
     combined += '<script>' + CAMS_LIB_JS + '</script>\n'     # the camera view, used by Trails and Mt Hood
     combined += '<script>' + TERRAIN_LAYERS_JS + '</script>\n'   # terrain layers on a 3D map, Mt Hood and the trail page
     combined += '<script>' + trail_live.TRAIL_LIVE_JS + '</script>\n'   # the Trail Forecast tab's in-browser engine
-    combined += '<script>' + trail_explorer.TRAILS_JS + '</script>\n'   # the Map tab's Trails layer + panel
+    combined += '<script>' + trail_explorer.TRAILS_JS.replace('__TRAILS_VER__', str(int(time.time()))) + '</script>\n'   # the Map tab's Trails layer + panel
     for s in c_scripts:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
     for s in trails_scripts:
