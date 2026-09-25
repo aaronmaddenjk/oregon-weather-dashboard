@@ -16,6 +16,19 @@ and asks for features in plain language. See README.md for data sources and dev 
 - Preview for the owner: `tools/to_artifact.py docs/index.html <out>` then publish with the
   Artifact tool to https://claude.ai/artifact/HVFm7WR4ze6fgQddH77yrx (same URL each time).
   Maps/cameras/live fetches don't run in the preview (its CSP blocks outside hosts).
+- Live site: https://aaronmaddenjk.github.io/oregon-weather-dashboard/ (GitHub Pages, served from
+  the `gh-pages` branch). Repo: github.com/aaronmaddenjk/oregon-weather-dashboard (public; code on
+  `main`). Built on THIS PC, not in Actions: Open-Meteo throttles GitHub's shared runner IPs to
+  timeouts (tried; removed the workflow). `tools/publish.ps1` builds fresh and force-pushes docs/
+  as a single commit to gh-pages (`-NoBuild` = publish current docs/); log in `logs/publish.log`.
+  `tools/schedule.ps1` registers the Windows task "Oregon Weather Dashboard" (5 AM + 3 PM).
+  A full fresh build is ~4,600 Open-Meteo calls (Map grid ~3,100) and ~19 min, so max ~2/day
+  until the split refresh (hourly light build, grid every few hours) exists.
+- git/gh are installed but not on PowerShell's PATH in this shell: prefix commands with
+  `$env:Path = "C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;" + $env:Path`.
+  Commit as aaronmaddenjk / 242111455+aaronmaddenjk@users.noreply.github.com (set in repo config).
+- GitHub push protection flags the public Mapbox `pk.` token in the built page; the owner
+  allowed it (false positive). Never put an `sk.` (secret) token in the page.
 - Test in the built-in browser pane; after edits, rebuild and check the page. Always verify
   visually (screenshots) and with small JS checks before reporting done.
 
@@ -64,5 +77,6 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 
 ## Open ideas (not done)
 - 3-hourly drill-down in the Trail Forecast 10-day table; KML import; recent-trails list;
-  OpenStreetMap / Waymarked Trails links + trail search; GitHub repo + Pages deploy
-  (workflow exists in `.github/workflows/weather.yml`); verify gusts against ridge stations.
+  OpenStreetMap / Waymarked Trails links + trail search; verify gusts against ridge stations.
+- Split refresh: hourly light build (cities/trails/Hood/smoke/fires) reusing the last Map grid,
+  full grid every ~6 h; plus a page self-reload when a newer build is published.

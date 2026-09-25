@@ -3,6 +3,8 @@
 # built site - published by the workflow, not committed
 docs/
 __pycache__/
+# scheduled publish logs (tools/publish.ps1)
+logs/
 # local Claude Code settings
 .claude/
 *.pyc

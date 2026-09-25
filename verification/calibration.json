@@ -1,18 +1,18 @@
 {
- "updated": "2026-09-25T16:42+00:00",
+ "updated": "2026-09-25T17:10+00:00",
  "window": [
   "2026-08-11",
   "2026-09-24"
  ],
- "wet_station_days": 270,
+ "wet_station_days": 264,
  "trust": 0.9,
  "weights": {
-  "ncep_nbm_conus": 0.325,
-  "ecmwf_ifs": 0.271,
+  "ncep_nbm_conus": 0.324,
+  "ecmwf_ifs": 0.272,
   "gem_hrdps_continental": 0.132,
   "ncep_hrrr_conus": 0.082,
   "icon_seamless": 0.095,
   "gfs_global": 0.095
  },
- "qpf_scale": 1.001
+ "qpf_scale": 0.99
 }

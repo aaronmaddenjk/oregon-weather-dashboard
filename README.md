@@ -40,9 +40,12 @@ emails the result.
   target — the goal is for the live version to produce HTML structurally
   identical to this, just filled with real numbers instead of mock ones.
 - `requirements.txt`, `.gitignore`, `.env.example` — project scaffolding.
-- `.github/workflows/weather.yml` — daily cron job: installs deps, runs the
-  script with secrets injected as env vars, commits `docs/index.html`, pushes.
-  GitHub Pages then serves it from the `docs/` folder.
+- `tools/publish.ps1` — builds on this PC and force-pushes `docs/` to the
+  `gh-pages` branch, which GitHub Pages serves at
+  https://aaronmaddenjk.github.io/oregon-weather-dashboard/. `tools/schedule.ps1`
+  runs it twice a day via Windows Task Scheduler (log: `logs/publish.log`).
+  (A GitHub Actions build was tried and removed: Open-Meteo's free tier throttles
+  GitHub's shared runner IPs until requests time out.)
 
 ## Next steps, in order
 1. Rotate the Meteoblue key.
