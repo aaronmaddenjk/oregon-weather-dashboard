@@ -240,10 +240,11 @@ function freeAir(G,i){var fa=[];PL.forEach(function(p){var Z=(G['geopotential_he
   return fa.sort(function(a,b){return a[0]-b[0];});}
 function windAt(fa,z,surface,factor){if(!fa.length)return surface;var expo=Math.min(1,Math.max(0,(z-(fa[0][0]-500))/500));return Math.max(surface,expo*interp(fa,z,holdBelow)*factor);}
 
-async function run(pts,name,link){
+async function run(pts,name,link,onStats){
   status('Reading the trail…');
   pts=await fillElevation(pts);
   var s=trailStats(pts),P=[{key:'base',name:'Base',p:pts[s.lo]},{key:'peak',name:'Peak',p:pts[s.hi]}];
+  if(onStats)onStats(pts,s);   // before the forecast fetches, so a failed forecast still keeps the trail
   var mid={lat:(P[0].p.lat+P[1].p.lat)/2,lon:(P[0].p.lon+P[1].p.lon)/2};
   status('Fetching the forecast for the base ('+ft(P[0].p.ele)+') and peak ('+ft(P[1].p.ele)+')…');
   var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth'];
@@ -366,13 +367,25 @@ function drawMap(){
 
 // ---------- input ----------
 // src: {gpx: text} (a dropped file) or {poly, name} (a route handed over by the Chrome extension)
-async function load(src,link,save){
+// keep: also add it to "your trails" (the Map tab's Trails layer, localStorage 'wx-mytrails').
+// The Chrome extension's trails are kept, so every trail you forecast from AllTrails or onX
+// builds up your own list; one entry per link (a repeat replaces the old one).
+function keepTrail(poly,name,link,pts,s){
+  try{var a=JSON.parse(localStorage.getItem('wx-mytrails')||'[]')||[],key=link||poly;
+    a=a.filter(function(m){return (m.link||m.p)!==key;});
+    a.push({name:name,p:poly,link:link||'',mi:Math.round(s.km*0.621371*10)/10,gain:Math.round(s.gain*3.28084),
+      hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),added:Date.now()});
+    localStorage.setItem('wx-mytrails',JSON.stringify(a));return true;}catch(e){return false;}}
+async function load(src,link,save,keep){
+  var kept=false;
   try{
     var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx),name=src.name||nameFromLink(link)||g.name||'Your trail';
     $('tl-link').value=link||'';
-    await run(g.pts,name,link||'');
+    await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s);}:null);
+    if(kept)$('tl-stats').insertAdjacentHTML('beforeend',' · <b>saved to your trails</b> (Map → Trails)');
     if(save){try{localStorage.setItem('wx-trail',JSON.stringify(Object.assign({},src,{link:link||''})));}catch(e){}}
-  }catch(e){status((e&&e.message)||'Something went wrong loading that trail.',true);$('tl-load').hidden=false;$('tl-out').hidden=true;}}
+  }catch(e){status(((e&&e.message)||'Something went wrong loading that trail.')+(kept?' The trail was still saved to your trails (Map → Trails).':''),true);
+    $('tl-load').hidden=false;$('tl-out').hidden=true;}}
 function takeFile(f){if(!f)return;var r=new FileReader();r.onload=function(){load({gpx:r.result},$('tl-link').value.trim(),true);};r.readAsText(f);}
 var drop=$('tl-drop');
 $('tl-file').addEventListener('change',function(){takeFile(this.files[0]);this.value='';});
@@ -386,7 +399,7 @@ window.addEventListener('resize',function(){if(st.pts&&!$('tl-out').hidden)profi
 // a route handed over in the URL by the Chrome extension: #trail={"n":name,"u":link,"p":polyline}
 var pending=null;
 if(location.hash.indexOf('#trail=')===0){
-  try{var h=JSON.parse(decodeURIComponent(location.hash.slice(7)));if(h&&h.p)pending={src:{poly:h.p,name:h.n||''},link:h.u||''};}catch(e){}
+  try{var h=JSON.parse(decodeURIComponent(location.hash.slice(7)));if(h&&h.p)pending={src:{poly:h.p,name:h.n||''},link:h.u||'',keep:true};}catch(e){}
   history.replaceState(null,'',location.pathname+location.search);   // a reload shouldn't re-import it
   window.addEventListener('load',function(){if(window.showTab)showTab(TRAIL_TAB);});
 }
@@ -400,7 +413,7 @@ window.openTrailForecast=function(poly,name,link){
   if(pending){var pd=pending;pending=null;restored=true;$('tl-load').hidden=true;load(pd.src,pd.link,true);}
   window.scrollTo(0,0);};
 window.trailLiveShown=function(){
-  if(pending){var pd=pending;pending=null;restored=true;load(pd.src,pd.link,true);return;}
+  if(pending){var pd=pending;pending=null;restored=true;load(pd.src,pd.link,true,pd.keep);return;}
   if(!restored){restored=true;var saved=null;try{saved=JSON.parse(localStorage.getItem('wx-trail')||'null');}catch(e){}
     if(saved&&(saved.gpx||saved.poly)){load(saved,saved.link,false);return;}}
   if(st.pts&&!st.region)setTimeout(drawMap,50);

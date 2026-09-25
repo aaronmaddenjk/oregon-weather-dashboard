@@ -542,9 +542,9 @@ window.TrailsLayer=function(map,opt){
   function trail(r,ix,i){var parts=[decode(r[ix.line])].concat((r[ix.branches]||[]).map(decode)),bb=[180,90,-180,-90];
     parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
     var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
-      diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true};
+      diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,link:r[11]||''};   // [11]: your trail's source page
     t.lc=(t.name+' '+t.num).toLowerCase();return t;}
-  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null];});}
+  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null,m.link||''];});}
   function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
     properties:{i:t.i,lc:t.lc,src:t.src,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
       b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
@@ -612,9 +612,10 @@ window.TrailsLayer=function(map,opt){
       '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
       '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
       '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
-      (t.src==='mine'?'<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
+      (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+(/onxmaps\.com/.test(t.link)?'onX':'AllTrails')+' \u2197</a>':'')+
+        '<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
     card.hidden=false;
-    card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),'');};
+    card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
     var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
     var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
@@ -633,7 +634,7 @@ window.TrailsLayer=function(map,opt){
       loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();select(T.length-1,true);});
     }catch(e){lab.lastChild.textContent=' Couldn\u2019t add it: '+(e.message||e);setTimeout(function(){lab.lastChild.textContent=keep;},5000);lab.classList.remove('busy');return;}
     lab.classList.remove('busy');lab.lastChild.textContent=keep;}
-  function removeMine(t){var mine=readMine(),k=mine.findIndex(function(m){return m.p===t.line;});if(k<0)return;
+  function removeMine(t){var mine=readMine(),k=mine.findIndex(function(m){return m.p===t.line&&(m.link||'')===t.link;});if(k<0)return;
     mine.splice(k,1);writeMine(mine);sel=-1;$('ex-card').hidden=true;
     ['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],-1]);});refresh();}
 

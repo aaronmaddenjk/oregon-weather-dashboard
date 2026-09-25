@@ -23,7 +23,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     const { dashboardUrl } = await chrome.storage.sync.get({ dashboardUrl: DEFAULT_URL });
     const url = dashboardUrl.replace(/#.*$/, "") + "#trail=" + encodeURIComponent(JSON.stringify(result));
     await chrome.tabs.create({ url, index: tab.index + 1 });
-    badge(tab.id, "", "Open this trail's forecast");
+    badge(tab.id, "", "Forecast this trail and save it to your trails");
   } catch (e) {
     badge(tab.id, "!", "Couldn't read this trail: " + e.message);
   }
