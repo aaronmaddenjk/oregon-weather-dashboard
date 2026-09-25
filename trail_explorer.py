@@ -491,6 +491,14 @@ TRAILS_PANEL_HTML = """
   </div>
   <label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
     + Add your GPX</label>
+  <details class="ex-queue" id="ex-queue">
+    <summary>Trail queue <span id="ex-qcount"></span></summary>
+    <textarea id="ex-qin" rows="3" placeholder="Paste AllTrails links: any amount, any state; repeats are skipped"></textarea>
+    <div class="ex-qrow"><button type="button" id="ex-qadd">Add to queue</button><span id="ex-qmsg"></span></div>
+    <a id="ex-qnext" class="ex-go ex-qnext" target="_blank" rel="noopener" hidden>Open next ↗</a>
+    <ol class="ex-qlist" id="ex-qlist"></ol>
+    <div class="ex-qrow ex-qfoot"><span id="ex-qdone"></span><button type="button" id="ex-qclear" hidden>Clear done</button></div>
+  </details>
   <div class="ex-card" id="ex-card" hidden></div>
   <div class="ex-listhead"><span id="ex-inview"></span><label>Sort<select id="ex-sort"><option value="name">Name</option>
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
@@ -523,6 +531,26 @@ TRAILS_CSS = r"""
 .ex-add:hover { text-decoration:underline; }
 .ex-add.busy { color:#8A8F9C; pointer-events:none; }
 .ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
+.ex-queue { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:8px 11px; }
+.ex-queue summary { cursor:pointer; font-size:12.5px; font-weight:700; color:#111; }
+.ex-queue summary span { font-weight:400; color:#8A8F9C; margin-left:4px; font-variant-numeric:tabular-nums; }
+.ex-queue[open] summary { margin-bottom:8px; }
+.ex-queue textarea { width:100%; box-sizing:border-box; resize:vertical; padding:6px 8px; border:1px solid #DDE0E6; border-radius:7px; font:inherit; font-size:12px; }
+.ex-queue textarea:focus { outline:2px solid #FE5000; outline-offset:1px; border-color:transparent; }
+.ex-qrow { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:11.5px; color:#5A5F6B; }
+.ex-qrow button { border:1px solid #DDE0E6; background:#fff; border-radius:7px; padding:4px 10px; font:inherit; font-size:12px; font-weight:600; color:#111; cursor:pointer; }
+.ex-qrow button:hover { border-color:#FE5000; color:#FE5000; }
+.ex-qnext { display:inline-block; text-decoration:none; margin:2px 0 6px; }
+.ex-qnext[hidden] { display:none !important; }
+.ex-qlist { list-style:none; margin:0; padding:0; }
+.ex-qlist li { display:flex; align-items:center; gap:6px; padding:5px 0; border-top:1px solid #F0F1F4; font-size:12px; }
+.ex-qlist li a { flex:1; min-width:0; color:#111; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ex-qlist li a:hover { color:#FE5000; }
+.ex-qlist li.opened a::after { content:" \00B7  opened"; color:#8A8F9C; }
+.ex-qlist li.done a { color:#9A9FAB; text-decoration:line-through; }
+.ex-qlist li button { border:0; background:none; color:#8A8F9C; cursor:pointer; font-size:13px; padding:0 3px; }
+.ex-qlist li button:hover { color:#111; }
+.ex-qfoot { justify-content:space-between; margin-bottom:0; }
 .ex-card.mine { border-top-color:#6B3FA8; }
 .ex-card { position:relative; }
 .ex-x { position:absolute; top:6px; right:6px; width:26px; height:26px; border:0; border-radius:6px; background:none; font-size:18px; line-height:1; color:#8A8F9C; cursor:pointer; }
@@ -593,6 +621,34 @@ function allTrails(bb){   // AllTrails' explore map on this area (its search box
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
 // ?v= changes every build, so a browser never reuses an older trails.json it has cached
+// ---------- the trail queue: AllTrails links you mean to go through, one at a time ----------
+// Kept in localStorage 'wx-queue' as [{u: link, k: key, n: name, added, opened, done}]. A link's key is
+// its trail (at:us/washington/skyline-trail), so /explore/, ?query and trailing-slash variants of the
+// same trail are one entry. Saving a trail (the Chrome extension -> keepTrail) crosses it off.
+var QKEY='wx-queue';
+function qkey(u){var x;try{x=new URL(String(u||'').trim());}catch(e){return null;}
+  var host=x.hostname.replace(/^www\./,'').toLowerCase(),m=x.pathname.match(/\/trail\/(.+?)\/?$/);
+  if(/(^|\.)alltrails\.com$/.test(host)&&m)return 'at:'+m[1].toLowerCase();
+  return host+x.pathname.replace(/\/+$/,'').toLowerCase();}
+function readQ(){try{return JSON.parse(localStorage.getItem(QKEY)||'[]')||[];}catch(e){return[];}}
+function writeQ(q){try{localStorage.setItem(QKEY,JSON.stringify(q));return true;}catch(e){return false;}}
+function slugName(k){var s=k.split('/').pop()||k;return s.split('-').map(function(w){return w?w[0].toUpperCase()+w.slice(1):w;}).join(' ');}
+window.TrailQueue={
+  key:qkey,
+  // add every link in a blob of text; returns {added, dup, saved}
+  add:function(text){var q=readQ(),have={},saved={},r={added:0,dup:0,saved:0};
+    q.forEach(function(it){have[it.k]=1;});
+    readMine().forEach(function(m){var k=qkey(m.link);if(k)saved[k]=1;});
+    (String(text).match(/https?:\/\/[^\s"'<>,]+/g)||[]).forEach(function(u){var k=qkey(u);if(!k)return;
+      if(have[k]){r.dup++;return;}have[k]=1;
+      var it={u:k.indexOf('at:')===0?'https://www.alltrails.com/trail/'+k.slice(3):u.split(/[?#]/)[0],k:k,n:slugName(k),added:Date.now()};
+      if(saved[k]){it.done=Date.now();r.saved++;}else r.added++;
+      q.push(it);});
+    writeQ(q);return r;},
+  // a trail was saved: cross off its entry (true if there was one to cross off)
+  done:function(link){var k=qkey(link);if(!k)return false;var q=readQ(),hit=false;
+    q.forEach(function(it){if(it.k===k&&!it.done){it.done=Date.now();hit=true;}});if(hit)writeQ(q);return hit;}
+};
 function loadData(){if(!DATA)DATA=fetch('explorer/trails.json?v=__TRAILS_VER__').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});return DATA;}
 
 window.TrailsLayer=function(map,opt){
@@ -743,7 +799,7 @@ window.TrailsLayer=function(map,opt){
       if(m){m.prof=t.prof;writeMine(mine);}
       if(sel===t.i)chart(box,t);}
     catch(e){box.innerHTML='<div class="ex-prof-t">Elevation profile <span>unavailable right now</span></div>';}}
-  function refresh(){loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();});}
+  function refresh(){loadData().then(function(d){if(!map.getSource('trl'))return;build(d);map.getSource('trl').setData(features());apply();});}
 
   // ---------- your GPX trails (this browser only) ----------
   async function addGPX(file){var lab=P.querySelector('.ex-add'),keep=lab.lastChild.textContent;
@@ -769,6 +825,34 @@ window.TrailsLayer=function(map,opt){
       b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');if(T.length)apply();});});
     $('ex-list').addEventListener('click',function(e){var li=e.target.closest('li[data-i]');if(li)select(+li.dataset.i,true);});
     $('ex-gpx').addEventListener('change',function(){var f=this.files[0];this.value='';if(f)addGPX(f);});
+    // the trail queue
+    function renderQueue(){var q=readQ(),left=q.filter(function(it){return !it.done;}),done=q.length-left.length;
+      $('ex-qcount').textContent=q.length?left.length.toLocaleString('en-US')+' left':'';
+      var next=left.find(function(it){return !it.opened;})||left[0],nx=$('ex-qnext');
+      nx.hidden=!next;if(next){nx.href=next.u;nx.dataset.k=next.k;nx.textContent='Open next: '+next.n+' ↗';}
+      var show=left.slice(0,12).concat(q.filter(function(it){return it.done;}).sort(function(a,b){return b.done-a.done;}).slice(0,3));
+      $('ex-qlist').innerHTML=show.map(function(it){return '<li data-k="'+esc(it.k)+'" class="'+(it.done?'done':it.opened?'opened':'')+'">'+
+        '<a href="'+esc(it.u)+'" target="_blank" rel="noopener" title="'+esc(it.u)+'">'+esc(it.n)+'</a>'+
+        (it.done?'':'<button type="button" data-act="done" title="Mark done">✓</button>')+
+        '<button type="button" data-act="del" title="Remove from the queue">✕</button></li>';}).join('')+
+        (left.length>12?'<li class="more">…and '+(left.length-12).toLocaleString('en-US')+' more</li>':'');
+      $('ex-qdone').textContent=done?done.toLocaleString('en-US')+' done':'';
+      $('ex-qclear').hidden=!done;}
+    function qset(k,fn){var q=readQ();q.forEach(function(it){if(it.k===k)fn(it);});writeQ(q);renderQueue();}
+    $('ex-qadd').addEventListener('click',function(){var t=$('ex-qin').value;if(!t.trim())return;var r=TrailQueue.add(t);
+      $('ex-qin').value='';renderQueue();
+      $('ex-qmsg').textContent=r.added+' added'+(r.dup?' · '+r.dup+' already queued':'')+(r.saved?' · '+r.saved+' already saved':'');
+      setTimeout(function(){$('ex-qmsg').textContent='';},8000);});
+    $('ex-qnext').addEventListener('click',function(){var k=this.dataset.k;setTimeout(function(){qset(k,function(it){it.opened=Date.now();});},0);});
+    $('ex-qlist').addEventListener('click',function(e){var li=e.target.closest('li[data-k]');if(!li)return;var k=li.dataset.k,b=e.target.closest('button');
+      if(!b){if(e.target.closest('a'))setTimeout(function(){qset(k,function(it){if(!it.done)it.opened=Date.now();});},0);return;}
+      if(b.dataset.act==='done')qset(k,function(it){it.done=Date.now();});
+      if(b.dataset.act==='del'){writeQ(readQ().filter(function(it){return it.k!==k;}));renderQueue();}});
+    $('ex-qclear').addEventListener('click',function(){writeQ(readQ().filter(function(it){return !it.done;}));renderQueue();});
+    // another tab (the extension's forecast) saved a trail or ticked the queue: catch up here
+    window.addEventListener('storage',function(e){if(e.key===QKEY)renderQueue();
+      if(e.key===MINE_KEY&&ready)refresh();});
+    renderQueue();
   }
 
   return{

@@ -390,8 +390,10 @@ async function load(src,link,save,keep){
   try{
     var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx),name=src.name||nameFromLink(link)||g.name||'Your trail';
     $('tl-link').value=link||'';
-    await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s);}:null);
-    if(kept)$('tl-stats').insertAdjacentHTML('beforeend',' · <b>saved to your trails</b> (Map → Trails)');
+    var ticked=false;
+    await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s);
+      if(kept&&window.TrailQueue)ticked=TrailQueue.done(link);}:null);   // saved: cross it off the trail queue
+    if(kept)$('tl-stats').insertAdjacentHTML('beforeend',' · <b>saved to your trails</b>'+(ticked?' and crossed off your queue':'')+' (Map → Trails)');
     if(save){try{localStorage.setItem('wx-trail',JSON.stringify(Object.assign({},src,{link:link||''})));}catch(e){}}
   }catch(e){status(((e&&e.message)||'Something went wrong loading that trail.')+(kept?' The trail was still saved to your trails (Map → Trails).':''),true);
     $('tl-load').hidden=false;$('tl-out').hidden=true;}}

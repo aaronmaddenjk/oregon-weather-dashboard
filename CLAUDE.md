@@ -59,6 +59,11 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   from the low end; `prof` field, delta-encoded) - each mile coloured by its average grade:
   Easy <8%, Medium 8-15%, Hard 15-22%, Strenuous 22%+ (one orange ramp; `GR` in TRAILS_JS);
   hover moves a dot along the trail on the map. Your trails get `prof` from `WxTrail.profile`.
+  Trail queue (Trails panel, localStorage `wx-queue`): pasted AllTrails links, keyed by trail path
+  (`at:us/washington/skyline-trail`, so /explore/, ?query and slash variants dedupe); already-saved
+  trails are ticked on add; `TrailQueue.done(link)` from keepTrail crosses off; a `storage` listener
+  keeps an open Map tab in sync. It opens links for the owner to click the extension on: never
+  add automatic fetching of queued links (AllTrails' terms forbid bulk/automated downloading).
   Trails arriving from the Chrome extension (#trail=) are also kept there (`keepTrail` in
   trail_live.py, one entry per link, saved before the forecast fetch so a failed forecast keeps it).
   Pieces stitched by name+number+agency (ends within 150 m),
