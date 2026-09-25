@@ -1,17 +1,21 @@
 """
-Trail Explorer data: every official trail in Oregon and Washington, from the USGS National
-Digital Trails dataset (public domain; it merges U.S. Forest Service, National Park Service,
-BLM, Fish & Wildlife and Washington State Parks trails).
+Trail Explorer data: the official trails of Oregon and Washington, from four public sources:
+  - USGS National Digital Trails (public domain): U.S. Forest Service, National Park Service,
+    BLM, Fish & Wildlife and Washington State Parks trails
+  - Oregon Parks and Recreation Department: state park trails
+  - Oregon Department of Forestry: Tillamook, Clatsop, Santiam... state forest trails
+  - Oregon Metro RLIS: Portland-area city, county and Metro park trails (unpaved, open)
 
-build(out_dir) writes docs/explorer/trails.json, loaded by the Explorer tab when first shown:
-  1. download the summer ("Terra") trails in region.BOUNDS, simplified to ~10 m (cached a week)
+build(out_dir, token) writes docs/explorer/trails.json, loaded when the Map tab's Trails layer
+is first switched on:
+  1. download each source (simplified to ~10 m; cached a week)
   2. stitch the pieces (split at every junction) back into whole trails: same name + trail
-     number + agency, pieces whose ends meet within 40 m
-  3. per trail: length, allowed uses, and elevation (low, high, gain walking from the low end)
-     from Mapbox terrain-RGB tiles at zoom 12 (~15 m pixels). Tiles and per-trail results are
-     cached on disk for good: terrain doesn't change, so later builds fetch nothing.
-     Gain uses the Trail Forecast method (10 m points, averaged over 100 m), which matched
-     AllTrails' listed gains within ~1%.
+     number + agency, pieces whose ends meet within 150 m
+  3. per trail: length, allowed uses, difficulty (state forests), and elevation (low, high, gain
+     walking from the low end) from Mapbox terrain-RGB tiles at zoom 12 (~15 m pixels). Tiles and
+     per-trail results are cached on disk for good: terrain doesn't change, so later builds
+     only fetch tiles for trails in new places. Gain uses the Trail Forecast method (10 m points,
+     averaged over 100 m), which matched AllTrails' listed gains within ~1%.
 """
 import hashlib
 import io
@@ -26,21 +30,25 @@ import requests
 
 import region
 
-USGS = "https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37/query"
+USGS = "https://carto.nationalmap.gov/arcgis/rest/services/transportation/MapServer/37"
+OPRD = "https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/OPRD_Rec_Trails_Hosted_view/FeatureServer/0"
+ODF = "https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Recreation_Inventory_Public_View/FeatureServer/13"
+METRO = "https://services2.arcgis.com/McQ0OlIABe29rJJy/arcgis/rest/services/Trails/FeatureServer/0"
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(ROOT, ".cache", "explorer")
 TILE_DIR = os.path.join(ROOT, ".cache", "terrain")
 RAW_MAX_AGE_DAYS = 7
-JOIN_M = 40            # piece ends closer than this are the same junction
+JOIN_M = 150           # same-name pieces this close are one trail (road crossings leave ~100 m gaps)
 MIN_MILES = 0.25       # drop stubs (lodge connectors, 0.05 mi spurs)
 ZOOM = 12
 MAX_NEW_TILES = int(os.environ.get("WX_EXPLORER_MAX_TILES", 6000))   # per build; ~750k/month are free
-FIELDS = ("objectid,name,trailnumber,lengthmiles,sourceoriginator,hikerpedestrian,bicycle,packsaddle,"
-          "motorcycle,ohvover50inches,ohvisorunder50inches,crosscountryski,snowshoe")
-AGENCY = {   # short codes for the page (colour + filter)
+AGENCY = {   # USGS source agencies -> short codes for the page (filter + labels)
     "U.S. Forest Service": "fs", "National Park Service": "nps", "Bureau of Land Management": "blm",
     "Washington State Parks and Recreation Commission": "wsp", "U.S. Fish and Wildlife Service": "fws",
 }
+ODF_USES = {101: "h", 102: "hr", 103: "hb", 104: "hrb", 105: "b", 100: "hrb",
+            201: "m", 202: "m", 203: "m", 204: "m", 205: "m", 200: "m"}
+ODF_DIFF = {1: "Easy", 2: "Moderate", 3: "Difficult", 4: "Extreme"}
 
 
 def _yes(v):
@@ -48,18 +56,22 @@ def _yes(v):
 
 
 # ---------- 1. download ----------
-def _download():
+def _query_all(url, where, fields, bbox=None):
+    """Every feature of an ArcGIS layer matching `where`, 2,000 at a time, simplified to ~10 m.
+    The first of `fields` is the layer's ID field (a stable order for paging)."""
     feats, offset = [], 0
-    w, s, e, n = region.BOUNDS
     while True:
+        params = {"f": "json", "where": where, "outFields": fields, "returnGeometry": "true", "outSR": 4326,
+                  "maxAllowableOffset": 0.0001, "geometryPrecision": 5, "orderByFields": fields.split(",")[0],
+                  "resultOffset": offset, "resultRecordCount": 2000}
+        if bbox:
+            params.update(geometry=",".join(map(str, bbox)), geometryType="esriGeometryEnvelope", inSR=4326,
+                          spatialRel="esriSpatialRelIntersects")
         for attempt in range(3):
             try:
-                d = requests.get(USGS, params={
-                    "f": "json", "where": "trailtype='Terra Trail'", "geometry": f"{w},{s},{e},{n}",
-                    "geometryType": "esriGeometryEnvelope", "inSR": 4326, "outSR": 4326,
-                    "spatialRel": "esriSpatialRelIntersects", "outFields": FIELDS, "returnGeometry": "true",
-                    "maxAllowableOffset": 0.0001, "geometryPrecision": 5, "orderByFields": "objectid",
-                    "resultOffset": offset, "resultRecordCount": 2000}, timeout=(10, 180)).json()
+                d = requests.get(url + "/query", params=params, timeout=(10, 180)).json()
+                if "error" in d:
+                    raise ValueError(d["error"].get("message"))
                 break
             except (requests.RequestException, ValueError):
                 if attempt == 2:
@@ -73,19 +85,77 @@ def _download():
     return feats
 
 
-def _raw():
+def _cached(name, fetch):
     os.makedirs(CACHE, exist_ok=True)
-    path = os.path.join(CACHE, "usgs_trails.json")
+    path = os.path.join(CACHE, name + ".json")
     try:
         if time.time() - os.path.getmtime(path) < RAW_MAX_AGE_DAYS * 86400:
             with open(path, encoding="utf-8") as f:
                 return json.load(f)
     except OSError:
         pass
-    feats = _download()
+    feats = fetch()
     with open(path, "w", encoding="utf-8") as f:
         json.dump(feats, f)
     return feats
+
+
+def _pieces():
+    """Every source as uniform pieces: {name, num, src, uses, diff, paths}. A source that's down
+    is skipped (with a warning); the others still build."""
+    out = []
+
+    def add(name, num, src, uses, paths, diff=None):
+        name = _nice((name or "").strip())
+        if not name or name.lower() in ("unnamed", "unknown", "none", "null"):
+            return
+        paths = [p for p in (paths or []) if len(p) >= 2]
+        if paths:
+            out.append({"name": name, "num": (num or "").strip(), "src": src, "uses": uses, "diff": diff, "paths": paths})
+
+    def source(tag, fetch, convert):
+        try:
+            feats = _cached(tag, fetch)
+        except Exception as e:
+            print(f"  WARNING: {tag} trails unavailable ({e})", flush=True)
+            return
+        n0 = len(out)
+        for f in feats:
+            convert(f["attributes"], (f.get("geometry") or {}).get("paths"))
+        print(f"  explorer: {tag}: {len(feats):,} pieces -> {len(out) - n0:,} named", flush=True)
+
+    def usgs(a, paths):
+        if (a.get("trailnumber") or "").strip().upper().startswith("SNO"):   # snow routes filed as summer trails
+            return
+        uses = ("h" if _yes(a.get("hikerpedestrian")) else "") + ("b" if _yes(a.get("bicycle")) else "") \
+            + ("r" if _yes(a.get("packsaddle")) else "") \
+            + ("m" if any(_yes(a.get(k)) for k in ("motorcycle", "ohvover50inches", "ohvisorunder50inches")) else "")
+        add(a.get("name"), a.get("trailnumber"), AGENCY.get(a.get("sourceoriginator"), "other"), uses, paths)
+
+    def oprd(a, paths):
+        name = a.get("name") or ""
+        add(name, "", "osp", "m" if any(k in name.upper() for k in ("ATV", "OHV", "DUNE ACCESS")) else "h", paths)
+
+    def odf(a, paths):
+        add(a.get("trailname"), "", "odf", ODF_USES.get(a.get("trailuse"), ""), paths, ODF_DIFF.get(a.get("difficulty")))
+
+    def metro(a, paths):
+        uses = ("h" if _yes(a.get("HIKE")) else "") + ("b" if _yes(a.get("MTNBIKE")) or _yes(a.get("ROADBIKE")) else "") \
+            + ("r" if _yes(a.get("EQUESTRIAN")) else "")
+        add(a.get("TRAILNAME"), "", "local", uses, paths)
+
+    w, s_, e, n = region.BOUNDS
+    source("usgs_trails", lambda: _query_all(USGS, "trailtype='Terra Trail'",
+           "objectid,name,trailnumber,sourceoriginator,hikerpedestrian,bicycle,packsaddle,motorcycle,"
+           "ohvover50inches,ohvisorunder50inches", (w, s_, e, n)), usgs)
+    source("oprd_trails", lambda: _query_all(OPRD, "public_display='YES'", "OBJECTID,name"), oprd)
+    source("odf_trails", lambda: _query_all(ODF, "trailstatus=0 AND trailtype IN (0,1)",
+                                            "OBJECTID,trailname,trailuse,difficulty"), odf)
+    source("metro_trails", lambda: _query_all(
+        METRO, "STATUS IN ('Open','Open_Fee') AND TRLSURFACE NOT IN ('Hard Surface','Water') "
+               "AND AGENCYTYPE NOT IN ('State','Federal')",
+        "FID,TRAILNAME,HIKE,MTNBIKE,ROADBIKE,EQUESTRIAN"), metro)
+    return out
 
 
 # ---------- 2. stitch ----------
@@ -172,36 +242,25 @@ def _nice(name):
     return " ".join(out)
 
 
-def _stitch(feats):
+def _stitch(pieces):
     groups = defaultdict(list)
-    for f in feats:
-        a, g = f["attributes"], f.get("geometry") or {}
-        name = _nice((a.get("name") or "").strip())
-        if not name or name.lower() in ("unnamed", "unknown", "none"):
-            continue
-        if (a.get("trailnumber") or "").strip().upper().startswith("SNO"):   # snow routes filed as summer trails
-            continue
-        key = (name, (a.get("trailnumber") or "").strip(), a.get("sourceoriginator") or "")
-        for p in g.get("paths", []):
-            if len(p) >= 2:
-                groups[key].append((p, a))
+    for pc in pieces:
+        for p in pc["paths"]:
+            groups[(pc["name"], pc["num"], pc["src"])].append((p, pc))
     trails = []
     for (name, num, src), items in groups.items():
-        by_path = {id(p): a for p, a in items}
+        by_path = {id(p): pc for p, pc in items}
         for comp in _components([p for p, _ in items]):
-            attrs = [by_path[id(p)] for p in comp]
+            pcs = [by_path[id(p)] for p in comp]
             miles = sum(_line_m(p) for p in comp) / 1609.344
             if miles < MIN_MILES:
                 continue
             line, branches = _main_line(comp)
-            uses = ""
-            if any(_yes(a.get("hikerpedestrian")) for a in attrs): uses += "h"
-            if any(_yes(a.get("bicycle")) for a in attrs): uses += "b"
-            if any(_yes(a.get("packsaddle")) for a in attrs): uses += "r"
-            if any(_yes(a.get(k)) for a in attrs for k in ("motorcycle", "ohvover50inches", "ohvisorunder50inches")):
-                uses += "m"
-            trails.append({"name": name, "num": num, "src": AGENCY.get(src, "other"), "srcName": src,
-                           "mi": round(miles, 1), "uses": uses, "line": line, "branches": branches})
+            uses = "".join(u for u in "hbrm" if any(u in pc["uses"] for pc in pcs))
+            diffs = [pc["diff"] for pc in pcs if pc["diff"]]
+            trails.append({"name": name, "num": num, "src": src, "mi": round(miles, 1), "uses": uses,
+                           "diff": max(diffs, key=list(ODF_DIFF.values()).index) if diffs else None,
+                           "line": line, "branches": branches})
     return trails
 
 
@@ -346,12 +405,10 @@ def _encode(line):   # Google encoded polyline, precision 5, from [lon, lat]
 
 def build(out_dir, token):
     """Write <out_dir>/explorer/trails.json; returns the number of trails (0 if unavailable)."""
-    try:
-        feats = _raw()
-    except Exception as e:
-        print(f"  WARNING: trail explorer data unavailable ({e})", flush=True)
+    trails = _stitch(_pieces())
+    if not trails:
+        print("  WARNING: no trail data available", flush=True)
         return 0
-    trails = _stitch(feats)
     _elevations(trails, token)
     rows = []
     for t in trails:
@@ -361,217 +418,249 @@ def build(out_dir, token):
                      round(ev["gain"] * 3.28084) if ev else None,
                      round(ev["hi"] * 3.28084) if ev else None,
                      round(ev["lo"] * 3.28084) if ev else None,
-                     _encode(line), [_encode(b) for b in t["branches"]]])
+                     _encode(line), [_encode(b) for b in t["branches"]], t["diff"]])
     rows.sort(key=lambda r: r[0])
     os.makedirs(os.path.join(out_dir, "explorer"), exist_ok=True)
     with open(os.path.join(out_dir, "explorer", "trails.json"), "w", encoding="utf-8") as f:
-        json.dump({"fields": ["name", "num", "src", "mi", "uses", "gain", "hi", "lo", "line", "branches"],
+        json.dump({"fields": ["name", "num", "src", "mi", "uses", "gain", "hi", "lo", "line", "branches", "diff"],
                    "built": time.strftime("%Y-%m-%d"), "trails": rows}, f, separators=(",", ":"))
     return len(rows)
 
 
-# ---------- the Explorer tab (markup, styles, in-browser code) ----------
-EXPLORER_HTML = """
-<div id="ex-root">
-  <div class="ex-bar" role="group" aria-label="Filter trails">
-    <input type="search" id="ex-q" placeholder="Search trail names" aria-label="Search trail names">
+# ---------- the Trails layer (Map tab panel, styles, in-browser code) ----------
+# The Map tab's "Trails" toggle (RegionLayers) calls window.TrailsLayer(map, opt): trail lines over
+# any weather layer, the dark hover tip shared with the weather readout, and - on the Map tab,
+# which passes opt.panel - a side panel with filters, the trails in view, a card with "Forecast
+# this trail", and your own GPX trails (kept in this browser's localStorage, 'wx-mytrails').
+TRAILS_PANEL_HTML = """
+<aside class="ex-side" id="ex-side" hidden aria-label="Trails">
+  <div class="ex-head"><b>Trails</b><span class="ex-count" id="ex-count">Loading\u2026</span></div>
+  <input type="search" id="ex-q" placeholder="Search trail names" aria-label="Search trail names">
+  <div class="ex-filt">
     <label>Length<select id="ex-len"><option value="">Any</option><option value="0,3">Under 3 mi</option>
-      <option value="3,6">3–6 mi</option><option value="6,10">6–10 mi</option><option value="10,999">10+ mi</option></select></label>
-    <label>Gain<select id="ex-gain"><option value="">Any</option><option value="0,1000">Under 1,000′</option>
-      <option value="1000,2500">1,000–2,500′</option><option value="2500,4000">2,500–4,000′</option>
-      <option value="4000,99999">4,000′+</option></select></label>
-    <label>High point<select id="ex-hi"><option value="">Any</option><option value="4000">Above 4,000′</option>
-      <option value="6000">Above 6,000′</option><option value="8000">Above 8,000′</option></select></label>
-    <label>Land<select id="ex-src"><option value="">All</option><option value="fs">National Forest</option>
-      <option value="nps">National Park</option><option value="blm">BLM</option><option value="wsp">WA State Park</option>
-      <option value="fws">Wildlife Refuge</option></select></label>
-    <span class="ex-chips">
-      <button type="button" data-use="b" aria-pressed="false">Bikes OK</button>
-      <button type="button" data-use="r" aria-pressed="false">Horses OK</button>
-      <button type="button" data-use="nm" aria-pressed="true">No motorized</button>
-    </span>
+      <option value="3,6">3\u20136 mi</option><option value="6,10">6\u201310 mi</option><option value="10,999">10+ mi</option></select></label>
+    <label>Gain<select id="ex-gain"><option value="">Any</option><option value="0,1000">Under 1,000\u2032</option>
+      <option value="1000,2500">1,000\u20132,500\u2032</option><option value="2500,4000">2,500\u20134,000\u2032</option>
+      <option value="4000,99999">4,000\u2032+</option></select></label>
+    <label>High point<select id="ex-hi"><option value="">Any</option><option value="4000">Above 4,000\u2032</option>
+      <option value="6000">Above 6,000\u2032</option><option value="8000">Above 8,000\u2032</option></select></label>
+    <label>Land<select id="ex-src"><option value="">All</option><option value="mine">Your trails</option>
+      <option value="fs">National Forest</option><option value="nps">National Park</option><option value="osp">Oregon State Park</option>
+      <option value="wsp">WA State Park</option><option value="odf">Oregon State Forest</option><option value="local">City &amp; county</option>
+      <option value="blm">BLM</option><option value="fws">Wildlife Refuge</option></select></label>
   </div>
-  <div class="ex-body">
-    <div class="ex-mapwrap"><div id="exmap"></div><div class="ex-tip" hidden></div>
-      <div class="ex-status" id="ex-status">Loading trails…</div></div>
-    <aside class="ex-side">
-      <div class="ex-card" id="ex-card" hidden></div>
-      <div class="ex-count" id="ex-count"></div>
-      <label class="ex-sort">Sort<select id="ex-sort"><option value="name">Name</option><option value="mi">Length</option>
-        <option value="gain">Gain</option><option value="hi">High point</option></select></label>
-      <ol class="ex-list" id="ex-list"></ol>
-    </aside>
+  <div class="ex-chips">
+    <button type="button" data-use="b" aria-pressed="false">Bikes OK</button>
+    <button type="button" data-use="r" aria-pressed="false">Horses OK</button>
+    <button type="button" data-use="nm" aria-pressed="true">No motorized</button>
   </div>
-  <p class="ex-foot" id="ex-foot">Trails: USGS National Digital Trails (U.S. Forest Service, National Park Service, BLM,
-    Fish &amp; Wildlife Service and Washington State Parks; public domain), joined into whole trails where their
-    pieces meet. Gain and high point from Mapbox terrain, climbing from the trail’s low end. Oregon state parks
-    and city and county trails aren’t in this dataset yet.</p>
-</div>
+  <label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
+    + Add your GPX</label>
+  <div class="ex-card" id="ex-card" hidden></div>
+  <div class="ex-listhead"><span id="ex-inview"></span><label>Sort<select id="ex-sort"><option value="name">Name</option>
+    <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
+  <ol class="ex-list" id="ex-list"></ol>
+  <p class="ex-foot">Trails: USGS National Digital Trails (Forest Service, Park Service, BLM, Fish &amp; Wildlife, WA State
+    Parks), Oregon Parks and Recreation, Oregon Dept. of Forestry and Oregon Metro, joined into whole trails. Gain and
+    high point from Mapbox terrain, climbing from the low end. Your GPX trails stay in this browser.</p>
+</aside>
 """
 
-EXPLORER_CSS = r"""
-[hidden] { display:none !important; }
-.ex-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; margin-bottom:12px; }
-.ex-bar input[type=search] { flex:1 1 220px; max-width:320px; padding:8px 12px; border:1px solid #DDE0E6; border-radius:8px; font:inherit; font-size:13px; background:#fff; }
-.ex-bar label, .ex-sort { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#5A5F6B; }
-.ex-bar select, .ex-sort select { padding:6px 8px; border:1px solid #DDE0E6; border-radius:8px; font:inherit; font-size:13px; background:#fff; color:#111; }
-.ex-bar input:focus, .ex-bar select:focus, .ex-sort select:focus { outline:2px solid #FE5000; outline-offset:1px; border-color:transparent; }
-.ex-chips { display:flex; gap:6px; }
-.ex-chips button { border:1px solid #DDE0E6; background:#fff; border-radius:999px; padding:5px 11px; font:inherit; font-size:12px; font-weight:600; color:#5A5F6B; cursor:pointer; }
+TRAILS_CSS = r"""
+.rmap-row { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+.rmap-row.trl { grid-template-columns:minmax(0,1fr) 330px; }
+.ex-side { display:flex; flex-direction:column; gap:9px; height:calc(100vh - 170px); min-height:520px; overflow-y:auto; }
+.ex-side[hidden], .ex-card[hidden] { display:none !important; }
+.ex-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.ex-head b { font-size:15px; color:#111; }
+.ex-count, .ex-listhead { font-size:12px; color:#5A5F6B; font-variant-numeric:tabular-nums; }
+.ex-count b, .ex-listhead b { color:#111; }
+.ex-side input[type=search] { padding:8px 11px; border:1px solid #DDE0E6; border-radius:8px; font:inherit; font-size:13px; background:#fff; }
+.ex-filt { display:grid; grid-template-columns:1fr 1fr; gap:6px 8px; }
+.ex-filt label, .ex-listhead label { display:flex; flex-direction:column; gap:2px; font-size:10.5px; font-weight:600; color:#8A8F9C; text-transform:uppercase; letter-spacing:.04em; }
+.ex-listhead label { flex-direction:row; align-items:center; gap:6px; }
+.ex-side select { padding:5px 7px; border:1px solid #DDE0E6; border-radius:7px; font:inherit; font-size:12.5px; background:#fff; color:#111; text-transform:none; letter-spacing:0; }
+.ex-side input:focus, .ex-side select:focus { outline:2px solid #FE5000; outline-offset:1px; border-color:transparent; }
+.ex-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.ex-chips button { border:1px solid #DDE0E6; background:#fff; border-radius:999px; padding:4px 10px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }
 .ex-chips button[aria-pressed=true] { background:#111; border-color:#111; color:#fff; }
-.ex-body { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:14px; align-items:start; }
-.ex-mapwrap { position:relative; }
-#exmap { width:100%; height:660px; border-radius:10px; }
-.ex-status { position:absolute; left:12px; top:12px; background:#fff; border-radius:8px; padding:6px 10px; font-size:12px; color:#5A5F6B; box-shadow:0 1px 4px rgba(0,0,0,.15); }
-.ex-tip { position:absolute; pointer-events:none; background:#fff; border-radius:6px; padding:5px 9px; font-size:12px; box-shadow:0 2px 8px rgba(0,0,0,.2); white-space:nowrap; transform:translate(12px,-50%); }
-.ex-tip b { color:#111; } .ex-tip span { color:#8A8F9C; margin-left:6px; font-variant-numeric:tabular-nums; }
-.ex-side { display:flex; flex-direction:column; gap:10px; max-height:660px; }
-.ex-card { background:#fff; border-radius:10px; padding:14px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
-.ex-card h3 { margin:0; font-size:17px; font-weight:800; color:#111; letter-spacing:-.01em; }
+.ex-add { align-self:flex-start; font-size:12.5px; font-weight:700; color:#6B3FA8; cursor:pointer; }
+.ex-add:hover { text-decoration:underline; }
+.ex-add.busy { color:#8A8F9C; pointer-events:none; }
+.ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
+.ex-card.mine { border-top-color:#6B3FA8; }
+.ex-card h3 { margin:0; font-size:16px; font-weight:800; color:#111; letter-spacing:-.01em; }
 .ex-card .ex-sub { margin-top:2px; font-size:12px; color:#8A8F9C; }
-.ex-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:12px 0; }
-.ex-stats div { font-size:10.5px; color:#8A8F9C; text-transform:uppercase; letter-spacing:.04em; }
-.ex-stats b { display:block; font-size:15px; color:#111; letter-spacing:0; text-transform:none; font-variant-numeric:tabular-nums; }
-.ex-uses { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
-.ex-uses span { font-size:11px; font-weight:600; color:#5A5F6B; background:#F2F3F6; border-radius:999px; padding:3px 8px; }
-.ex-acts { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.ex-go { border:0; background:#FE5000; color:#fff; border-radius:8px; padding:8px 14px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.ex-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin:10px 0; }
+.ex-stats div { font-size:10px; color:#8A8F9C; text-transform:uppercase; letter-spacing:.04em; }
+.ex-stats b { display:block; font-size:14px; color:#111; letter-spacing:0; text-transform:none; font-variant-numeric:tabular-nums; }
+.ex-uses { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
+.ex-uses span { font-size:11px; font-weight:600; color:#5A5F6B; background:#F2F3F6; border-radius:999px; padding:2px 8px; }
+.ex-acts { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.ex-go { border:0; background:#FE5000; color:#fff; border-radius:8px; padding:7px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
 .ex-go:hover { background:#E24700; }
-.ex-acts a { font-size:13px; font-weight:600; color:#5A5F6B; }
-.ex-count { font-size:12px; color:#5A5F6B; font-variant-numeric:tabular-nums; }
-.ex-count b { color:#111; }
-.ex-sort { align-self:flex-start; }
-.ex-list { list-style:none; margin:0; padding:0; overflow-y:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); flex:1 1 auto; min-height:120px; }
-.ex-list li { padding:9px 12px; border-top:1px solid #F0F1F4; cursor:pointer; }
+.ex-acts a, .ex-acts .ex-del { font-size:12px; font-weight:600; color:#5A5F6B; background:none; border:0; padding:0; font-family:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+.ex-listhead { display:flex; justify-content:space-between; align-items:center; }
+.ex-list { list-style:none; margin:0; padding:0; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); flex:1 0 auto; }
+.ex-list li { padding:8px 11px; border-top:1px solid #F0F1F4; cursor:pointer; }
 .ex-list li:first-child { border-top:0; }
 .ex-list li:hover { background:#FAFAFB; }
 .ex-list li.sel { background:#FFF4EE; box-shadow:inset 3px 0 0 #FE5000; }
+.ex-list li.mine .n::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:#6B3FA8; margin-right:6px; vertical-align:1px; }
 .ex-list .n { font-size:13px; font-weight:700; color:#111; }
-.ex-list .m { font-size:11.5px; color:#8A8F9C; margin-top:1px; font-variant-numeric:tabular-nums; }
+.ex-list .n span, .ex-list .m { font-size:11.5px; font-weight:400; color:#8A8F9C; font-variant-numeric:tabular-nums; }
 .ex-list .more { color:#8A8F9C; font-size:12px; cursor:default; }
-.ex-foot { margin:14px 0 0; font-size:11px; color:#9A9FAB; line-height:1.5; }
-@media (max-width:1000px) { .ex-body { grid-template-columns:minmax(0,1fr); } #exmap { height:460px; } .ex-side { max-height:none; } .ex-list { max-height:420px; } }
+.ex-foot { margin:0; font-size:10.5px; color:#9A9FAB; line-height:1.5; }
+.lyr-ctl .lyr-trl.active { background:#EFE8F8; color:#4B2A7A; box-shadow:inset 0 0 0 1px #6B3FA8; }
+@media (max-width:1000px) { .rmap-row.trl { grid-template-columns:minmax(0,1fr); } .ex-side { height:auto; min-height:0; } }
 """
 
-EXPLORER_JS = r"""
+TRAILS_JS = r"""
 (function(){
-var root=document.getElementById('ex-root');if(!root)return;
-var $=function(id){return document.getElementById(id);};
-var AG={fs:'National Forest',nps:'National Park',blm:'BLM',wsp:'WA State Park',fws:'Wildlife Refuge',other:'Other'};
+var AG={fs:'National Forest',nps:'National Park',blm:'BLM',wsp:'WA State Park',fws:'Wildlife Refuge',osp:'Oregon State Park',
+  odf:'Oregon State Forest',local:'City & county',mine:'Your trail',other:'Other'};
 var USE={h:'Hiking',b:'Bikes',r:'Horses',m:'Motorized'};
-var T=[],map=null,sel=-1,hover=-1;
-function fmt(n){return n==null?'–':Math.round(n).toLocaleString('en-US');}
+var MINE_KEY='wx-mytrails',DATA=null;
+function fmt(n){return n==null?'\u2013':Math.round(n).toLocaleString('en-US');}
+function esc(s){return String(s).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});}
 function decode(str){var i=0,lat=0,lng=0,out=[];while(i<str.length){for(var k=0;k<2;k++){var b,sh=0,v=0;
   do{b=str.charCodeAt(i++)-63;v|=(b&31)<<sh;sh+=5;}while(b>=32);var d=v&1?~(v>>1):v>>1;if(k)lng+=d;else lat+=d;}
   out.push([lng/1e5,lat/1e5]);}return out;}
-function meta(t){return t.mi.toFixed(1)+' mi · '+(t.gain==null?'':fmt(t.gain)+'′ gain · ')+(t.hi==null?'':fmt(t.hi)+'′ top');}
-
-// ---------- filters ----------
-function crit(){var c={q:$('ex-q').value.trim().toLowerCase(),src:$('ex-src').value,uses:[]};
-  var l=$('ex-len').value,g=$('ex-gain').value,h=$('ex-hi').value;
-  if(l){l=l.split(',');c.len=[+l[0],+l[1]];} if(g){g=g.split(',');c.gain=[+g[0],+g[1]];} if(h)c.hi=+h;
-  root.querySelectorAll('.ex-chips [aria-pressed=true]').forEach(function(b){c.uses.push(b.dataset.use);});
-  return c;}
-function match(t,c){
-  if(c.q&&t.lc.indexOf(c.q)<0)return false; if(c.src&&t.src!==c.src)return false;
-  if(c.len&&(t.mi<c.len[0]||t.mi>=c.len[1]))return false;
-  if(c.gain&&(t.gain==null||t.gain<c.gain[0]||t.gain>=c.gain[1]))return false;
-  if(c.hi&&(t.hi==null||t.hi<c.hi))return false;
-  for(var i=0;i<c.uses.length;i++){var u=c.uses[i];if(u==='nm'){if(t.uses.indexOf('m')>=0)return false;}else if(t.uses.indexOf(u)<0)return false;}
-  return true;}
-function mapFilter(c){   // the same test as match(), as a Mapbox expression
-  var f=['all'];
-  if(c.q)f.push(['in',c.q,['get','lc']]); if(c.src)f.push(['==',['get','src'],c.src]);
-  if(c.len)f.push(['>=',['get','mi'],c.len[0]],['<',['get','mi'],c.len[1]]);
-  if(c.gain)f.push(['>=',['get','gain'],c.gain[0]],['<',['get','gain'],c.gain[1]]);
-  if(c.hi)f.push(['>=',['get','hi'],c.hi]);
-  c.uses.forEach(function(u){f.push(u==='nm'?['==',['get','m'],0]:['==',['get',u],1]);});
-  return f;}
-function apply(){var c=crit(),f=mapFilter(c);
-  ['ex-line','ex-hit'].forEach(function(l){if(map.getLayer(l))map.setFilter(l,f);});
-  T.forEach(function(t){t.ok=match(t,c);});
-  list();}
-
-// ---------- list of matches in view ----------
-function list(){if(!map)return;var b=map.getBounds(),w=b.getWest(),e=b.getEast(),s=b.getSouth(),n=b.getNorth();
-  var all=0,rows=[];
-  T.forEach(function(t){if(!t.ok)return;all++;if(t.bb[2]<w||t.bb[0]>e||t.bb[3]<s||t.bb[1]>n)return;rows.push(t);});
-  var k=$('ex-sort').value;
-  rows.sort(k==='name'?function(a,b){return a.name.localeCompare(b.name);}:function(a,b){return (b[k]==null?-1:b[k])-(a[k]==null?-1:a[k]);});
-  $('ex-count').innerHTML='<b>'+rows.length.toLocaleString('en-US')+'</b> in view · '+all.toLocaleString('en-US')+' match';
-  var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'"'+(t.i===sel?' class="sel"':'')+'><div class="n">'+esc(t.name)+
-    (t.num?' <span class="m">#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' · '+AG[t.src]+'</div></li>';}).join('');
-  if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
-  if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
-  $('ex-list').innerHTML=html;}
-function allTrails(bb){   // AllTrails' explore map on this trail's area (its search box doesn't take a URL query)
+function encode(pts){var out='',pl=0,pn=0;function put(v){v=v<0?~(v<<1):v<<1;while(v>=0x20){out+=String.fromCharCode((0x20|(v&31))+63);v>>=5;}out+=String.fromCharCode(v+63);}
+  pts.forEach(function(p){var a=Math.round(p.lat*1e5),b=Math.round(p.lon*1e5);put(a-pl);put(b-pn);pl=a;pn=b;});return out;}
+function meta(t){return t.mi.toFixed(1)+' mi \u00B7 '+(t.gain==null?'':fmt(t.gain)+'\u2032 gain \u00B7 ')+(t.hi==null?'':fmt(t.hi)+'\u2032 top');}
+function readMine(){try{return JSON.parse(localStorage.getItem(MINE_KEY)||'[]')||[];}catch(e){return[];}}
+function writeMine(a){try{localStorage.setItem(MINE_KEY,JSON.stringify(a));return true;}catch(e){return false;}}
+function allTrails(bb){   // AllTrails' explore map on this area (its search box doesn't take a URL query)
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
-function esc(s){return String(s).replace(/[&<>"]/g,function(ch){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];});}
+function loadData(){if(!DATA)DATA=fetch('explorer/trails.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});return DATA;}
 
-// ---------- the selected trail ----------
-function select(i,fly){sel=i;var t=T[i];
-  map.setFilter('ex-sel',['==',['get','i'],i]);map.setFilter('ex-sel-case',['==',['get','i'],i]);
-  var uses=t.uses.split('').map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
-  $('ex-card').innerHTML='<h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' · ':'')+AG[t.src]+'</div>'+
-    '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'′</b></div>'+
-    '<div>High<b>'+fmt(t.hi)+'′</b></div><div>Low<b>'+fmt(t.lo)+'′</b></div></div>'+
-    (uses?'<div class="ex-uses">'+uses+'</div>':'')+
-    '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
-    '<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails ↗</a></div>';
-  $('ex-card').hidden=false;
-  $('ex-card').querySelector('.ex-go').onclick=function(){
-    if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),'');};
-  if(fly)map.fitBounds([[t.bb[0],t.bb[1]],[t.bb[2],t.bb[3]]],{padding:80,maxZoom:14,duration:700});
-  root.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
-  var li=root.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
+window.TrailsLayer=function(map,opt){
+  var P=opt.panel||null,tip=opt.tip,T=[],on=false,ready=null,sel=-1,hov=-1;
+  var $=function(id){return P?P.querySelector('#'+id):null;};
+  function trail(r,ix,i){var parts=[decode(r[ix.line])].concat((r[ix.branches]||[]).map(decode)),bb=[180,90,-180,-90];
+    parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
+    var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
+      diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true};
+    t.lc=(t.name+' '+t.num).toLowerCase();return t;}
+  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null];});}
+  function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
+    properties:{i:t.i,lc:t.lc,src:t.src,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
+      b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
+  function build(d){var ix={};d.fields.forEach(function(f,k){ix[f]=k;});
+    var rows=d.trails.concat(mineRows());T=rows.map(function(r,i){return trail(r,ix,i);});}
+  function addLayers(){
+    map.addSource('trl',{type:'geojson',data:features(),tolerance:0.6});
+    var before=opt.beforeId,mine=['==',['get','src'],'mine'];   // zoom must be the top-level input
+    var w=['interpolate',['linear'],['zoom'],5,['case',mine,0.9,0.5],9,['case',mine,2.1,1.3],14,['case',mine,4.8,3]];
+    map.addLayer({id:'trl-line',type:'line',source:'trl',layout:{'line-join':'round','line-cap':'round',visibility:'none'},
+      paint:{'line-color':['case',mine,'#6B3FA8','#1F3A52'],'line-width':w,'line-opacity':0.85}},before);
+    map.addLayer({id:'trl-hover',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
+      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
+    map.addLayer({id:'trl-sel-case',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
+      paint:{'line-color':'#fff','line-width':['interpolate',['linear'],['zoom'],5,4,14,9]}},before);
+    map.addLayer({id:'trl-sel',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
+      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2.5,14,5.5]}},before);
+    map.addLayer({id:'trl-hit',type:'line',source:'trl',layout:{visibility:'none'},paint:{'line-color':'#000','line-opacity':0,'line-width':14}},before);
+    map.on('click','trl-hit',function(e){if(on)select(e.features[0].properties.i,false);});
+    map.on('moveend',function(){if(on)list();});}
+  function vis(v){['trl-line','trl-hover','trl-sel-case','trl-sel','trl-hit'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',v?'visible':'none');});}
 
-// ---------- map ----------
-function init(d){
-  var F=d.fields,ix={};F.forEach(function(f,k){ix[f]=k;});
-  var feats=[];
-  T=d.trails.map(function(r,i){var line=decode(r[ix.line]),parts=[line].concat(r[ix.branches].map(decode));
-    var bb=[180,90,-180,-90];parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
-    var t={i:i,name:r[ix.name],num:r[ix.num],src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
-      line:r[ix.line],bb:bb,ok:true};
-    t.lc=t.name.toLowerCase()+' '+(t.num||'').toLowerCase();
-    feats.push({type:'Feature',geometry:{type:'MultiLineString',coordinates:parts},
-      properties:{i:i,lc:t.lc,src:t.src,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
-        h:t.uses.indexOf('h')>=0?1:0,b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}});
-    return t;});
-  map=new mapboxgl.Map({container:'exmap',style:'mapbox://styles/mapbox/outdoors-v12',center:[-121.75,45.42],zoom:9.3,attributionControl:false});
-  map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');
-  map.addControl(new mapboxgl.AttributionControl({compact:true}));
-  map.on('load',function(){
-    map.addSource('ex',{type:'geojson',data:{type:'FeatureCollection',features:feats},tolerance:0.6});
-    var w=['interpolate',['linear'],['zoom'],6,0.7,10,1.6,14,3];
-    map.addLayer({id:'ex-line',type:'line',source:'ex',layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#23405A','line-width':w,'line-opacity':0.8}});
-    map.addLayer({id:'ex-hover',type:'line',source:'ex',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],6,2,14,5],'line-opacity':0.6}});
-    map.addLayer({id:'ex-sel-case',type:'line',source:'ex',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#fff','line-width':['interpolate',['linear'],['zoom'],6,4,14,9]}});
-    map.addLayer({id:'ex-sel',type:'line',source:'ex',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],6,2.5,14,5.5]}});
-    map.addLayer({id:'ex-hit',type:'line',source:'ex',paint:{'line-color':'#000','line-opacity':0,'line-width':14}});
-    var tip=root.querySelector('.ex-tip');
-    map.on('mousemove','ex-hit',function(e){var f=e.features[0],i=f.properties.i,t=T[i];map.getCanvas().style.cursor='pointer';
-      if(hover!==i){hover=i;map.setFilter('ex-hover',['==',['get','i'],i]);}
-      tip.innerHTML='<b>'+esc(t.name)+'</b><span>'+meta(t)+'</span>';tip.style.left=e.point.x+'px';tip.style.top=e.point.y+'px';tip.hidden=false;});
-    map.on('mouseleave','ex-hit',function(){hover=-1;map.setFilter('ex-hover',['==',['get','i'],-1]);map.getCanvas().style.cursor='';tip.hidden=true;});
-    map.on('click','ex-hit',function(e){select(e.features[0].properties.i,false);});
-    map.on('moveend',list);
-    $('ex-status').hidden=true;
-    apply();});
-}
-root.querySelectorAll('.ex-bar select, #ex-sort').forEach(function(s){s.addEventListener('change',function(){if(map)(s.id==='ex-sort'?list:apply)();});});
-var qt;$('ex-q').addEventListener('input',function(){clearTimeout(qt);qt=setTimeout(function(){if(map)apply();},200);});
-root.querySelectorAll('.ex-chips button').forEach(function(b){b.addEventListener('click',function(){
-  b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');if(map)apply();});});
-$('ex-list').addEventListener('click',function(e){var li=e.target.closest('li[data-i]');if(li)select(+li.dataset.i,true);});
-window.explorerShown=function(){
-  fetch('explorer/trails.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();})
-    .then(init).catch(function(){$('ex-status').textContent='Trail data isn’t available in this build.';});};
+  // ---------- filters (the panel's controls; without a panel everything shows) ----------
+  function crit(){var c={uses:[]};if(!P)return c;
+    c.q=$('ex-q').value.trim().toLowerCase();c.src=$('ex-src').value;
+    var l=$('ex-len').value,g=$('ex-gain').value,h=$('ex-hi').value;
+    if(l){l=l.split(',');c.len=[+l[0],+l[1]];}if(g){g=g.split(',');c.gain=[+g[0],+g[1]];}if(h)c.hi=+h;
+    P.querySelectorAll('.ex-chips [aria-pressed=true]').forEach(function(b){c.uses.push(b.dataset.use);});return c;}
+  function match(t,c){
+    if(c.q&&t.lc.indexOf(c.q)<0)return false;if(c.src&&t.src!==c.src)return false;
+    if(c.len&&(t.mi<c.len[0]||t.mi>=c.len[1]))return false;
+    if(c.gain&&(t.gain==null||t.gain<c.gain[0]||t.gain>=c.gain[1]))return false;
+    if(c.hi&&(t.hi==null||t.hi<c.hi))return false;
+    for(var i=0;i<c.uses.length;i++){var u=c.uses[i];if(u==='nm'){if(t.uses.indexOf('m')>=0)return false;}else if(t.uses.indexOf(u)<0)return false;}
+    return true;}
+  function mapFilter(c){var f=['all'];
+    if(c.q)f.push(['in',c.q,['get','lc']]);if(c.src)f.push(['==',['get','src'],c.src]);
+    if(c.len)f.push(['>=',['get','mi'],c.len[0]],['<',['get','mi'],c.len[1]]);
+    if(c.gain)f.push(['>=',['get','gain'],c.gain[0]],['<',['get','gain'],c.gain[1]]);
+    if(c.hi)f.push(['>=',['get','hi'],c.hi]);
+    c.uses.forEach(function(u){f.push(u==='nm'?['==',['get','m'],0]:['==',['get',u],1]);});return f;}
+  function apply(){var c=crit(),f=mapFilter(c);['trl-line','trl-hit'].forEach(function(l){if(map.getLayer(l))map.setFilter(l,f);});
+    T.forEach(function(t){t.ok=match(t,c);});list();}
+
+  // ---------- the panel: trails in view, the selected trail ----------
+  function list(){if(!P||!T.length)return;var b=map.getBounds(),w=b.getWest(),e=b.getEast(),s=b.getSouth(),n=b.getNorth(),all=0,rows=[];
+    T.forEach(function(t){if(!t.ok)return;all++;if(t.bb[2]<w||t.bb[0]>e||t.bb[3]<s||t.bb[1]>n)return;rows.push(t);});
+    var k=$('ex-sort').value;
+    rows.sort(k==='name'?function(a,b){return a.name.localeCompare(b.name);}:function(a,b){return (b[k]==null?-1:b[k])-(a[k]==null?-1:a[k]);});
+    $('ex-count').innerHTML='<b>'+all.toLocaleString('en-US')+'</b> match';
+    $('ex-inview').innerHTML='<b>'+rows.length.toLocaleString('en-US')+'</b> in view';
+    var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"><div class="n">'+esc(t.name)+
+      (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+AG[t.src]+'</div></li>';}).join('');
+    if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
+    if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
+    $('ex-list').innerHTML=html;}
+  function select(i,fly){var t=T[i];if(!t)return;sel=i;
+    ['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],i]);});
+    if(fly)map.fitBounds([[t.bb[0],t.bb[1]],[t.bb[2],t.bb[3]]],{padding:90,maxZoom:14,pitch:50,duration:900});
+    if(!P){if(window.openTrailForecast&&opt.onPick)opt.onPick(t);return;}
+    var uses=t.uses.split('').filter(function(u){return USE[u];}).map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
+    if(t.diff)uses+='<span>'+esc(t.diff)+'</span>';
+    var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');
+    card.innerHTML='<h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+AG[t.src]+'</div>'+
+      '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
+      '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
+      '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
+      (t.src==='mine'?'<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
+    card.hidden=false;
+    card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),'');};
+    var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
+    P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
+    var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
+  function refresh(){loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();});}
+
+  // ---------- your GPX trails (this browser only) ----------
+  async function addGPX(file){var lab=P.querySelector('.ex-add'),keep=lab.lastChild.textContent;
+    lab.classList.add('busy');lab.lastChild.textContent=' Reading '+file.name+'\u2026';
+    try{var W=window.WxTrail;if(!W)throw new Error('the trail engine isn\u2019t loaded');
+      var g=W.parseGPX(await file.text()),name=g.name||file.name.replace(/\.gpx$/i,'');
+      var pts=await W.fillElevation(g.pts.map(function(p){return{lat:p.lat,lon:p.lon,ele:p.ele};})),st=W.trailStats(pts);
+      var step=Math.max(1,Math.ceil(g.pts.length/1500)),keepPts=g.pts.filter(function(p,i){return i%step===0||i===g.pts.length-1;});
+      var mine=readMine();mine.push({name:name,p:encode(keepPts),mi:Math.round(st.km*0.621371*10)/10,gain:Math.round(st.gain*3.28084),
+        hi:Math.round(pts[st.hi].ele*3.28084),lo:Math.round(pts[st.lo].ele*3.28084),added:Date.now()});
+      if(!writeMine(mine))throw new Error('this browser won\u2019t store it (private window or storage full)');
+      loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();select(T.length-1,true);});
+    }catch(e){lab.lastChild.textContent=' Couldn\u2019t add it: '+(e.message||e);setTimeout(function(){lab.lastChild.textContent=keep;},5000);lab.classList.remove('busy');return;}
+    lab.classList.remove('busy');lab.lastChild.textContent=keep;}
+  function removeMine(t){var mine=readMine(),k=mine.findIndex(function(m){return m.p===t.line;});if(k<0)return;
+    mine.splice(k,1);writeMine(mine);sel=-1;$('ex-card').hidden=true;
+    ['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],-1]);});refresh();}
+
+  if(P){
+    P.querySelectorAll('select').forEach(function(s){s.addEventListener('change',function(){if(!T.length)return;if(s.id==='ex-sort')list();else apply();});});
+    var qt;$('ex-q').addEventListener('input',function(){clearTimeout(qt);qt=setTimeout(function(){if(T.length)apply();},200);});
+    P.querySelectorAll('.ex-chips button').forEach(function(b){b.addEventListener('click',function(){
+      b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');if(T.length)apply();});});
+    $('ex-list').addEventListener('click',function(e){var li=e.target.closest('li[data-i]');if(li)select(+li.dataset.i,true);});
+    $('ex-gpx').addEventListener('change',function(){var f=this.files[0];this.value='';if(f)addGPX(f);});
+  }
+
+  return{
+    show:function(v){on=v;if(P){P.hidden=!v;P.parentNode.classList.toggle('trl',v);setTimeout(function(){map.resize();},0);}
+      if(v&&!ready)ready=loadData().then(function(d){build(d);addLayers();apply();}).catch(function(){if(P)$('ex-count').textContent='Trail data isn\u2019t available in this build.';});
+      if(ready)ready.then(function(){vis(on);if(on)list();});
+      if(!v&&tip)tip.hidden=true;},
+    // the map's mousemove: a trail under the pointer gets the tip (return true), else the weather does
+    hover:function(e){if(!on||!map.getLayer('trl-hit'))return false;
+      var f=map.queryRenderedFeatures(e.point,{layers:['trl-hit']})[0];
+      if(!f){if(hov!==-1){hov=-1;map.setFilter('trl-hover',['==',['get','i'],-1]);map.getCanvas().style.cursor='';}return false;}
+      var t=T[f.properties.i];if(hov!==t.i){hov=t.i;map.setFilter('trl-hover',['==',['get','i'],t.i]);}
+      map.getCanvas().style.cursor='pointer';
+      if(tip){tip.innerHTML='<b>'+esc(t.name)+'</b> \u00B7 '+meta(t);tip.style.left=e.point.x+'px';tip.style.top=e.point.y+'px';tip.hidden=false;}
+      return true;}
+  };
+};
 })();
 """
 

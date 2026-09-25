@@ -381,7 +381,7 @@ function lut(l){if(LUT[l])return LUT[l];var r=RAMP[l],n=Math.round((r.hi-r.lo)/r
 // .lyr-ctl / .lyr-leg / .rmap-tip / .rmap-busy controls), container, bounds, fit, maxBounds,
 // onLoad(map)}. Used by the Map tab and the Trail Forecast tab; the decoded data above is shared.
 window.RegionLayers=function(opt){
-var Q=function(sel){return opt.wrap.querySelector(sel);},map=null,fireOn=false;
+var Q=function(sel){return opt.wrap.querySelector(sel);},map=null,fireOn=false,trl=null,trlOn=false;
 // st.d: day index (or 'total' for the 7-day snow total); st.h: null = whole day (high /
 // total / peak), 0..7 = one of the 3-hourly frames. Both are driven by the time slider.
 var st={l:'temp',d:0,h:null},NF=R.frame_hours.length,FR={},FRD={},cur=null,smode='cum';
@@ -692,6 +692,7 @@ function fireTip(e){
   tip.style.left=e.point.x+'px';tip.style.top=e.point.y+'px';tip.hidden=false;return true;
 }
 function hover(e){
+  if(trl&&trl.hover(e))return;   // a trail under the pointer takes the tip
   if(fireTip(e))return;
   if(st.l==='none'||(st.l==='radar'&&TL[ti]&&TL[ti].kind==='hrrr')){tip.hidden=true;return;}
   if(st.l==='radar'){   // model precipitation frames: rate and type at this spot
@@ -759,6 +760,8 @@ function hover(e){
   Q('.lyr-time input[type=range]').addEventListener('input',function(){play(false);ti=+this.value;apply();});
   ctl.addEventListener('click',function(ev){var b=ev.target.closest('button');if(!b||b.disabled)return;
     if(b.dataset.tplay!==undefined){play(!timer);return;}
+    if(b.dataset.trails!==undefined){trlOn=!trlOn;b.classList.toggle('active',trlOn);b.setAttribute('aria-pressed',trlOn);
+      if(window.TrailsLayer){trl=trl||window.TrailsLayer(map,{panel:opt.trailPanel,tip:tip,beforeId:sym});trl.show(trlOn);}return;}
     if(b.dataset.fires!==undefined){fireOn=!fireOn;b.classList.toggle('active',fireOn);b.setAttribute('aria-pressed',fireOn);
       ['fire-fill','fire-line','fire-dot','fire-name'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',fireOn?'visible':'none');});return;}
     if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')play(false);retime();}
@@ -773,6 +776,7 @@ function hover(e){
 window.REGION_BOUNDS=R.bounds;
 window.initRegionMap=function(){
   window.regionMap=window.RegionLayers({wrap:document.getElementById('regionmap').parentNode,container:'regionmap',
+    trailPanel:document.getElementById('ex-side'),
     // top padding keeps northern Washington clear of the layer / day / time controls
     bounds:[[R.bounds[0],R.bounds[1]],[R.bounds[2],R.bounds[3]]],fit:{padding:{top:130,bottom:20,left:20,right:20}},
     maxBounds:[[R.bounds[0]-4,R.bounds[1]-3],[R.bounds[2]+4,R.bounds[3]+3]]}).map;   // handy for debugging from the console
@@ -3135,6 +3139,10 @@ def build_dashboard() -> str:
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
 
+    stage("Building the trails layer")
+    n_explorer = trail_explorer.build(os.path.dirname(OUTPUT_PATH), MAPBOX_TOKEN)
+    print(f"  {n_explorer:,} trails", flush=True)
+
     stage("Generating Oregon cities")
     cities_full_html = build_cities_page()
 
@@ -3151,12 +3159,14 @@ def build_dashboard() -> str:
     fire_btn = (f'<button class="lyr-fire" data-fires aria-pressed="false" title="{n_fires} active wildfires">'
                 '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M6 .5C6.5 3 9 4.5 9.8 7.3A4 4 0 0 1 2.2 9.5C1.6 7.5 2.8 6 3.6 5c.2 1.3.8 2 1.6 2.3C4.8 5 5.2 2.6 6 .5Z" fill="#E4572E"/></svg>Fires</button>'
                 if fire_data else "")
+    trails_btn = ('<button class="lyr-fire lyr-trl" data-trails aria-pressed="false" title="Hiking trails">'
+                  '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M3 19c3-1 4-5 7-6s4 3 7 1 3-7 4-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 3"/></svg>Trails</button>')
     # the Map tab's layer controls; the Trail Forecast map uses the same ones
     region_ctl = (
         '<div class="lyr-ctl"><div><button class="active" data-l="temp">Temperature</button><button data-l="snow">New snow</button>'
         '<button data-l="gust">Wind gusts</button><button data-l="cloud">Clouds</button><button data-l="radar">Radar</button>'
         + ('<button data-l="aq">Air quality</button>' if aq else '') + ('<button data-l="smoke">Smoke</button>' if smoke_data else '')
-        + '<button data-l="none">Terrain</button>' + fire_btn + '</div>'
+        + '<button data-l="none">Terrain</button>' + fire_btn + trails_btn + '</div>'
         '<div class="lyr-time"><button data-tplay>\u25B6 Play</button><span class="lyr-mode"><button class="active" data-mode="hourly">Hourly</button>'
         '<button data-mode="daily">Daily</button></span><input type="range" min="0" max="0" step="1" value="0" aria-label="Forecast date and time">'
         '<span class="lyr-rtime"></span><button data-total hidden>7-day total</button><span class="lyr-mode lyr-smode" hidden>'
@@ -3166,10 +3176,6 @@ def build_dashboard() -> str:
         '<div class="lyr-leg" hidden></div><div class="rmap-tip" hidden></div><div class="rmap-busy" hidden>Updating\u2026</div>')
     stage("Generating mountain trails")
     trails_full_html = build_trails_page(aq)
-
-    stage("Building the trail explorer")
-    n_explorer = trail_explorer.build(os.path.dirname(OUTPUT_PATH), MAPBOX_TOKEN)
-    print(f"  {n_explorer:,} trails", flush=True)
 
     stage("Generating Mt Hood ski conditions")
     ski_full_html = build_ski_page()
@@ -3187,7 +3193,7 @@ def build_dashboard() -> str:
     # ---- Merge CSS (shared base + page-specific) ----
     # the Mt Hood page's stylesheet uses generic names (.map-panel, table, th...) - scope it to
     # its own tab so it can't restyle the Cities / Trails pages
-    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + scope_css(trail_explorer.EXPLORER_CSS, '#page4') + '\n' + scope_css(trail_live.TRAIL_CSS, '#page5')
+    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4')
 
     # Shell CSS: left sidebar nav, page headers, section headers (loaded last, so it wins)
     tab_css = """
@@ -3353,9 +3359,8 @@ def build_dashboard() -> str:
       <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg>Mountain Trails</button>
       <button class="tab-btn" onclick="showTab(2)"><svg class="nv" aria-hidden="true"><use href="#ri-map"/></svg>Map</button>
       <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg>Mt Hood</button>
-      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-compass"/></svg>Trail Explorer</button>
-      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
-      <button class="tab-btn" onclick="showTab(6)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg>Accuracy</button>
+      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
+      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg>Accuracy</button>
       <div class="updated"><b>Updated</b>{updated_str}</div>
     </nav>
     <main class="main">
@@ -3366,23 +3371,23 @@ def build_dashboard() -> str:
       <header class="page-head"><h1>Mountain Trails</h1><p>{len(MOUNTAINS)} peaks from Mt. Baker to Crater Lake, the Olympics to the Wallowas \u00B7 pick a mountain, then summit, mid or base</p></header>
       {trails_body}</div>
     <div class="page-section" id="page2" style="display:none" data-init="initRegionMap">
-      <header class="page-head"><h1>Map</h1><p>Oregon and Washington \u00B7 temperature, new snow and wind gusts at every elevation, plus air quality \u00B7 drag, zoom and tilt, hover for values</p></header>
+      <header class="page-head"><h1>Map</h1><p>Oregon and Washington \u00B7 temperature, new snow and wind gusts at every elevation, plus air quality \u00B7 turn on Trails to explore {n_explorer:,} trails and send one to Trail Forecast \u00B7 drag, zoom and tilt, hover for values</p></header>
+      <div class="rmap-row">
       <div class="rmap-wrap">
         <div id="regionmap"></div>
         {region_ctl}
+      </div>
+      {trail_explorer.TRAILS_PANEL_HTML}
       </div>
       <p class="acc-foot">National Weather Service forecast every {region.CELL_KM:g} km, evaluated at each spot's real elevation: NWS temperature, dew point, gusts and sky cover near the ground, joined to GFS upper-air levels aloft. New snow: NWS precipitation for its first ~3 days (our SNOTEL-tuned model blend after that) with wet-bulb rain/snow. Gusts rise to the GFS free-air wind \u00D7{region.GUST_FACTOR} on exposed ridges; sheltered and forested terrain sees less. Radar: NOAA HRRR for 18 h, then precipitation drawn radar-style.</p>
     </div>
     <div class="page-section" id="page3" style="display:none" data-lazy="hood">
       <header class="page-head"><h1>Mt Hood Meadows</h1><p>Meadows Base, Top of Blue and Top of Cascade \u00B7 next 24 hours, cameras and terrain layers \u00B7 10-day forecast below</p></header>
       {k_body}</div>
-    <div class="page-section" id="page4" style="display:none" data-init="explorerShown">
-      <header class="page-head"><h1>Trail Explorer</h1><p>{n_explorer:,} official trails across Oregon and Washington \u00B7 filter by length, gain and high point, then send one to Trail Forecast</p></header>
-      {trail_explorer.EXPLORER_HTML}</div>
-    <div class="page-section" id="page5" style="display:none" data-init="trailLiveShown">
+    <div class="page-section" id="page4" style="display:none" data-init="trailLiveShown">
       <header class="page-head"><h1>Trail Forecast</h1><p>Any trail: drop in its GPX (or send it from AllTrails or onX with the Chrome extension) for a base and peak forecast and the Map tab\u2019s layers in 3D \u00B7 computed live in your browser</p></header>
       {trail_live.TRAIL_PAGE_HTML.replace("__REGION_CTL__", region_ctl)}</div>
-    <div class="page-section" id="page6" style="display:none">
+    <div class="page-section" id="page5" style="display:none">
       <header class="page-head"><h1>Forecast Accuracy</h1><p>How our precipitation forecasts compare with SNOTEL gauges near the mountains · re-scored and re-tuned every run</p></header>
       {verification.report_html(report)}</div>
     </main>
@@ -3423,7 +3428,7 @@ def build_dashboard() -> str:
     combined += '<script>' + CAMS_LIB_JS + '</script>\n'     # the camera view, used by Trails and Mt Hood
     combined += '<script>' + TERRAIN_LAYERS_JS + '</script>\n'   # terrain layers on a 3D map, Mt Hood and the trail page
     combined += '<script>' + trail_live.TRAIL_LIVE_JS + '</script>\n'   # the Trail Forecast tab's in-browser engine
-    combined += '<script>' + trail_explorer.EXPLORER_JS + '</script>\n'   # the Trail Explorer tab
+    combined += '<script>' + trail_explorer.TRAILS_JS + '</script>\n'   # the Map tab's Trails layer + panel
     for s in c_scripts:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
     for s in trails_scripts:

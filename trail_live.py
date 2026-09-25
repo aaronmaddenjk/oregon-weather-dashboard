@@ -121,7 +121,7 @@ TRAIL_LIVE_JS = r"""
 var root=document.getElementById('tl-root');if(!root)return;
 var OM='https://api.open-meteo.com/v1/forecast',NWS='https://api.weather.gov';
 var PL=[850,700,600,500],GF=1.25,LAPSE=6.5*1.8/1000;
-var TRAIL_TAB=5;   // this tab's index in the shell (page5)
+var TRAIL_TAB=4;   // this tab's index in the shell (page4)
 var $=function(id){return document.getElementById(id);};
 var st={pts:null,res:null,sel:0,map:null,layers:null,charts:null};
 
@@ -391,7 +391,9 @@ if(location.hash.indexOf('#trail=')===0){
   window.addEventListener('load',function(){if(window.showTab)showTab(TRAIL_TAB);});
 }
 var restored=false;
-// the Trail Explorer tab's "Forecast this trail": a polyline + name, opened here
+// the GPX reader and elevation method, shared with the Map tab's Trails panel ("Add your GPX")
+window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats};
+// the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
 window.openTrailForecast=function(poly,name,link){
   pending={src:{poly:poly,name:name||''},link:link||''};
   showTab(TRAIL_TAB);   // the first visit runs trailLiveShown, which takes `pending`
