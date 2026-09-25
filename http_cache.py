@@ -119,18 +119,35 @@ def _om_throttle(cost):
         time.sleep(max(0.5, wait))
 
 
+# Without a timeout one stalled response hangs the whole build (seen in Actions: 20 min on a
+# single Open-Meteo call). Default to (connect, read) seconds and retry a stall twice.
+DEFAULT_TIMEOUT = (10, 60)
+
+
+def _get(url, params=None, **kw):
+    kw.setdefault("timeout", DEFAULT_TIMEOUT)
+    for attempt in range(3):
+        try:
+            return _real_get(url, params=params, **kw)
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt == 2:
+                raise
+            _stats["retries"] += 1
+            time.sleep(3 * (attempt + 1))
+
+
 def _counting_get(url, params=None, **kw):
     host = urlparse(url).netloc
     _stats[f"requests: {host}"] += 1
     if "open-meteo.com" not in host:
-        return _real_get(url, params=params, **kw)
+        return _get(url, params=params, **kw)
     cost = _om_calls(params)
     _stats["open-meteo calls (quota)"] += cost
     _om_throttle(cost)
-    r = _real_get(url, params=params, **kw)
+    r = _get(url, params=params, **kw)
     if r.status_code == 429 and "Minutely" in r.text:   # someone else's usage, or a miscount: wait it out once
         time.sleep(61)
-        r = _real_get(url, params=params, **kw)
+        r = _get(url, params=params, **kw)
     return r
 
 
@@ -138,4 +155,5 @@ def summary():
     om = _stats.get("open-meteo calls (quota)", 0)
     hits = _stats.get("cache hits", 0)
     live = sum(v for k, v in _stats.items() if k.startswith("requests: "))
-    return f"network requests {live}, cache hits {hits}, Open-Meteo quota used ~{om:,} of ~10,000/day"
+    return (f"network requests {live}, cache hits {hits}, retries {_stats.get('retries', 0)}, "
+            f"Open-Meteo quota used ~{om:,} of ~10,000/day")

@@ -1,4 +1,4 @@
-name: Generate weather dashboard
+﻿name: Generate weather dashboard
 
 on:
   schedule:
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25   # most requests have no timeout; don't let a hung API burn Actions minutes
+    timeout-minutes: 40   # most requests have no timeout; don't let a hung API burn Actions minutes
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
