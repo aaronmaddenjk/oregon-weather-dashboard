@@ -1,0 +1,238 @@
+{
+ "mountains": [
+  "Mt. Baker",
+  "Glacier Peak",
+  "Mt. Olympus",
+  "Mt. Rainier",
+  "Mt. Adams",
+  "Mt. St. Helens",
+  "Saddle Mountain",
+  "Table Mountain",
+  "Mt. Hood",
+  "Sacajawea Peak",
+  "Eagle Cap",
+  "Mt. Jefferson",
+  "South Sister",
+  "Mt. Bachelor",
+  "Mt. Thielsen",
+  "Crater Lake"
+ ],
+ "stations": [
+  {
+   "triplet": "999:WA:SNTL",
+   "name": "Marten Ridge",
+   "lat": 48.76292,
+   "lon": -121.69823,
+   "elev_ft": 3520.0,
+   "mountain": "Mt. Baker",
+   "km": 8.7
+  },
+  {
+   "triplet": "1011:WA:SNTL",
+   "name": "MF Nooksack",
+   "lat": 48.82441,
+   "lon": -121.92947,
+   "elev_ft": 4940.0,
+   "mountain": "Mt. Baker",
+   "km": 9.9
+  },
+  {
+   "triplet": "606:WA:SNTL",
+   "name": "Lyman Lake",
+   "lat": 48.19798,
+   "lon": -120.91678,
+   "elev_ft": 5990.0,
+   "mountain": "Glacier Peak",
+   "km": 17.4
+  },
+  {
+   "triplet": "1171:WA:SNTL",
+   "name": "Trinity",
+   "lat": 48.07471,
+   "lon": -120.84989,
+   "elev_ft": 2890.0,
+   "mountain": "Glacier Peak",
+   "km": 20.1
+  },
+  {
+   "triplet": "1107:WA:SNTL",
+   "name": "Buckinghorse",
+   "lat": 47.7086,
+   "lon": -123.45747,
+   "elev_ft": 4850.0,
+   "mountain": "Mt. Olympus",
+   "km": 21.6
+  },
+  {
+   "triplet": "679:WA:SNTL",
+   "name": "Paradise",
+   "lat": 46.78266,
+   "lon": -121.74767,
+   "elev_ft": 5150.0,
+   "mountain": "Mt. Rainier",
+   "km": 7.9
+  },
+  {
+   "triplet": "941:WA:SNTL",
+   "name": "Mowich",
+   "lat": 46.92833,
+   "lon": -121.95232,
+   "elev_ft": 3170.0,
+   "mountain": "Mt. Rainier",
+   "km": 16.8
+  },
+  {
+   "triplet": "702:WA:SNTL",
+   "name": "Potato Hill",
+   "lat": 46.3497,
+   "lon": -121.51415,
+   "elev_ft": 4480.0,
+   "mountain": "Mt. Adams",
+   "km": 16.5
+  },
+  {
+   "triplet": "804:WA:SNTL",
+   "name": "Surprise Lakes",
+   "lat": 46.09497,
+   "lon": -121.76345,
+   "elev_ft": 4280.0,
+   "mountain": "Mt. Adams",
+   "km": 24.2
+  },
+  {
+   "triplet": "1012:WA:SNTL",
+   "name": "Swift Creek",
+   "lat": 46.1638,
+   "lon": -122.18402,
+   "elev_ft": 4440.0,
+   "mountain": "Mt. St. Helens",
+   "km": 2.9
+  },
+  {
+   "triplet": "748:WA:SNTL",
+   "name": "Sheep Canyon",
+   "lat": 46.19325,
+   "lon": -122.25393,
+   "elev_ft": 3990.0,
+   "mountain": "Mt. St. Helens",
+   "km": 5.2
+  },
+  {
+   "triplet": "666:OR:SNTL",
+   "name": "North Fork",
+   "lat": 45.5505,
+   "lon": -122.00283,
+   "elev_ft": 3070.0,
+   "mountain": "Table Mountain",
+   "km": 15.7
+  },
+  {
+   "triplet": "504:OR:SNTL",
+   "name": "Greenpoint",
+   "lat": 45.62237,
+   "lon": -121.70415,
+   "elev_ft": 3320.0,
+   "mountain": "Table Mountain",
+   "km": 23.0
+  },
+  {
+   "triplet": "651:OR:SNTL",
+   "name": "Mt Hood Test Site",
+   "lat": 45.32097,
+   "lon": -121.7158,
+   "elev_ft": 5380.0,
+   "mountain": "Mt. Hood",
+   "km": 6.0
+  },
+  {
+   "triplet": "712:OR:SNTL",
+   "name": "Red Hill",
+   "lat": 45.4643,
+   "lon": -121.70428,
+   "elev_ft": 4410.0,
+   "mountain": "Mt. Hood",
+   "km": 10.1
+  },
+  {
+   "triplet": "302:OR:SNTL",
+   "name": "Aneroid Lake #2",
+   "lat": 45.21332,
+   "lon": -117.19255,
+   "elev_ft": 7430.0,
+   "mountain": "Sacajawea Peak",
+   "km": 8.6
+  },
+  {
+   "triplet": "653:OR:SNTL",
+   "name": "Mt. Howard",
+   "lat": 45.26514,
+   "lon": -117.17377,
+   "elev_ft": 7840.0,
+   "mountain": "Sacajawea Peak",
+   "km": 9.6
+  },
+  {
+   "triplet": "614:OR:SNTL",
+   "name": "Marion Forks",
+   "lat": 44.59397,
+   "lon": -121.97365,
+   "elev_ft": 2590.0,
+   "mountain": "Mt. Jefferson",
+   "km": 16.4
+  },
+  {
+   "triplet": "815:OR:SNTL",
+   "name": "Three Creeks Meadow",
+   "lat": 44.14425,
+   "lon": -121.64095,
+   "elev_ft": 5680.0,
+   "mountain": "South Sister",
+   "km": 11.2
+  },
+  {
+   "triplet": "619:OR:SNTL",
+   "name": "Mckenzie",
+   "lat": 44.2103,
+   "lon": -121.87292,
+   "elev_ft": 4770.0,
+   "mountain": "South Sister",
+   "km": 14.5
+  },
+  {
+   "triplet": "442:OR:SNTL",
+   "name": "Diamond Lake",
+   "lat": 43.18787,
+   "lon": -122.14003,
+   "elev_ft": 5280.0,
+   "mountain": "Mt. Thielsen",
+   "km": 7.1
+  },
+  {
+   "triplet": "395:OR:SNTL",
+   "name": "Chemult Alternate",
+   "lat": 43.22625,
+   "lon": -121.80662,
+   "elev_ft": 4850.0,
+   "mountain": "Mt. Thielsen",
+   "km": 22.6
+  },
+  {
+   "triplet": "1000:OR:SNTL",
+   "name": "Annie Springs",
+   "lat": 42.87007,
+   "lon": -122.16518,
+   "elev_ft": 6020.0,
+   "mountain": "Crater Lake",
+   "km": 13.5
+  },
+  {
+   "triplet": "1078:OR:SNTL",
+   "name": "Sun Pass",
+   "lat": 42.78637,
+   "lon": -121.97715,
+   "elev_ft": 5400.0,
+   "mountain": "Crater Lake",
+   "km": 15.5
+  }
+ ]
+}

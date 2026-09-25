@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oregon Weather Dashboard — Prototype</title>
+<style>
+* { box-sizing:border-box; }
+:root { padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px); }
+body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:0; background:#FAFAFA; }
+.tab-nav{display:flex;gap:0;background:#111;padding:0 14px;position:sticky;top:0;z-index:1000;}
+.tab-btn{padding:14px 28px;color:#999;font-size:14px;font-weight:700;cursor:pointer;
+  border:none;background:none;border-bottom:3px solid transparent;
+  transition:all 0.2s;letter-spacing:.5px;font-family:inherit;}
+.tab-btn:hover{color:#fff;}
+.tab-btn.active{color:#fff;border-bottom-color:#FE5000;}
+.page-section{padding:14px;display:none;}
+.page-section.active{display:block;}
+
+/* ---- hike forecast table (from render_hike_forecast) ---- */
+.hike-layout { display:flex; gap:16px; align-items:flex-start; }
+.hike-map-panel { flex:1; min-width:0; position:sticky; top:14px; }
+.hike-map-wrap { background:#fff; border-radius:10px; padding:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.map-placeholder { aspect-ratio:1; border-radius:8px; background:linear-gradient(180deg,#dfe9ea,#c7d6cf); position:relative; display:flex; align-items:center; justify-content:center; color:#5a6b63; font-size:12px; }
+.hike-map-info { text-align:center; margin-top:8px; }
+.hike-map-info .tc-n { font-size:16px; font-weight:700; color:#111; }
+.hike-map-info .tc-i { font-size:11px; color:#888; margin-top:2px; }
+.hike-map-info .tc-m { font-size:10px; color:#AAA; margin-top:4px; line-height:1.5; }
+.hike-fc-panel { flex:1; min-width:0; }
+@media (max-width:900px) { .hike-layout { flex-direction:column; } .hike-map-panel { position:static; } }
+.scroll-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-bottom:4px; }
+table { border-collapse:separate; border-spacing:4px 2px; white-space:nowrap; font-size:13px; }
+th { position:sticky; left:0; z-index:2; background:#fff; text-align:left; padding:3px 10px 3px 0; font-size:12px; color:#555; font-weight:600; white-space:nowrap; min-width:85px; }
+th .ri { font-size:14px; margin-right:3px; }
+td { text-align:center; padding:3px 6px; min-width:50px; }
+.dsum { cursor:pointer; min-width:80px; border-left:3px solid #FE5000; }
+.dsum:hover { background:rgba(254,80,0,0.04); }
+.ddet { cursor:pointer; }
+.dl { font-size:11px; font-weight:700; color:#111; letter-spacing:.5px; text-transform:uppercase; }
+.ds-ci { font-size:18px; margin-top:2px; }
+.tt { background:#FE5000; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
+.tl { font-size:11px; color:#999; font-weight:600; }
+.tp { border-radius:5px; color:#fff; font-size:13px; font-weight:700; padding:2px 5px; display:inline-block; }
+.cb { font-size:11px; color:#777; }
+.gs { font-size:10px; color:#368994; margin-left:2px; }
+.cc { height:20px; font-size:10px; padding:0 3px; text-align:center; vertical-align:middle; line-height:20px; }
+th.cch { font-size:9px; min-width:85px; padding:1px 8px 1px 0; }
+.alt { font-size:8px; color:#AAA; font-weight:400; }
+.pa { font-size:10px; }
+.aqi { font-size:11px; font-weight:600; border-radius:3px; padding:1px 4px; }
+.leg { margin-top:8px; font-size:11px; color:#AAA; }
+.wp-header { border-left:4px solid #FE5000; padding-left:10px; margin:12px 0 6px; }
+
+/* ---- cities / ski cards ---- */
+.weather-marker { background:#fff; border-radius:6px; padding:6px 10px; font-size:11px; box-shadow:0 2px 6px rgba(0,0,0,0.2); border:1px solid #eee; display:inline-block; margin:4px; }
+.weather-marker .wm-name { font-weight:700; color:#111; font-size:12px; }
+.weather-marker .wm-info { display:flex; gap:6px; align-items:center; margin-top:1px; }
+.weather-marker .wm-temp { font-weight:700; font-size:13px; color:#fff; border-radius:3px; padding:1px 4px; }
+.weather-marker .wm-wind { color:#368994; font-size:10px; }
+.weather-marker .wm-precip { color:#4FB1BE; font-size:10px; }
+.city-detail-header { font-size:16px; font-weight:700; color:#FE5000; padding:10px 12px; cursor:pointer; border-radius:8px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.08); margin-top:8px; }
+.ski-card { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px; margin-bottom:12px; }
+.lift-pill { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; color:#fff; margin-right:6px; }
+.cam-placeholder { aspect-ratio:16/10; border-radius:8px; background:#dcdcdc; display:flex; align-items:center; justify-content:center; color:#888; font-size:11px; margin-bottom:6px; }
+</style>
+</head>
+<body>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showTab(0,this)">Cities</button>
+  <button class="tab-btn" onclick="showTab(1,this)">Mountain Trails</button>
+  <button class="tab-btn" onclick="showTab(2,this)">Mt Hood</button>
+  <span style="margin-left:auto;color:#555;font-size:10px;padding:16px 8px;">Prototype — mock data</span>
+</div>
+
+<!-- PAGE 0: CITIES -->
+<div class="page-section active" id="page0">
+  <div class="map-placeholder">Map panel (Mapbox — not renderable in this preview)</div>
+  <div style="margin-top:10px;">
+    <div class="weather-marker"><div class="wm-name">☀ Portland</div>
+      <div class="wm-info"><span class="wm-temp" style="background:#FAA21B">72°</span><span class="wm-wind">💨 8</span><span class="wm-precip">☔ 10%</span></div></div>
+    <div class="weather-marker"><div class="wm-name">⛅ Bend</div>
+      <div class="wm-info"><span class="wm-temp" style="background:#6BBF68">65°</span><span class="wm-wind">💨 14</span><span class="wm-precip">☔ 20%</span></div></div>
+    <div class="weather-marker"><div class="wm-name">☁ Hood River</div>
+      <div class="wm-info"><span class="wm-temp" style="background:#4FB1BE">58°</span><span class="wm-wind">💨 22</span><span class="wm-precip">☔ 40%</span></div></div>
+  </div>
+  <div class="city-detail-header">Portland — tap to expand</div>
+</div>
+
+<!-- PAGE 1: MOUNTAIN TRAILS -->
+<div class="page-section" id="page1">
+  <div class="hike-layout">
+    <div class="hike-map-panel"><div class="hike-map-wrap">
+      <div class="map-placeholder">3D terrain map (Mapbox)</div>
+      <div class="hike-map-info">
+        <div class="tc-n">South Sister</div>
+        <div class="tc-i">America/Los_Angeles</div>
+        <div class="tc-m">Click a marker to switch forecasts<br>Meteoblue MOS wind+temp · ECMWF clouds · HRRR today</div>
+      </div>
+    </div></div>
+    <div class="hike-fc-panel">
+      <div class="wp-header"><span style="font-weight:700;font-size:14px;color:#111;">South Sister Peak</span>
+        <span style="font-size:11px;color:#888;margin-left:8px;">10358′ MSL &nbsp; 44.1034, -121.7692</span></div>
+      <div class="scroll-wrap"><table id="tbl_ss">
+        <tr><th></th>
+          <td class="d0 dsum" colspan="4" onclick="toggleDay(0)"><div class="dl">TUE 22<span class="tt">TODAY</span></div><div class="ds-ci">⛅</div></td>
+          <td class="d0 ddet" style="display:none;border-left:3px solid #FE5000;"><div class="dl">TUE 22<span class="tt">TODAY</span></div><div class="tl">2pm</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tl">5pm</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tl">8pm</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tl">11pm</div></td>
+          <td class="d1 dsum" colspan="4" onclick="toggleDay(1)"><div class="dl">WED 23</div><div class="ds-ci">☀</div></td>
+          <td class="d1 ddet" style="display:none;border-left:3px solid #FE5000;"><div class="dl">WED 23</div><div class="tl">5am</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tl">11am</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tl">2pm</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tl">5pm</div></td>
+        </tr>
+        <tr><th><span class="ri">🌡</span>Temp</th>
+          <td class="d0 dsum" colspan="4" onclick="toggleDay(0)"><span class="tp" style="background:#FAA21B">58°</span> <span class="tp" style="background:#368994;opacity:0.7">34°</span></td>
+          <td class="d0 ddet" style="display:none;border-left:3px solid #FE5000;"><div class="tp" style="background:#FAA21B">58°</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tp" style="background:#6BBF68">52°</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tp" style="background:#4FB1BE">44°</div></td>
+          <td class="d0 ddet" style="display:none;"><div class="tp" style="background:#368994">36°</div></td>
+          <td class="d1 dsum" colspan="4" onclick="toggleDay(1)"><span class="tp" style="background:#FAA21B">61°</span> <span class="tp" style="background:#368994;opacity:0.7">31°</span></td>
+          <td class="d1 ddet" style="display:none;border-left:3px solid #FE5000;"><div class="tp" style="background:#368994">33°</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tp" style="background:#6BBF68">50°</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tp" style="background:#FAA21B">61°</div></td>
+          <td class="d1 ddet" style="display:none;"><div class="tp" style="background:#6BBF68">55°</div></td>
+        </tr>
+        <tr><th class="cch">☁ High <span class="alt">20-40k</span></th>
+          <td class="d0 dsum cc" colspan="4" onclick="toggleDay(0)" style="background:rgba(145,150,165,0.10);"></td>
+          <td class="d0 ddet cc" style="display:none;border-left:3px solid #FE5000;"></td>
+          <td class="d0 ddet cc" style="display:none;"></td>
+          <td class="d0 ddet cc" style="display:none;background:rgba(145,150,165,0.30);color:#666;">30</td>
+          <td class="d0 ddet cc" style="display:none;"></td>
+          <td class="d1 dsum cc" colspan="4" onclick="toggleDay(1)"></td>
+          <td class="d1 ddet cc" style="display:none;border-left:3px solid #FE5000;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+        </tr>
+        <tr><th class="cch">☁ Low <span class="alt">&lt;6k</span></th>
+          <td class="d0 dsum cc" colspan="4" onclick="toggleDay(0)" style="background:rgba(145,150,165,0.42);color:#666;">50</td>
+          <td class="d0 ddet cc" style="display:none;border-left:3px solid #FE5000;background:rgba(145,150,165,0.55);color:#fff;">65</td>
+          <td class="d0 ddet cc" style="display:none;background:rgba(145,150,165,0.55);color:#fff;">65</td>
+          <td class="d0 ddet cc" style="display:none;background:rgba(145,150,165,0.20);"></td>
+          <td class="d0 ddet cc" style="display:none;"></td>
+          <td class="d1 dsum cc" colspan="4" onclick="toggleDay(1)"></td>
+          <td class="d1 ddet cc" style="display:none;border-left:3px solid #FE5000;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+          <td class="d1 ddet cc" style="display:none;"></td>
+        </tr>
+        <tr><th><span class="ri">📏</span>Base</th>
+          <td class="d0 dsum cb" colspan="4" onclick="toggleDay(0)">7,200′</td>
+          <td class="d0 ddet cb" style="display:none;border-left:3px solid #FE5000;">7,200′</td>
+          <td class="d0 ddet cb" style="display:none;">7,400′</td>
+          <td class="d0 ddet cb" style="display:none;">Clear</td>
+          <td class="d0 ddet cb" style="display:none;">Clear</td>
+          <td class="d1 dsum cb" colspan="4" onclick="toggleDay(1)">Clear</td>
+          <td class="d1 ddet cb" style="display:none;border-left:3px solid #FE5000;">Clear</td>
+          <td class="d1 ddet cb" style="display:none;">Clear</td>
+          <td class="d1 ddet cb" style="display:none;">Clear</td>
+          <td class="d1 ddet cb" style="display:none;">Clear</td>
+        </tr>
+        <tr><th><span class="ri">💨</span>Wind (Gust)</th>
+          <td class="d0 dsum" colspan="4" onclick="toggleDay(0)"><span style="color:#FAA21B">22</span><span class="gs">(31)</span></td>
+          <td class="d0 ddet" style="display:none;border-left:3px solid #FE5000;"><span style="color:#FAA21B">22</span><span class="gs">(31)</span></td>
+          <td class="d0 ddet" style="display:none;"><span style="color:#111">14</span><span class="gs">(20)</span></td>
+          <td class="d0 ddet" style="display:none;"><span style="color:#111">9</span><span class="gs">(15)</span></td>
+          <td class="d0 ddet" style="display:none;"><span style="color:#111">7</span><span class="gs">(11)</span></td>
+          <td class="d1 dsum" colspan="4" onclick="toggleDay(1)"><span style="color:#111">12</span><span class="gs">(18)</span></td>
+          <td class="d1 ddet" style="display:none;border-left:3px solid #FE5000;"><span style="color:#111">6</span><span class="gs">(10)</span></td>
+          <td class="d1 ddet" style="display:none;"><span style="color:#111">9</span><span class="gs">(14)</span></td>
+          <td class="d1 ddet" style="display:none;"><span style="color:#111">12</span><span class="gs">(18)</span></td>
+          <td class="d1 ddet" style="display:none;"><span style="color:#111">10</span><span class="gs">(15)</span></td>
+        </tr>
+        <tr><th><span class="ri">☔</span>Chance</th>
+          <td class="d0 dsum" colspan="4" onclick="toggleDay(0)">🌦 20%</td>
+          <td class="d0 ddet" style="display:none;border-left:3px solid #FE5000;">🌦 20%</td>
+          <td class="d0 ddet" style="display:none;">· 5%</td>
+          <td class="d0 ddet" style="display:none;">· 0%</td>
+          <td class="d0 ddet" style="display:none;">· 0%</td>
+          <td class="d1 dsum" colspan="4" onclick="toggleDay(1)">· 0%</td>
+          <td class="d1 ddet" style="display:none;border-left:3px solid #FE5000;">· 0%</td>
+          <td class="d1 ddet" style="display:none;">· 0%</td>
+          <td class="d1 ddet" style="display:none;">· 0%</td>
+          <td class="d1 ddet" style="display:none;">· 0%</td>
+        </tr>
+        <tr><th><span class="ri">💧</span>Rain/Snow</th>
+          <td class="d0 dsum pa" colspan="4" onclick="toggleDay(0)"><span style="color:#4FB1BE;">0.04"</span></td>
+          <td class="d0 ddet pa" style="display:none;border-left:3px solid #FE5000;color:#4FB1BE;">0.03"</td>
+          <td class="d0 ddet pa" style="display:none;color:#DDD;">·</td>
+          <td class="d0 ddet pa" style="display:none;color:#DDD;">·</td>
+          <td class="d0 ddet pa" style="display:none;color:#DDD;">·</td>
+          <td class="d1 dsum pa" colspan="4" onclick="toggleDay(1)"><span style="color:#DDD;">·</span></td>
+          <td class="d1 ddet pa" style="display:none;border-left:3px solid #FE5000;color:#DDD;">·</td>
+          <td class="d1 ddet pa" style="display:none;color:#DDD;">·</td>
+          <td class="d1 ddet pa" style="display:none;color:#DDD;">·</td>
+          <td class="d1 ddet pa" style="display:none;color:#DDD;">·</td>
+        </tr>
+        <tr><th><span class="ri">🌫</span>AQI</th>
+          <td class="d0 dsum aqi" colspan="4" onclick="toggleDay(0)" style="background:#6BBF68;color:#111;">32</td>
+          <td class="d0 ddet aqi" style="display:none;border-left:3px solid #FE5000;background:#6BBF68;color:#111;">32</td>
+          <td class="d0 ddet aqi" style="display:none;background:#6BBF68;color:#111;">28</td>
+          <td class="d0 ddet aqi" style="display:none;background:#6BBF68;color:#111;">24</td>
+          <td class="d0 ddet aqi" style="display:none;background:#6BBF68;color:#111;">20</td>
+          <td class="d1 dsum aqi" colspan="4" onclick="toggleDay(1)" style="background:#6BBF68;color:#111;">18</td>
+          <td class="d1 ddet aqi" style="display:none;border-left:3px solid #FE5000;background:#6BBF68;color:#111;">15</td>
+          <td class="d1 ddet aqi" style="display:none;background:#6BBF68;color:#111;">18</td>
+          <td class="d1 ddet aqi" style="display:none;background:#6BBF68;color:#111;">22</td>
+          <td class="d1 ddet aqi" style="display:none;background:#6BBF68;color:#111;">20</td>
+        </tr>
+      </table></div>
+      <div class="leg">Meteoblue (wind/temp) · Open-Meteo (clouds/precip/AQI) · Cloud base MSL · Click a day to expand</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: MT HOOD SKI -->
+<div class="page-section" id="page2">
+  <div class="ski-card">
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px;">Mt Hood Meadows</div>
+    <span class="lift-pill" style="background:#6BBF68;">Blue: Open</span>
+    <span class="lift-pill" style="background:#FE5000;">Cascade: Wind hold</span>
+    <div style="margin-top:10px;font-size:13px;color:#555;">Base depth: <b>38"</b> &nbsp; New (24h): <b>2"</b> &nbsp; Summit temp: <b>24°F</b></div>
+  </div>
+  <div class="ski-card">
+    <div style="font-weight:700;margin-bottom:8px;">Road cams</div>
+    <div class="cam-placeholder">Ski Bowl West (TripCheck)</div>
+    <div class="cam-placeholder">Blue Box Pass (TripCheck)</div>
+  </div>
+  <div class="ski-card">
+    <div style="font-weight:700;margin-bottom:6px;">Snow forecast — thegorgeismygym.com</div>
+    <p style="margin:4px 0;font-size:11px;line-height:1.5;color:#333;">Mock forecast text goes here — the real cell scrapes the site's write-up each run.</p>
+  </div>
+</div>
+
+<script>
+function showTab(idx, btn) {
+  document.querySelectorAll('.page-section').forEach(function(p,i){ p.classList.toggle('active', i===idx); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+function toggleDay(idx) {
+  var s = document.querySelectorAll('.d'+idx+'.dsum');
+  var d = document.querySelectorAll('.d'+idx+'.ddet');
+  var open = d[0] && d[0].style.display !== 'none';
+  s.forEach(function(el){ el.style.display = open ? '' : 'none'; });
+  d.forEach(function(el){ el.style.display = open ? 'none' : ''; });
+}
+</script>
+</body>
+</html>

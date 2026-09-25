@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Trail Forecast for AllTrails",
+  "version": "1.0",
+  "description": "On an AllTrails trail page, click to open the trail in your Oregon Weather dashboard's Trail Forecast tab.",
+  "action": {
+    "default_title": "Open this trail's forecast",
+    "default_icon": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+  },
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "options_page": "options.html"
+}

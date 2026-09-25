@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Trail Forecast for AllTrails</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 24px; color: #111; max-width: 520px; }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { color: #5A5F6B; line-height: 1.5; }
+  label { display: block; font-weight: 600; margin: 18px 0 6px; }
+  input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #C9CDD5; border-radius: 8px; font: inherit; }
+  button { margin-top: 12px; padding: 8px 14px; border: none; border-radius: 8px; background: #FE5000; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  #saved { margin-left: 10px; color: #3F7440; }
+</style>
+</head>
+<body>
+  <h1>Trail Forecast for AllTrails</h1>
+  <p>On an AllTrails trail page, click the extension's button to open that trail in the dashboard's Trail Forecast tab.</p>
+  <label for="url">Dashboard address</label>
+  <input id="url" type="url" placeholder="http://localhost:8000/">
+  <p>Your local dashboard is <code>http://localhost:8000/</code> (while its server is running). Once it's on GitHub Pages, put that address here instead.</p>
+  <button id="save">Save</button><span id="saved"></span>
+  <script src="options.js"></script>
+</body>
+</html>

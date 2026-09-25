@@ -1,0 +1,10 @@
+.env
+.cache/
+# built site - published by the workflow, not committed
+docs/
+__pycache__/
+# local Claude Code settings
+.claude/
+*.pyc
+# contains the old hardcoded Mapbox + Meteoblue keys in plaintext
+weather_notebook_original.txt
