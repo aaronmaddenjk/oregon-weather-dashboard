@@ -22,6 +22,8 @@ and asks for features in plain language. See README.md for data sources and dev 
   timeouts (tried; removed the workflow). `tools/publish.ps1` builds fresh and force-pushes docs/
   as a single commit to gh-pages (`-NoBuild` = publish current docs/); log in `logs/publish.log`.
   `tools/schedule.ps1` registers the Windows task "Oregon Weather Dashboard" (5 AM + 3 PM).
+  The task is DISABLED while the owner is still developing (2026-09-25); publish by hand.
+  Re-enable: `Enable-ScheduledTask -TaskName "Oregon Weather Dashboard"`.
   A full fresh build is ~4,600 Open-Meteo calls (Map grid ~3,100) and ~19 min, so max ~2/day
   until the split refresh (hourly light build, grid every few hours) exists.
 - git/gh are installed but not on PowerShell's PATH in this shell: prefix commands with
@@ -46,7 +48,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   (Trail Forecast tab: in-browser engine), `http_cache.py`.
 - `chrome-extension/`: MV3 extension; on an AllTrails trail page it reads the embedded route
   polyline (`"pointsData":"$xx"` in the Next.js `self.__next_f` stream; falls back to fetching
-  `/explore/trail/...`) and opens `<dashboard>#trail={"n","u","p"}`.
+  `/explore/trail/...`) and opens `<dashboard>#trail={"n","u","p"}`. Also onX Backcountry web map
+  (webmap/backcountry.onxmaps.com): `/map/route/<id>` → `GET api.production.onxmaps.com/v1/routing/
+  routes?excludeSteps=&page[size]=50` (route.geometry = polyline, precision 5); `/map/line/<uuid>`
+  (recorded tracks) → `/v1/markups/tracks?limit=500` then `/markups/lines` (geo_json [lon,lat,ele],
+  re-encoded). Auth: Bearer access_token from localStorage `oidc.user:*` + headers
+  `onx-application-id: backcountry`, `onx-application-platform: web` (without them lists come back empty).
 
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood
@@ -78,5 +85,9 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 ## Open ideas (not done)
 - 3-hourly drill-down in the Trail Forecast 10-day table; KML import; recent-trails list;
   OpenStreetMap / Waymarked Trails links + trail search; verify gusts against ridge stations.
+- Move scheduled builds off the PC to an Oracle Cloud Always Free VM (own IP, so Open-Meteo
+  doesn't throttle it; owner's preferred host, over Google's e2-micro whose external IP may
+  cost ~$3.65/mo). Owner creates the account; then: Python, repo clone, .env, gh auth, cron
+  running tools/publish logic (port publish.ps1 to bash). Watch Oracle's idle-VM reclaim rule.
 - Split refresh: hourly light build (cities/trails/Hood/smoke/fires) reusing the last Map grid,
   full grid every ~6 h; plus a page self-reload when a newer build is published.

@@ -3370,7 +3370,7 @@ def build_dashboard() -> str:
       <header class="page-head"><h1>Mt Hood Meadows</h1><p>Meadows Base, Top of Blue and Top of Cascade \u00B7 next 24 hours, cameras and terrain layers \u00B7 10-day forecast below</p></header>
       {k_body}</div>
     <div class="page-section" id="page4" style="display:none" data-init="trailLiveShown">
-      <header class="page-head"><h1>Trail Forecast</h1><p>Any trail: drop in its GPX (or send it from AllTrails with the Chrome extension) for a base and peak forecast and the Map tab\u2019s layers in 3D \u00B7 computed live in your browser</p></header>
+      <header class="page-head"><h1>Trail Forecast</h1><p>Any trail: drop in its GPX (or send it from AllTrails or onX with the Chrome extension) for a base and peak forecast and the Map tab\u2019s layers in 3D \u00B7 computed live in your browser</p></header>
       {trail_live.TRAIL_PAGE_HTML.replace("__REGION_CTL__", region_ctl)}</div>
     <div class="page-section" id="page5" style="display:none">
       <header class="page-head"><h1>Forecast Accuracy</h1><p>How our precipitation forecasts compare with SNOTEL gauges near the mountains · re-scored and re-tuned every run</p></header>

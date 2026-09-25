@@ -298,7 +298,7 @@ function render(){
   $('tl-load').hidden=true;$('tl-out').hidden=false;
   $('tl-name').textContent=st.name||'Your trail';
   $('tl-stats').innerHTML='<b>'+(s.km*0.621371).toFixed(1)+' mi</b> · <b>'+Math.round(s.gain*3.28084).toLocaleString('en-US')+'′</b> gain · base <b>'+ft(P[0].p.ele)+'</b> · peak <b>'+ft(P[1].p.ele)+'</b>';
-  var at=$('tl-at');at.hidden=!st.link;if(st.link)at.href=st.link;
+  var at=$('tl-at');at.hidden=!st.link;if(st.link){at.href=st.link;at.textContent=(/onxmaps\.com/i.test(st.link)?'onX':'AllTrails')+' ↗';}
   $('tl-prof-s').textContent=(s.km*0.621371).toFixed(1)+' mi · '+ft(P[0].p.ele)+' to '+ft(P[1].p.ele)+' · '+st.pts.length.toLocaleString('en-US')+' GPX points';
   $('tl-foot').textContent=(P.every(function(x){return x.nws;})?'National Weather Service forecast as the base':'Open-Meteo forecast (the NWS covers the US only)')
     +', moved to each point’s elevation · exposed-ridge wind from GFS free-air winds · wet-bulb rain/snow and snow-to-liquid ratios as on the other tabs · computed in your browser, not saved anywhere but this browser';

@@ -1,18 +1,24 @@
-// Trail Forecast for AllTrails
-// Click the button on an AllTrails trail page: the route that page has loaded (in your own,
-// logged-in session) is read and handed to the dashboard's Trail Forecast tab in the URL:
-//   <dashboard>#trail={"n": name, "u": AllTrails link, "p": encoded polyline}
+// Trail Forecast for AllTrails and onX
+// Click the button on an AllTrails trail page, or on one of your routes or tracks in the onX
+// Backcountry web map: the route is read (in your own, logged-in session) and handed to the
+// dashboard's Trail Forecast tab in the URL:
+//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline}
 // Nothing is sent anywhere else; the dashboard computes the forecast in the browser.
 
 const DEFAULT_URL = "http://localhost:8000/";
+const SITES = [
+  { re: /^https:\/\/(www\.)?alltrails\.com\//, func: extractRoute },
+  { re: /^https:\/\/(webmap|backcountry)\.onxmaps\.com\//, func: extractOnx },
+];
 
 chrome.action.onClicked.addListener(async (tab) => {
-  if (!/^https:\/\/(www\.)?alltrails\.com\//.test(tab.url || "")) {
-    return badge(tab.id, "?", "Open a trail on alltrails.com, then click again");
+  const site = SITES.find((s) => s.re.test(tab.url || ""));
+  if (!site) {
+    return badge(tab.id, "?", "Open a trail on alltrails.com, or a route/track in the onX web map, then click again");
   }
   badge(tab.id, "…", "Reading the trail…");
   try {
-    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractRoute });
+    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: site.func });
     if (!result || result.error) throw new Error((result && result.error) || "No route found on this page");
     const { dashboardUrl } = await chrome.storage.sync.get({ dashboardUrl: DEFAULT_URL });
     const url = dashboardUrl.replace(/#.*$/, "") + "#trail=" + encodeURIComponent(JSON.stringify(result));
@@ -27,6 +33,69 @@ function badge(tabId, text, title) {
   chrome.action.setBadgeBackgroundColor({ tabId, color: "#FE5000" });
   chrome.action.setBadgeText({ tabId, text });
   if (title) chrome.action.setTitle({ tabId, title });
+}
+
+// Runs inside the onX Backcountry web map. A saved route opens at /map/route/<id> and a recorded
+// track (or drawn line) at /map/line/<uuid>. Both come from onX's API with the page's own login
+// (the OIDC token the web map keeps in localStorage) plus the app headers it sends.
+async function extractOnx() {
+  const API = "https://api.production.onxmaps.com/v1/";
+  const m = /\/map\/(route|line)\/([^/?#]+)/.exec(location.pathname);
+  if (!m) return { error: "open one of your routes or tracks (My Content → Routes or Tracks), then click again" };
+  const key = Object.keys(localStorage).find((k) => k.startsWith("oidc.user:"));
+  let token = null;
+  try { token = key && JSON.parse(localStorage.getItem(key)).access_token; } catch (e) { /* not signed in */ }
+  if (!token) return { error: "sign in to the onX web map first" };
+  const headers = { Authorization: "Bearer " + token, "onx-application-id": "backcountry", "onx-application-platform": "web" };
+  const get = async (path) => {
+    const r = await fetch(API + path, { headers });
+    if (!r.ok) throw new Error("onX answered " + r.status);
+    return r.json();
+  };
+  const [, kind, id] = m;
+
+  if (kind === "route") {
+    const want = (x) => x.id === id;
+    let found = null;
+    for (let page = 1; page <= 20 && !found; page++) {
+      const d = await get("routing/routes?excludeSteps=&page[size]=50&page[number]=" + page);
+      const list = d.data || [];
+      found = list.find(want);
+      if (list.length < 50 || (d.page && d.page.total <= page * 50)) break;
+    }
+    if (!found || !found.route || !found.route.geometry) return { error: "couldn't find this route in your onX account" };
+    // route.geometry is already an encoded polyline, precision 5 (same as AllTrails)
+    return { n: found.name || "onX route", u: location.origin + location.pathname, p: found.route.geometry };
+  }
+
+  // a recorded track (or a drawn line): GeoJSON [lon, lat, ele]
+  let item = null;
+  for (const path of ["markups/tracks?limit=500", "markups/lines?limit=500"]) {
+    const d = await get(path);
+    item = (Array.isArray(d) ? d : d.data || []).find((x) => x.uuid === id);
+    if (item) break;
+  }
+  const g = item && item.geo_json && item.geo_json.geometry;
+  if (!g) return { error: "couldn't find this track in your onX account" };
+  const lines = g.type === "MultiLineString" ? g.coordinates : g.type === "LineString" ? [g.coordinates] : [];
+  const pts = lines.flat().filter((c) => Array.isArray(c) && c.length >= 2);
+  if (pts.length < 2) return { error: "this track has no line to forecast" };
+  return { n: item.name || "onX track", u: location.origin + location.pathname, p: encode(pts) };
+
+  function encode(coords) {   // Google encoded polyline, precision 5, from [lon, lat] pairs
+    let out = "", pLat = 0, pLng = 0;
+    const put = (v) => {
+      v = v < 0 ? ~(v << 1) : v << 1;
+      while (v >= 0x20) { out += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; }
+      out += String.fromCharCode(v + 63);
+    };
+    for (const [lng, lat] of coords) {
+      const a = Math.round(lat * 1e5), b = Math.round(lng * 1e5);
+      put(a - pLat); put(b - pLng);
+      pLat = a; pLng = b;
+    }
+    return out;
+  }
 }
 
 // Runs inside the AllTrails page. AllTrails' map view embeds the route as an encoded polyline
