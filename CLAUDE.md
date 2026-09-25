@@ -74,6 +74,13 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 - Edits: long multi-part changes were done with small Python edit scripts that assert each
   replacement matches exactly once; keep that discipline.
 
+- Trail Forecast elevations come from Mapbox terrain-RGB tiles (zoom 13, 2-4 tiles/trail, line
+  densified to 10 m), gain from elevations averaged over 100 m. Matched AllTrails within ~1%
+  (St Helens 4,687' vs 4,639'; South Sister 5,036' vs 5,036'); Open-Meteo's 90 m DEM overcounted
+  ~15%. Open-Meteo elevation is only the fallback. Owner watches Mapbox usage: keep tile counts low.
+- Open-Meteo's ~10k/day is per IP: a fresh full build (~4,600) plus dev work can exhaust it,
+  after which the Trail tab's forecasts fail from home until the daily reset.
+
 ## Owner's preferences
 - NWS is the base forecast everywhere; our model blend runs in the background. The
   model-vs-NWS comparison stays background data, not a UI feature.

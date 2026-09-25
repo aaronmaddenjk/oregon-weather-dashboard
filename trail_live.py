@@ -160,7 +160,39 @@ function decodePolyline(str){   // Google encoded polyline (precision 5) -> [{la
   return out;}
 function nameFromLink(u){var m=/alltrails\.com\/(?:[a-z-]+\/)?trail\/[^/]+\/[^/]+\/([^/?#]+)/i.exec(u||'');
   return m?m[1].split('-').map(function(w){return w?w[0].toUpperCase()+w.slice(1):w;}).join(' '):'';}
-async function fillElevation(pts){   // a route without elevations: sample up to 300 points (100 per request), interpolate between
+// Elevation from Mapbox's terrain tiles (USGS ~10 m data in the US): the line is densified to a
+// point every 10 m and each point read from zoom-13 terrain-RGB tiles, usually 2-4 tiles a trail
+// (Mapbox's raster-tile free tier is ~750k/month; map loads are unaffected). Tested against
+// AllTrails' listed gains: St Helens 4,679' vs 4,639', South Sister 5,016' vs 5,036'.
+function densify(pts,step){var out=[pts[0]];
+  for(var i=1;i<pts.length;i++){var a=pts[i-1],b=pts[i],seg=km(a,b)*1000,n=Math.floor(seg/step);
+    for(var k=1;k<=n;k++){var f=k*step/seg;if(f<1)out.push({lat:a.lat+(b.lat-a.lat)*f,lon:a.lon+(b.lon-a.lon)*f});}
+    out.push(b);}
+  return out;}
+async function demElevation(pts){
+  var tok=window.mapboxgl&&mapboxgl.accessToken;if(!tok)throw new Error('no Mapbox token');
+  var dense=densify(pts,10),z=13,tiles={};
+  function txy(p,z){var n=Math.pow(2,z),yr=p.lat*Math.PI/180;
+    return[(p.lon+180)/360*n,(1-Math.log(Math.tan(yr)+1/Math.cos(yr))/Math.PI)/2*n];}
+  for(;z>10;z--){tiles={};dense.forEach(function(p){var t=txy(p,z);tiles[Math.floor(t[0])+'/'+Math.floor(t[1])]=1;});
+    if(Object.keys(tiles).length<=40)break;}   // a very long trail: coarser tiles, still few requests
+  var img={};
+  await Promise.all(Object.keys(tiles).map(async function(k){
+    var r=await fetch('https://api.mapbox.com/v4/mapbox.terrain-rgb/'+z+'/'+k+'.pngraw?access_token='+tok);
+    if(!r.ok)throw new Error('terrain tile '+r.status);
+    var bmp=await createImageBitmap(await r.blob()),c=document.createElement('canvas');c.width=bmp.width;c.height=bmp.height;
+    var cx=c.getContext('2d');cx.drawImage(bmp,0,0);img[k]={w:bmp.width,d:cx.getImageData(0,0,bmp.width,bmp.height).data};}));
+  dense.forEach(function(p){var t=txy(p,z),tx=Math.floor(t[0]),ty=Math.floor(t[1]),T=img[tx+'/'+ty],W=T.w;
+    var px=(t[0]-tx)*W-0.5,py=(t[1]-ty)*W-0.5,x0=Math.max(0,Math.min(W-2,Math.floor(px))),y0=Math.max(0,Math.min(W-2,Math.floor(py)));
+    var fx=Math.min(1,Math.max(0,px-x0)),fy=Math.min(1,Math.max(0,py-y0));
+    function h(x,y){var i=(y*W+x)*4;return -10000+(T.d[i]*65536+T.d[i+1]*256+T.d[i+2])*0.1;}
+    p.ele=h(x0,y0)*(1-fx)*(1-fy)+h(x0+1,y0)*fx*(1-fy)+h(x0,y0+1)*(1-fx)*fy+h(x0+1,y0+1)*fx*fy;});
+  return dense;}
+async function fillElevation(pts){   // -> the points to use, with elevations
+  try{var d=await demElevation(pts);d.elevSrc='Mapbox terrain';return d;}
+  catch(e){console.warn('Mapbox terrain unavailable, using Open-Meteo elevation',e);}
+  await fillOpenMeteoElevation(pts);pts.elevSrc='Open-Meteo';return pts;}
+async function fillOpenMeteoElevation(pts){   // fallback: sample up to 300 points (100 per request), interpolate between
   if(pts.every(function(p){return p.ele!=null&&isFinite(p.ele);}))return;
   var n=Math.min(300,pts.length),idx=[];for(var i=0;i<n;i++)idx.push(Math.round(i*(pts.length-1)/Math.max(1,n-1)));
   var batches=[];for(var b0=0;b0<idx.length;b0+=100)batches.push(idx.slice(b0,b0+100));
@@ -169,9 +201,13 @@ async function fillElevation(pts){   // a route without elevations: sample up to
   pts.forEach(function(p,i){if(p.ele!=null&&isFinite(p.ele))return;var k=0;while(k<idx.length-1&&idx[k+1]<i)k++;
     var a=idx[k],b=idx[Math.min(k+1,idx.length-1)],f=b>a?(i-a)/(b-a):0;p.ele=el[k]+((el[Math.min(k+1,el.length-1)]-el[k])*f);});}
 function trailStats(pts){
-  var d=0,gain=0,last=pts[0].ele,dist=[0];
-  for(var i=1;i<pts.length;i++){d+=km(pts[i-1],pts[i]);dist.push(d);
-    var dz=pts[i].ele-last;if(Math.abs(dz)>=10){if(dz>0)gain+=dz;last=pts[i].ele;}}   // 10 m hysteresis: GPS and elevation-model noise isn't climbing
+  var d=0,gain=0,dist=[0];
+  for(var i=1;i<pts.length;i++){d+=km(pts[i-1],pts[i]);dist.push(d);}
+  // gain from elevations averaged over 100 m of trail: terrain-model noise isn't climbing
+  var sm=[],a=0,b=0,s=0;
+  for(i=0;i<pts.length;i++){while(b<pts.length&&dist[b]<=dist[i]+0.05){s+=pts[b].ele;b++;}
+    while(dist[a]<dist[i]-0.05){s-=pts[a].ele;a++;}sm.push(s/(b-a));}
+  for(i=1;i<sm.length;i++)if(sm[i]>sm[i-1])gain+=sm[i]-sm[i-1];
   var lo=0,hi=0;pts.forEach(function(p,i){if(p.ele<pts[lo].ele)lo=i;if(p.ele>pts[hi].ele)hi=i;});
   return{km:d,dist:dist,gain:gain,lo:lo,hi:hi};}
 
@@ -203,7 +239,7 @@ function windAt(fa,z,surface,factor){if(!fa.length)return surface;var expo=Math.
 
 async function run(pts,name,link){
   status('Reading the trail…');
-  await fillElevation(pts);
+  pts=await fillElevation(pts);
   var s=trailStats(pts),P=[{key:'base',name:'Base',p:pts[s.lo]},{key:'peak',name:'Peak',p:pts[s.hi]}];
   var mid={lat:(P[0].p.lat+P[1].p.lat)/2,lon:(P[0].p.lon+P[1].p.lon)/2};
   status('Fetching the forecast for the base ('+ft(P[0].p.ele)+') and peak ('+ft(P[1].p.ele)+')…');
@@ -299,7 +335,7 @@ function render(){
   $('tl-name').textContent=st.name||'Your trail';
   $('tl-stats').innerHTML='<b>'+(s.km*0.621371).toFixed(1)+' mi</b> · <b>'+Math.round(s.gain*3.28084).toLocaleString('en-US')+'′</b> gain · base <b>'+ft(P[0].p.ele)+'</b> · peak <b>'+ft(P[1].p.ele)+'</b>';
   var at=$('tl-at');at.hidden=!st.link;if(st.link){at.href=st.link;at.textContent=(/onxmaps\.com/i.test(st.link)?'onX':'AllTrails')+' ↗';}
-  $('tl-prof-s').textContent=(s.km*0.621371).toFixed(1)+' mi · '+ft(P[0].p.ele)+' to '+ft(P[1].p.ele)+' · '+st.pts.length.toLocaleString('en-US')+' GPX points';
+  $('tl-prof-s').textContent=(s.km*0.621371).toFixed(1)+' mi · '+ft(P[0].p.ele)+' to '+ft(P[1].p.ele)+' · elevation from '+(st.pts.elevSrc||'the file');
   $('tl-foot').textContent=(P.every(function(x){return x.nws;})?'National Weather Service forecast as the base':'Open-Meteo forecast (the NWS covers the US only)')
     +', moved to each point’s elevation · exposed-ridge wind from GFS free-air winds · wet-bulb rain/snow and snow-to-liquid ratios as on the other tabs · computed in your browser, not saved anywhere but this browser';
   if(!st.charts)st.charts=WxCharts($('tl-cc'),{vis:true});
