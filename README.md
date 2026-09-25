@@ -109,9 +109,9 @@ emails the result.
 - `chrome-extension/` sends an AllTrails trail straight to that tab. Install:
   Chrome → `chrome://extensions` → turn on Developer mode → Load unpacked →
   pick the `chrome-extension` folder, then pin it. It also works in the onX
-  Backcountry web map: open one of your routes or recorded tracks (My Content →
-  Routes / Tracks) and click it; it reads that route from your onX account with
-  the web map's own login. On any AllTrails trail page, click it: it reads the route the page loaded (in your own session;
+  Backcountry web map: open any onX trail (search or click one on the map), or
+  one of your own routes or recorded tracks (My Content → Routes / Tracks), and
+  click it; it reads the line from onX with the web map's own login. On any AllTrails trail page, click it: it reads the route the page loaded (in your own session;
   if the page only has a static map it fetches the trail's map view) and
   opens `<dashboard>#trail=...`. The dashboard address defaults to
   `http://localhost:8000/` (serve `docs/` there) and can be changed in the

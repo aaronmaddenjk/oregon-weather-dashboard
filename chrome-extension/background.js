@@ -35,13 +35,17 @@ function badge(tabId, text, title) {
   if (title) chrome.action.setTitle({ tabId, title });
 }
 
-// Runs inside the onX Backcountry web map. A saved route opens at /map/route/<id> and a recorded
-// track (or drawn line) at /map/line/<uuid>. Both come from onX's API with the page's own login
-// (the OIDC token the web map keeps in localStorage) plus the app headers it sends.
+// Runs inside the onX Backcountry web map. Three kinds of page:
+//   /map/hike-route/<id> (also bike-, ski-/snow- routes): onX's trail guides, from its GraphQL
+//     "supergraph" (routesConnection → geometry, GeoJSON)
+//   /map/route/<id>: a route you built and saved (/v1/routing/routes, geometry = polyline)
+//   /map/line/<uuid>: a track you recorded, or a line you drew (/v1/markups/tracks or /lines)
+// All use the page's own login (the OIDC token the web map keeps in localStorage) plus the app
+// headers it sends.
 async function extractOnx() {
   const API = "https://api.production.onxmaps.com/v1/";
-  const m = /\/map\/(route|line)\/([^/?#]+)/.exec(location.pathname);
-  if (!m) return { error: "open one of your routes or tracks (My Content → Routes or Tracks), then click again" };
+  const m = /\/map\/([a-z]+-route|route|line)\/([^/?#]+)/.exec(location.pathname);
+  if (!m) return { error: "open a trail, or one of your routes or tracks, then click again" };
   const key = Object.keys(localStorage).find((k) => k.startsWith("oidc.user:"));
   let token = null;
   try { token = key && JSON.parse(localStorage.getItem(key)).access_token; } catch (e) { /* not signed in */ }
@@ -52,7 +56,29 @@ async function extractOnx() {
     if (!r.ok) throw new Error("onX answered " + r.status);
     return r.json();
   };
+  const fromGeoJSON = (g, name) => {
+    const lines = !g ? [] : g.type === "MultiLineString" ? g.coordinates : g.type === "LineString" ? [g.coordinates] : [];
+    const pts = lines.flat().filter((c) => Array.isArray(c) && c.length >= 2);
+    if (pts.length < 2) return { error: "this trail has no line to forecast" };
+    return { n: name, u: location.origin + location.pathname, p: encode(pts) };
+  };
   const [, kind, id] = m;
+
+  if (kind.endsWith("-route")) {   // an onX trail guide
+    const query = "query($id: ID!) { routesConnection(filter: { id: $id }, limit: 1) { edges { node { __typename"
+      + " ... on HikeRoute { name geometry } ... on BikeRoute { name geometry } ... on SnowRoute { name geometry } } } } }";
+    const r = await fetch(API + "supergraph/", {
+      method: "POST", headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({ query, variables: { id } }),
+    });
+    if (!r.ok) throw new Error("onX answered " + r.status);
+    const d = await r.json();
+    const edge = d.data && d.data.routesConnection && d.data.routesConnection.edges[0];
+    if (!edge) return { error: "onX didn't return this trail" + (d.errors ? " (" + d.errors[0].message + ")" : "") };
+    let g = edge.node.geometry;
+    if (typeof g === "string") { try { g = JSON.parse(g); } catch (e) { g = null; } }
+    return fromGeoJSON(g, edge.node.name || "onX trail");
+  }
 
   if (kind === "route") {
     const want = (x) => x.id === id;
@@ -77,10 +103,7 @@ async function extractOnx() {
   }
   const g = item && item.geo_json && item.geo_json.geometry;
   if (!g) return { error: "couldn't find this track in your onX account" };
-  const lines = g.type === "MultiLineString" ? g.coordinates : g.type === "LineString" ? [g.coordinates] : [];
-  const pts = lines.flat().filter((c) => Array.isArray(c) && c.length >= 2);
-  if (pts.length < 2) return { error: "this track has no line to forecast" };
-  return { n: item.name || "onX track", u: location.origin + location.pathname, p: encode(pts) };
+  return fromGeoJSON(g, item.name || "onX track");
 
   function encode(coords) {   // Google encoded polyline, precision 5, from [lon, lat] pairs
     let out = "", pLat = 0, pLng = 0;

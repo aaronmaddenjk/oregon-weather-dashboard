@@ -49,7 +49,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
 - `chrome-extension/`: MV3 extension; on an AllTrails trail page it reads the embedded route
   polyline (`"pointsData":"$xx"` in the Next.js `self.__next_f` stream; falls back to fetching
   `/explore/trail/...`) and opens `<dashboard>#trail={"n","u","p"}`. Also onX Backcountry web map
-  (webmap/backcountry.onxmaps.com): `/map/route/<id>` → `GET api.production.onxmaps.com/v1/routing/
+  (webmap/backcountry.onxmaps.com): onX trail guides `/map/hike-route/<id>` (bike-/ski-/snow- too) →
+  POST `/v1/supergraph/` GraphQL `routesConnection(filter:{id}, limit:1){edges{node{... on HikeRoute
+  {name geometry}}}}` (GeoJSON); your saved routes `/map/route/<id>` → `GET api.production.onxmaps.com/v1/routing/
   routes?excludeSteps=&page[size]=50` (route.geometry = polyline, precision 5); `/map/line/<uuid>`
   (recorded tracks) → `/v1/markups/tracks?limit=500` then `/markups/lines` (geo_json [lon,lat,ele],
   re-encoded). Auth: Bearer access_token from localStorage `oidc.user:*` + headers
