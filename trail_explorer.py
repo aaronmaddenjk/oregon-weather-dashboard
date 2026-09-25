@@ -524,6 +524,10 @@ TRAILS_CSS = r"""
 .ex-add.busy { color:#8A8F9C; pointer-events:none; }
 .ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
 .ex-card.mine { border-top-color:#6B3FA8; }
+.ex-card { position:relative; }
+.ex-x { position:absolute; top:6px; right:6px; width:26px; height:26px; border:0; border-radius:6px; background:none; font-size:18px; line-height:1; color:#8A8F9C; cursor:pointer; }
+.ex-x:hover { background:#F2F3F6; color:#111; }
+.ex-card h3 { padding-right:24px; }
 .ex-card h3 { margin:0; font-size:16px; font-weight:800; color:#111; letter-spacing:-.01em; }
 .ex-card .ex-sub { margin-top:2px; font-size:12px; color:#8A8F9C; }
 .ex-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin:10px 0; }
@@ -623,7 +627,9 @@ window.TrailsLayer=function(map,opt){
     map.addSource('trl-pt',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map.addLayer({id:'trl-pt',type:'circle',source:'trl-pt',layout:{visibility:'none'},
       paint:{'circle-radius':6,'circle-color':'#FE5000','circle-stroke-color':'#fff','circle-stroke-width':2}});
-    map.on('click','trl-hit',function(e){if(on)select(e.features[0].properties.i,false);});
+    // a click on a trail selects it; a click on empty map clears the selection
+    map.on('click',function(e){if(!on)return;var f=map.queryRenderedFeatures(e.point,{layers:['trl-hit']})[0];
+      if(f)select(f.properties.i,false);else deselect();});
     map.on('moveend',function(){if(on)list();});}
   function vis(v){['trl-line','trl-hover','trl-sel-case','trl-sel','trl-hit','trl-pt'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',v?'visible':'none');});}
 
@@ -661,6 +667,10 @@ window.TrailsLayer=function(map,opt){
     if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
     if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
     $('ex-list').innerHTML=html;}
+  function deselect(){if(sel<0)return;sel=-1;
+    ['trl-sel','trl-sel-case'].forEach(function(l){if(map.getLayer(l))map.setFilter(l,['==',['get','i'],-1]);});
+    if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'FeatureCollection',features:[]});
+    if(P){$('ex-card').hidden=true;P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});}}
   function select(i,fly){var t=T[i];if(!t)return;sel=i;
     ['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],i]);});
     if(fly)map.fitBounds([[t.bb[0],t.bb[1]],[t.bb[2],t.bb[3]]],{padding:90,maxZoom:14,pitch:50,duration:900});
@@ -668,7 +678,7 @@ window.TrailsLayer=function(map,opt){
     var uses=t.uses.split('').filter(function(u){return USE[u];}).map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
     if(t.diff)uses+='<span>'+esc(t.diff)+'</span>';
     var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');
-    card.innerHTML='<h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+AG[t.src]+'</div>'+
+    card.innerHTML='<button class="ex-x" type="button" aria-label="Close">×</button><h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+AG[t.src]+'</div>'+
       '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
       '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
       '<div class="ex-prof"></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
@@ -680,6 +690,7 @@ window.TrailsLayer=function(map,opt){
     if(t.src==='mine'&&!(t.prof&&t.prof.length))backfill(t,card);
     card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
     var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
+    card.querySelector('.ex-x').onclick=deselect;
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
     var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
   // ---------- the selected trail's elevation profile, each mile coloured by its average grade ----------
