@@ -356,5 +356,7 @@ def build():
         "frame_hours": FRAME_HOURS, "frame_files": list(frames), "frame_ts": frame_ts,
         "index": _b64("h", index), "temp": _b64("b", temp), "snow": _b64("H", snow), "gust": _b64("B", gust),
         "cloud": _b64("B", cloud),
+        # each cell's ground elevation (m): the Cities map's wash reads every field at ground level
+        "celev": _b64("h", [max(-500, min(5000, round(n.get("elevation") or 0))) for n in nbm]),
     }
     return data, frames

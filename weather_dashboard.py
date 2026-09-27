@@ -50,6 +50,25 @@ import trail_live
 import trail_explorer
 from snow_model import new_snow_in, rh_from_dew
 
+
+def feels_like(t_f, wind_mph, dew_f=None):
+    """'Feels like' (°F) the way the NWS gives it: wind chill at 50°F and below with wind over
+    3 mph, heat index at 80°F and up, otherwise the air temperature."""
+    if t_f is None:
+        return None
+    v = wind_mph or 0
+    if t_f <= 50 and v > 3:
+        return 35.74 + 0.6215 * t_f - 35.75 * v ** 0.16 + 0.4275 * t_f * v ** 0.16
+    if t_f >= 80 and dew_f is not None:
+        rh = rh_from_dew(t_f, dew_f)
+        hi = 0.5 * (t_f + 61 + (t_f - 68) * 1.2 + rh * 0.094)   # the NWS simple form first...
+        if hi >= 80:   # ...then the Rothfusz regression, as the NWS does
+            hi = (-42.379 + 2.04901523 * t_f + 10.14333127 * rh - 0.22475541 * t_f * rh - 0.00683783 * t_f ** 2
+                  - 0.05481717 * rh ** 2 + 0.00122874 * t_f ** 2 * rh + 0.00085282 * t_f * rh ** 2
+                  - 0.00000199 * t_f ** 2 * rh ** 2)
+        return max(t_f, hi)
+    return t_f
+
 load_dotenv()  # no-op in CI; GitHub Actions injects env vars directly
 
 MAPBOX_TOKEN = os.environ["MAPBOX_TOKEN"]
@@ -377,6 +396,39 @@ function pick(c,a){return [c[0],c[1],c[2],c.length>3?c[3]:a];}
 var LUT={};
 function lut(l){if(LUT[l])return LUT[l];var r=RAMP[l],n=Math.round((r.hi-r.lo)/r.step)+1,t=new Uint8ClampedArray(n*4);
   for(var i=0;i<n;i++){var c=mix(r.S,r.lo+i*r.step,r.a);t[i*4]=c[0];t[i*4+1]=c[1];t[i*4+2]=c[2];t[i*4+3]=Math.round(c[3]*255);}return LUT[l]=t;}
+// ---- RegionWash(kind): a soft, low-resolution picture of the grid at ground level, for the Cities
+// map (one pixel per 25 km cell, stretched and smoothed by the map). kind: 'temp' (now), 'wind'
+// (gusts now), 'rain' (next 24 h). Returns {url, coords, title, ticks, bar} or null. ----
+var CEL=R.celev?dec(R.celev,Int16Array):null,WFR={},WNF=R.frame_hours.length;
+var RAIN_S=[[0,[120,180,230,0]],[0.01,[150,200,240,0.25]],[0.1,[90,160,225,0.5]],[0.25,[50,120,210,0.62]],[0.5,[40,80,190,0.7]],[1,[90,50,170,0.76]],[2,[130,40,140,0.8]]];
+function washFrame(d){if(!WFR[d])WFR[d]=fetch(R.frame_files[d]).then(function(r){return r.json();}).then(function(j){
+  return{t:dec(j.t,Int8Array),g:dec(j.g,Uint8Array),p:j.p?dec(j.p,Uint16Array):null};}).catch(function(){delete WFR[d];return null;});return WFR[d];}
+window.RegionWash=async function(kind){
+  if(!CEL)return null;
+  var now=Date.now(),d0=-1,f0=-1;   // the 3-hourly frame nearest now
+  for(var d=0;d<D&&d0<0;d++)for(var f=0;f<WNF;f++)if(R.frame_ts[d][f]>=now-90*60000){d0=d;f0=f;break;}
+  if(d0<0)return null;
+  var fr=await washFrame(d0);if(!fr)return null;
+  var rain=null;
+  if(kind==='rain'){rain=new Float32Array(IDX.length);var need=8,d1=d0,f1=f0,got=[];   // the next 8 frames = 24 h
+    while(need>0&&d1<D){var o=await washFrame(d1);if(!o||!o.p)break;got.push({o:o,f:f1});need--;f1++;if(f1>=WNF){f1=0;d1++;}}
+    got.forEach(function(x){for(var c=0;c<rain.length;c++)rain[c]+=x.o.p[c*WNF+x.f]/100;});}
+  var cv=document.createElement('canvas');cv.width=R.nx;cv.height=R.ny;
+  var g=cv.getContext('2d'),im=g.createImageData(R.nx,R.ny),px=im.data;
+  for(var gi=0;gi<R.nx*R.ny;gi++){var c=IDX[gi];if(c<0)continue;
+    var fz=Math.max(0,Math.min(L-1,CEL[c]/LS)),i0=fz|0,i1=i0<L-1?i0+1:i0,t=fz-i0,b=(c*WNF+f0)*L,k;
+    if(kind==='rain')k=mix(RAIN_S,rain[c],1);
+    else if(kind==='wind')k=mix(RAMP.gust.S,fr.g[b+i0]+(fr.g[b+i1]-fr.g[b+i0])*t,1);
+    else k=mix(RAMP.temp.S,fr.t[b+i0]+(fr.t[b+i1]-fr.t[b+i0])*t,0.55);
+    px[gi*4]=k[0];px[gi*4+1]=k[1];px[gi*4+2]=k[2];px[gi*4+3]=Math.round(k[3]*255);}
+  g.putImageData(im,0,0);
+  function bar(S,lo,hi){var st=[];for(var i=0;i<=10;i++){var c2=mix(S,lo+(hi-lo)*i/10,0.9);st.push('rgba('+c2.slice(0,3).map(Math.round).join(',')+','+Math.max(0.15,c2[3])+') '+i*10+'%');}return 'linear-gradient(90deg,'+st.join(',')+')';}
+  var L_={temp:{title:'Temperature now',ticks:['20°','40°','60°','80°F'],bar:bar(RAMP.temp.S,20,80)},
+          wind:{title:'Wind gusts now',ticks:['0','20','40','60 mph'],bar:bar(RAMP.gust.S,0,60)},
+          rain:{title:'Rain, next 24 h',ticks:['0','0.25','0.5','1″+'],bar:bar(RAIN_S,0,1)}}[kind];
+  return{url:cv.toDataURL(),coords:CLD_COORDS_W,title:L_.title,ticks:L_.ticks,bar:L_.bar,t:R.frame_ts[d0][f0]};};
+var CLD_COORDS_W=[[R.lon0-R.dlon/2,R.lat0+R.dlat/2],[R.lon0+(R.nx-0.5)*R.dlon,R.lat0+R.dlat/2],
+                  [R.lon0+(R.nx-0.5)*R.dlon,R.lat0-(R.ny-0.5)*R.dlat],[R.lon0-R.dlon/2,R.lat0-(R.ny-0.5)*R.dlat]];
 // RegionLayers(opt): a map with the Map tab's layers and controls. opt = {wrap (holds the
 // .lyr-ctl / .lyr-leg / .rmap-tip / .rmap-busy controls), container, bounds, fit, maxBounds,
 // onLoad(map)}. Used by the Map tab and the Trail Forecast tab; the decoded data above is shared.
@@ -1012,6 +1064,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             if len(h24)<24:   # the next 24 hours, hour by hour (the Cities charts)
                 ty="" if p_h<0.005 else ("snow" if f_h>=0.8 else "mix" if f_h>0.2 else "rain")
                 h24.append({"t":dt.strftime("%a %I%p").replace(" 0"," "),"temp":round(t_h or 0),
+                            "feels":round(feels_like(t_h,h["wind_speed_10m"][i],d_h) or t_h or 0),
                             "wind":round(h["wind_speed_10m"][i] or 0),"gust":round(h["wind_gusts_10m"][i] or 0),
                             "sky":round(h["cloud_cover"][i] or 0),"p":round(p_h,3),"s":round(s_h,2),"ty":ty})
             if day_num!=1 and (dt.hour-2)%3!=0:continue
@@ -1222,8 +1275,12 @@ function chart(title,sum,keys,d,W,PH,o){
   d.forEach(function(h,i){
     var cx=L+bw*i+bw/2,x=cx-w/2,v=o.val(h),top=Y(v);
     s+='<path d="'+bar(x,top,w,y0-top,4)+'" fill="'+o.col(h)+'"/>';
-    if(o.whisker){var g=Y(o.whisker(h));if(g<top-1)s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#5A5F6B" stroke-width="1.25"/><line x1="'+(cx-3)+'" x2="'+(cx+3)+'" y1="'+g+'" y2="'+g+'" stroke="#5A5F6B" stroke-width="1.25" stroke-linecap="round"/>';}
-    if(o.label&&o.label(h,i))s+='<text x="'+cx+'" y="'+((o.whisker?Y(o.whisker(h)):top)-4)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+o.label(h,i)+'</text>';
+    // whisker from the bar's top to a second value: up (gusts) or down into the bar (feels-like below
+    // the temperature), with a cap and a white casing so it reads over any bar colour
+    var wv=o.whisker?o.whisker(h):null,g=wv==null?top:Y(wv);
+    if(Math.abs(g-top)>=1)s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#fff" stroke-width="3" stroke-opacity=".7"/>'
+      +'<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.25"/><line x1="'+(cx-3)+'" x2="'+(cx+3)+'" y1="'+g+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.5" stroke-linecap="round"/>';
+    if(o.label&&o.label(h,i))s+='<text x="'+cx+'" y="'+(Math.min(top,g)-4)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+o.label(h,i)+'</text>';
     if(i%3===0)s+='<text x="'+cx+'" y="'+xl+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';
   });
   var H=y0+B;
@@ -1259,13 +1316,18 @@ window.WxCharts=function(panel,opt){
     var k=wet?(snowy?0.8:0.5):0,extra=wet?(snowy?28:16):0;   // the running-total strips' share of the height
     var PH=matchMedia('(max-width:1000px)').matches?64:Math.max(50,Math.min(110,Math.floor((box.clientHeight-4*(20+PT_+B)-30-extra)/(4+k))));
     var gmax=Math.max.apply(null,d.map(function(h){return h.gust;})),wmax=Math.max.apply(null,d.map(function(h){return h.wind;})),wt=nice(Math.max(10,gmax)/2);
-    out+=chart('Wind','Max '+wmax+' mph \u00b7 gusts '+gmax,[['#368994','Wind'],['#5A5F6B','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
+    out+=chart('Wind','Max '+wmax+' mph \u00b7 gusts '+gmax,[['#368994','Wind'],['#3F4450','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
       val:function(h){return h.wind;},col:function(){return'#368994';},whisker:function(h){return h.gust;}});
+    // temperature bars, with a whisker to "feels like" (wind chill / heat index) where it differs
     var tv=d.map(function(h){return h.temp;}),tx=Math.max.apply(null,tv),tn=Math.min.apply(null,tv);
-    var flo=Math.floor((tn-6)/10)*10,fhi=Math.ceil((tx+3)/10)*10,ix=tv.indexOf(tx),in_=tv.indexOf(tn);
+    var fv=d.map(function(h){return h.feels==null?h.temp:h.feels;}),fx=Math.max.apply(null,fv),fn=Math.min.apply(null,fv);
+    var feel=fv.some(function(f,i){return Math.abs(f-tv[i])>=1;});
+    var flo=Math.floor((Math.min(tn,fn)-6)/10)*10,fhi=Math.ceil((Math.max(tx,fx)+3)/10)*10,ix=tv.indexOf(tx),in_=tv.indexOf(tn);
     var tt=[flo];for(var t=flo+10;t<fhi;t+=10)if((fhi-flo)<=40||(t-flo)%20===0)tt.push(t);tt.push(fhi);
-    out+=chart('Temperature','High '+tx+'\u00b0 \u00b7 low '+tn+'\u00b0',[],d,W,PH,{lo:flo,hi:fhi,ticks:tt,fmt:function(v){return v+'\u00b0';},
-      val:function(h){return h.temp;},col:function(h){return tcol(h.temp);},label:function(h,i){return(i===ix||i===in_)?h.temp+'\u00b0':'';}});
+    var tsum='High '+tx+'\u00b0 \u00b7 low '+tn+'\u00b0'+(fn<=tn-1?' \u00b7 feels '+fn+'\u00b0':fx>=tx+1?' \u00b7 feels '+fx+'\u00b0':'');
+    out+=chart('Temperature',tsum,feel?[['#3F4450','Feels like',1]]:[],d,W,PH,{lo:flo,hi:fhi,ticks:tt,fmt:function(v){return v+'\u00b0';},
+      val:function(h){return h.temp;},col:function(h){return tcol(h.temp);},label:function(h,i){return(i===ix||i===in_)?h.temp+'\u00b0':'';},
+      whisker:feel?function(h){return h.feels==null?h.temp:h.feels;}:null});
     if(opt.vis){   // visibility, 0-10+ mi: short bars are the trouble, so those carry the colour
       var vv=d.map(function(h){return h.vis==null?10:Math.min(10,h.vis);}),vmin=Math.min.apply(null,vv);
       out+=chart('Visibility',vmin>=10?'10+ mi all day':'Lowest '+(vmin<1?vmin.toFixed(1):Math.round(vmin))+' mi',[],d,W,PH,{lo:0,hi:10,ticks:[0,5,10],fmt:function(v){return v?v+(v===10?'+':''):'0';},
@@ -1291,7 +1353,7 @@ window.WxCharts=function(panel,opt){
     if(i<0||i>=d.length){hide();return;}
     box.querySelectorAll('.cc-band').forEach(function(b){b.setAttribute('x',L+bw*i);b.setAttribute('visibility','visible');});
     var h=d[i],pl=h.ty?'<i style="background:'+PT[h.ty]+'"></i>'+PTN[h.ty]+' '+inch(h.p)+'\u2033'+(h.s>=0.05?' ('+h.s.toFixed(1)+'\u2033 snow)':''):'No precipitation';
-    tip.innerHTML='<b>'+when(h.t)+'</b><br>'+h.temp+'\u00b0F \u00b7 '+(opt.vis&&h.vis!=null?'visibility '+(h.vis>=10?'10+':h.vis<1?h.vis.toFixed(1):Math.round(h.vis))+' mi':'cloud '+h.sky+'%')+'<br>Wind '+h.wind+' mph, gusts '+h.gust+'<br>'+pl
+    tip.innerHTML='<b>'+when(h.t)+'</b><br>'+h.temp+'\u00b0F'+(h.feels!=null&&Math.abs(h.feels-h.temp)>=1?' (feels '+h.feels+'\u00b0)':'')+' \u00b7 '+(opt.vis&&h.vis!=null?'visibility '+(h.vis>=10?'10+':h.vis<1?h.vis.toFixed(1):Math.round(h.vis))+' mi':'cloud '+h.sky+'%')+'<br>Wind '+h.wind+' mph, gusts '+h.gust+'<br>'+pl
       +(cum[i]>=0.005?'<br><i style="background:'+TOT+';height:2px"></i>So far '+inch(cum[i])+'\u2033 water'+(cumS[i]>=0.05?' \u00b7 '+cumS[i].toFixed(1)+'\u2033 snow':''):'');
     tip.hidden=false;
     var pr=panel.getBoundingClientRect(),x=ev.clientX-pr.left,y=ev.clientY-pr.top,tw=tip.offsetWidth;
@@ -1406,7 +1468,10 @@ def build_cities_page():
         "name": s["name"], "lat": s["lat"], "lon": s["lon"],
         "hi": round(s["hi"]), "lo": round(s["lo"]), "wind": round(s["wind"]),
         "gust": round(s["gust"]), "precip": s["precip"], "clouds": round(s["clouds"]),
-        "icon": s["icon"], "rain": round(s["rain"], 2)
+        "icon": s["icon"], "rain": round(s["rain"], 2),
+        # right now (the first hour ahead): the pills show "feels like"
+        "feels": (s.get("h24") or [{}])[0].get("feels"), "now": (s.get("h24") or [{}])[0].get("temp"),
+        "wnow": (s.get("h24") or [{}])[0].get("wind"),
     } for s in summaries])
 
     dashboard_css = (
@@ -1447,12 +1512,30 @@ def build_cities_page():
         ".cc-tip b { font-weight:700; }\n"
         ".cc-tip i { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; }\n"
         "@media (max-width:1000px) { .dashboard-layout { flex-direction:column; } #citymap { height:440px; } .cc-charts { flex:none; overflow:visible; } }\n"
-        ".weather-marker { background:#fff; border-radius:6px; padding:3px 8px; font-size:11px; box-shadow:0 2px 6px rgba(0,0,0,0.2); cursor:pointer; white-space:nowrap; border:1px solid #eee; }\n"
-        ".weather-marker .wm-name { font-weight:700; color:#111; font-size:12px; }\n"
-        ".weather-marker .wm-info { display:flex; gap:6px; align-items:center; margin-top:1px; }\n"
-        ".weather-marker .wm-temp { font-weight:700; font-size:13px; color:#fff; border-radius:3px; padding:1px 4px; }\n"
-        ".weather-marker .wm-wind { color:#368994; font-size:10px; }\n"
-        ".weather-marker .wm-precip { color:#4FB1BE; font-size:10px; }\n"
+        ".weather-marker { display:flex; align-items:center; gap:4px; background:rgba(255,255,255,.94); border-radius:999px; padding:2px 3px 2px 7px; font-size:11px; box-shadow:0 1px 4px rgba(0,0,0,0.22); cursor:pointer; white-space:nowrap; }\n"
+        ".weather-marker::before { content:''; width:6px; height:6px; border-radius:50%; background:#111; box-shadow:0 0 0 2px #fff; margin:0 1px 0 -3px; }\n"
+        ".weather-marker.west { flex-direction:row-reverse; padding:2px 7px 2px 3px; }\n"
+        ".weather-marker.west::before { margin:0 -3px 0 1px; }\n"
+        ".weather-marker.west.sel { padding-left:6px; }\n"
+        ".weather-marker .wm-ic { font-size:12px; line-height:1; }\n"
+        ".weather-marker .wm-name { font-weight:700; color:#111; font-size:11.5px; }\n"
+        ".weather-marker .wm-temp { font-weight:700; font-size:11.5px; color:#fff; border-radius:999px; padding:1px 6px; font-variant-numeric:tabular-nums; }\n"
+        ".weather-marker .wm-more { display:none; color:#5A5F6B; font-size:10.5px; padding-right:5px; font-variant-numeric:tabular-nums; }\n"
+        ".weather-marker.sel { z-index:3; padding-right:6px; box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".weather-marker.sel { flex-wrap:wrap; border-radius:12px; max-width:190px; }\n"
+        ".weather-marker.sel .wm-more { display:block; flex-basis:100%; white-space:normal; line-height:1.35; padding:1px 4px 3px 9px; }\n"
+        ".weather-marker.west.sel .wm-more { padding:1px 9px 3px 4px; text-align:right; }\n"
+        ".weather-marker:hover { z-index:4; }\n"
+        ".city-mapbox { position:relative; }\n"
+        ".city-wash { position:absolute; top:10px; left:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
+        ".city-wash[hidden] { display:none; }\n"
+        ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
+        ".city-wash button.on { background:#111; color:#fff; }\n"
+        ".city-wash-leg { position:absolute; left:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:#333; }\n"
+        ".city-wash-leg:empty { display:none; }\n"
+        ".city-wash-leg i { display:block; height:7px; border-radius:4px; margin:4px 0 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }\n"
+        ".city-wash-leg span { display:flex; justify-content:space-between; color:#8A8F9C; }\n"
+        ".city-wash-leg em { font-style:normal; }\n"
     ) + detail_css
 
     map_js = (
@@ -1467,27 +1550,31 @@ def build_cities_page():
         "  map.addSource('mapbox-dem', {type:'raster-dem', url:'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize:512});\n"
         "  map.setTerrain({source:'mapbox-dem', exaggeration:1.0});\n"
         "  var tc=function(h){if(h>=80)return'#ED1E29';if(h>=70)return'#FAA21B';if(h>=50)return'#6BBF68';if(h>=35)return'#4FB1BE';return'#368994';};\n"
+        "  // a slim pill per city: name + what it feels like right now; the selected one opens up\n"
         "  markers.forEach(function(m,i){\n"
-        "    var el=document.createElement('div');el.className='weather-marker';\n"
-        "    el.innerHTML='<div class=\"wm-name\">'+m.icon+' '+m.name+'</div>'\n"
-        "      +'<div class=\"wm-info\"><span class=\"wm-temp\" style=\"background:'+tc(m.hi)+'\">'+m.hi+'\u00b0</span>'\n"
-        "      +'<span class=\"wm-wind\">\U0001F32C'+m.wind+'</span>'\n"
-        "      +'<span class=\"wm-precip\">\u2614'+m.precip+'%</span></div>';\n"
+        "    var f=m.feels==null?m.hi:m.feels,el=document.createElement('div');el.className='weather-marker';\n"
+        "    el.title=m.name+': feels like '+f+'\u00b0';\n"
+        "    el.innerHTML='<span class=\"wm-ic\">'+m.icon+'</span><span class=\"wm-name\">'+m.name+'</span>'\n"
+        "      +'<span class=\"wm-temp\" style=\"background:'+tc(f)+'\">'+f+'\u00b0</span>'\n"
+        "      +'<span class=\"wm-more\">'+(m.now!=null&&m.now!==f?m.now+'\u00b0 air \u00b7 ':'')+'high '+m.hi+'\u00b0 \u00b7 wind '+(m.wnow!=null?m.wnow:m.wind)+' mph \u00b7 rain '+m.precip+'%</span>';\n"
         "    el.addEventListener('click',function(){selectCity(i);});\n"
         "    window.cityMarkerEls[i]=el;\n"
-        "    var popup=new mapboxgl.Popup({closeButton:false,closeOnClick:false,offset:15});\n"
-        "    el.addEventListener('mouseenter',function(){\n"
-        "      var h='<div class=\"city-popup\"><div class=\"pn\">'+m.name+'</div>'\n"
-        "        +'<div class=\"pr\"><span class=\"pt\">'+m.hi+'\u00b0/'+m.lo+'\u00b0</span>'\n"
-        "        +'<span class=\"pw\">\U0001F32C '+m.wind+'mph ('+m.gust+')</span>'\n"
-        "        +'<span class=\"pp\">\u2614 '+m.precip+'%</span>'\n"
-        "        +'<span class=\"pi\">'+m.icon+'</span></div></div>';\n"
-        "      popup.setLngLat([m.lon,m.lat]).setHTML(h).addTo(map);\n"
-        "    });\n"
-        "    el.addEventListener('mouseleave',function(){popup.remove();});\n"
-        "    new mapboxgl.Marker(el).setLngLat([m.lon,m.lat]).addTo(map);\n"
+        "    // Portland sits between Sandy and the coast towns: its pill opens to the west, into open space\n"
+        "    var west=m.name==='Portland';if(west)el.classList.add('west');\n"
+        "    new mapboxgl.Marker({element:el,anchor:west?'right':'left',offset:[west?6:-6,0]}).setLngLat([m.lon,m.lat]).addTo(map);\n"
         "  });\n"
         "  selectCity(undefined,true);\n"
+        "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
+        "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
+        "  var ctl=document.getElementById('city-wash'),leg=document.getElementById('city-wash-leg');\n"
+        "  function wash(kind){if(!window.RegionWash)return;window.RegionWash(kind).then(function(w){if(!w){ctl.hidden=true;return;}\n"
+        "    if(map.getSource('wash'))map.getSource('wash').updateImage({url:w.url,coordinates:w.coords});\n"
+        "    else{map.addSource('wash',{type:'image',url:w.url,coordinates:w.coords});\n"
+        "      map.addLayer({id:'wash',type:'raster',source:'wash',paint:{'raster-opacity':0.8,'raster-resampling':'linear','raster-fade-duration':0}},sym);}\n"
+        "    leg.innerHTML='<b>'+w.title+'</b><i style=\"background:'+w.bar+'\"></i><span>'+w.ticks.map(function(t){return '<em>'+t+'</em>';}).join('')+'</span>';\n"
+        "    ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});});}\n"
+        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b)wash(b.dataset.w);});\n"
+        "  wash('temp');\n"
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)
 
@@ -1511,8 +1598,11 @@ def build_cities_page():
     full_html = '<html><head><link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"><script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script><style>' + dashboard_css + '</style></head><body>'
     opts = ''.join(f'<option value="{ci}">{html.escape(c["name"])}</option>' for ci, c in enumerate(CITIES))
     full_html += '<div class="dashboard-layout">'
-    full_html += '<div class="map-panel"><div class="map-wrap"><div id="citymap"></div>'
-    full_html += '<div class="legend">Click a city marker for its next 24 hours \u00b7 National Weather Service forecast \u00b7 ECMWF cloud layers \u00b7 Open-Meteo AQI</div>'
+    full_html += ('<div class="map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
+                  '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
+                  '<button data-w="rain">Rain</button><button data-w="wind">Wind</button></div>'
+                  '<div class="city-wash-leg" id="city-wash-leg"></div></div>')
+    full_html += '<div class="legend">Click a city for its next 24 hours \u00b7 pills show what it feels like now (wind chill / heat index) \u00b7 shading: the Map tab\u2019s forecast at ground level \u00b7 National Weather Service forecast</div>'
     full_html += '</div></div>'
     full_html += ('<div class="cc-panel" id="city-cc"><div class="cc-head"><div><div class="cc-kicker">Next 24 hours</div>'
                   '<label class="cc-pick"><span id="cc-name">' + html.escape(CITIES[0]["name"]) + '</span>'
@@ -2478,6 +2568,7 @@ def build_ski_page():
                 ty = "" if p_h < 0.005 else ("snow" if f_h >= 0.8 else "mix" if f_h > 0.2 else "rain")
                 vm = meters_to_miles(h.get("visibility", [None] * n)[i])
                 next24.append({"t": dt.strftime("%a %I%p").replace(" 0", " "), "temp": round(t_h or 0),
+                               "feels": round(feels_like(t_h, h["wind_speed_10m"][i], d_h) or t_h or 0),
                                "wind": round(h["wind_speed_10m"][i] or 0), "gust": round(h["wind_gusts_10m"][i] or 0),
                                "sky": round(h["cloud_cover"][i] or 0), "p": round(p_h, 3), "s": round(s_h, 2), "ty": ty,
                                "vis": None if vm is None else round(vm, 2)})
