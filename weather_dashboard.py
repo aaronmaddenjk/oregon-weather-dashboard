@@ -48,7 +48,37 @@ import webcams
 import snowpack
 import trail_live
 import trail_explorer
+import tides
 from snow_model import new_snow_in, rh_from_dew
+
+
+def sun_times(lat, lon, day, tz):
+    """(sunrise, sunset) as local datetimes for a date, NOAA's solar equations (~1 min)."""
+    n = day.timetuple().tm_yday
+    g = 2 * math.pi / 365 * (n - 1)
+    eqt = 229.18 * (0.000075 + 0.001868 * math.cos(g) - 0.032077 * math.sin(g)
+                    - 0.014615 * math.cos(2 * g) - 0.040849 * math.sin(2 * g))
+    dec = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g) - 0.006758 * math.cos(2 * g)
+           + 0.000907 * math.sin(2 * g) - 0.002697 * math.cos(3 * g) + 0.00148 * math.sin(3 * g))
+    la = math.radians(lat)
+    ha = math.degrees(math.acos(math.cos(math.radians(90.833)) / (math.cos(la) * math.cos(dec)) - math.tan(la) * math.tan(dec)))
+    midnight = datetime(day.year, day.month, day.day, tzinfo=ZoneInfo("UTC"))
+    rise = midnight + timedelta(minutes=720 - 4 * (lon + ha) - eqt)
+    sset = midnight + timedelta(minutes=720 - 4 * (lon - ha) - eqt)
+    return rise.astimezone(ZoneInfo(tz)), sset.astimezone(ZoneInfo(tz))
+
+
+def moon_phase(when):
+    """(name, emoji, illuminated fraction) from the mean synodic month."""
+    days = (when.astimezone(ZoneInfo("UTC")) - datetime(2000, 1, 6, 18, 14, tzinfo=ZoneInfo("UTC"))).total_seconds() / 86400
+    age = days % 29.530588
+    frac = (1 - math.cos(2 * math.pi * age / 29.530588)) / 2
+    names = [(1.85, "New moon", "\U0001F311"), (5.54, "Waxing crescent", "\U0001F312"), (9.23, "First quarter", "\U0001F313"),
+             (12.92, "Waxing gibbous", "\U0001F314"), (16.61, "Full moon", "\U0001F315"), (20.30, "Waning gibbous", "\U0001F316"),
+             (23.99, "Last quarter", "\U0001F317"), (27.68, "Waning crescent", "\U0001F318"), (99, "New moon", "\U0001F311")]
+    for lim, name, em in names:
+        if age < lim:
+            return name, em, frac
 
 
 def feels_like(t_f, wind_mph, dew_f=None):
@@ -1429,10 +1459,17 @@ window.WxCams=function(root){
 
 
 CITY_JS = r"""
-var H24=__H24__, cityMarkerEls=window.cityMarkerEls=[], ccSel=0, charts=WxCharts(document.getElementById('city-cc'));
-// the chosen city: its charts, its marker, and its 6-day forecast moved to the top of the list
+var H24=__H24__, SUN=__SUN__, MOON=__MOON__, NAMES=__CITYNAMES__, cityMarkerEls=window.cityMarkerEls=[], ccSel=0, charts=WxCharts(document.getElementById('city-cc'));
+// the page header: the selected city's sunrise, sunset and daylight, and the moon
+function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||!s)return;
+  el.innerHTML='<span class="cs-city">'+NAMES[i]+'</span>'
+    +'<span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 5v3M5.6 9.6l2 2M18.4 9.6l-2 2" fill="none" stroke="#E8A317" stroke-width="1.8" stroke-linecap="round"/></svg>Sunrise <b>'+s.rise+'</b></span>'
+    +'<span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 12V7M9.5 9.5 12 12l2.5-2.5" fill="none" stroke="#D9580F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sunset <b>'+s.set+'</b></span>'
+    +'<span>Daylight <b>'+s.len+'</b> <em>'+(s.delta<0?'−'+(-s.delta):'+'+s.delta)+' min tomorrow</em></span>'
+    +'<span class="cs-moon">'+MOON.emoji+' '+MOON.name+' <em>'+MOON.pct+'% lit</em></span>';}
+// the chosen city: its charts, its marker, its sun times, and its 6-day forecast moved to the top of the list
 window.selectCity=function(i,init){
-  if(i===undefined)i=ccSel;ccSel=i;
+  if(i===undefined)i=ccSel;ccSel=i;sunLine(i);
   var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;}
   cityMarkerEls.forEach(function(el,j){el.classList.toggle('sel',j===i);});
   charts.set(H24[i]);
@@ -1522,6 +1559,25 @@ def build_cities_page():
         ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
         ".weather-marker:hover { z-index:4; }\n"
         ".city-mapbox { position:relative; }\n"
+        ".ph-split { display:flex; justify-content:space-between; align-items:flex-end; gap:12px 24px; flex-wrap:wrap; }\n"
+        ".city-sun { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; font-size:12.5px; color:#5A5F6B; font-variant-numeric:tabular-nums; }\n"
+        ".city-sun span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }\n"
+        ".city-sun b { color:#111; }\n"
+        ".city-sun em { font-style:normal; color:#9A9FAB; }\n"
+        ".city-sun svg { width:17px; height:17px; }\n"
+        ".city-sun .cs-city { font-weight:700; color:#111; font-size:12px; letter-spacing:.02em; }\n"
+        ".tide-box { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px 14px 12px; margin:10px 0 6px; }\n"
+        ".tide-h { font-size:13px; font-weight:700; color:#111; margin-bottom:8px; }\n"
+        ".tide-h span { font-weight:400; font-size:11.5px; color:#8A8F9C; margin-left:6px; }\n"
+        ".tide-h i.minus { font-style:normal; color:#0B7A87; font-weight:700; }\n"
+        ".tide-days { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }\n"
+        ".tide-day { display:flex; flex-direction:column; gap:2px; font-size:12px; color:#3F4450; font-variant-numeric:tabular-nums; }\n"
+        ".tide-day b { font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#111; margin-bottom:2px; }\n"
+        ".tide-day em { font-style:normal; color:#8A8F9C; }\n"
+        ".tide-day .th { color:#1F3A52; }\n"
+        ".tide-day .tl { color:#5A5F6B; }\n"
+        ".tide-day .minus, .tide-day .minus em { color:#0B7A87; font-weight:700; }\n"
+        "@media (max-width:760px) { .tide-days { grid-template-columns:repeat(3,minmax(0,1fr)); } }\n"
         ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
         ".city-wash[hidden] { display:none; }\n"
         ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
@@ -1577,6 +1633,42 @@ def build_cities_page():
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)
 
+    # sunrise / sunset / daylight for each city (the page header follows the selected city), and the moon
+    tzname = "America/Los_Angeles"
+    today = datetime.now(ZoneInfo(tzname)).date()
+    def hm(dt): return dt.strftime("%I:%M %p").lstrip("0").replace(" AM", " am").replace(" PM", " pm")
+    sun = []
+    for c in CITIES:
+        r0, s0 = sun_times(c["lat"], c["lon"], today, tzname)
+        r1, s1 = sun_times(c["lat"], c["lon"], today + timedelta(days=1), tzname)
+        day0, day1 = (s0 - r0).total_seconds() / 60, (s1 - r1).total_seconds() / 60
+        sun.append({"rise": hm(r0), "set": hm(s0), "len": f"{int(day0 // 60)}h {int(day0 % 60)}m",
+                    "delta": round(day1 - day0)})
+    mname, memoji, mfrac = moon_phase(datetime.now(ZoneInfo(tzname)))
+    moon = {"name": mname, "emoji": memoji, "pct": round(mfrac * 100)}
+
+    # tides for the coastal towns: highs and lows for the six forecast days
+    def tide_block(city):
+        ev = tides.hilo(city["name"], today, days=6)
+        if not ev:
+            return ""
+        by_day = OrderedDict()
+        for k in range(6):
+            by_day[today + timedelta(days=k)] = []
+        for e in ev:
+            if e["t"].date() in by_day:
+                by_day[e["t"].date()].append(e)
+        cols = ""
+        for d, es in by_day.items():
+            rows = "".join(
+                f'<span class="{"th" if e["hi"] else "tl"}{" minus" if not e["hi"] and e["ft"] < 0 else ""}">'
+                f'{"▲" if e["hi"] else "▼"} {e["t"].strftime("%I:%M%p").lstrip("0").lower()[:-1]}'
+                f' <em>{e["ft"]:.1f}′</em></span>'.replace("<em>-", "<em>−") for e in es)
+            cols += f'<div class="tide-day"><b>{d.strftime("%a %d").replace(" 0", " ")}</b>{rows}</div>'
+        return ('<div class="tide-box"><div class="tide-h">Tides <span>NOAA · ' + html.escape(tides.station_name(city["name"]))
+                + ' · feet above mean lower low water · <i class="minus">minus tides</i> are the best for tide-pooling</span></div>'
+                '<div class="tide-days">' + cols + '</div></div>')
+
     detail_sections = ""
     for ci, (city, body, sm) in enumerate(zip(CITIES, detail_bodies, summaries)):
         temps = f'<b>{sm["hi"]:.0f}°</b> / {sm["lo"]:.0f}°' if "hi" in sm else ''
@@ -1591,7 +1683,7 @@ def build_cities_page():
             f'<span class="ch-meta">{elev}{city["lat"]:.4f}, {city["lon"]:.4f}</span>'
             '<svg class="ch-chev" aria-hidden="true"><use href="#ri-chev"/></svg>'
             '</div>')
-        detail_sections += '<div id="city_body_' + str(ci) + '" class="city-detail-body">' + body + '</div>'
+        detail_sections += '<div id="city_body_' + str(ci) + '" class="city-detail-body">' + body + tide_block(city) + '</div>'
         detail_sections += '</div>'
 
     full_html = '<html><head><link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"><script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script><style>' + dashboard_css + '</style></head><body>'
@@ -1611,7 +1703,9 @@ def build_cities_page():
                   '<div class="cc-charts"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
     full_html += '<div class="detail-list">' + detail_sections + '</div>'
-    full_html += '<script>' + CITY_JS.replace("__H24__", json.dumps([s.get("h24", []) for s in summaries])) + '</script>'
+    full_html += ('<script>' + CITY_JS.replace("__H24__", json.dumps([s.get("h24", []) for s in summaries]))
+                  .replace("__SUN__", json.dumps(sun)).replace("__MOON__", json.dumps(moon))
+                  .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES])) + '</script>')
     full_html += '<script>' + map_js + '</script>'
     full_html += '</body></html>'
     return full_html
@@ -3455,7 +3549,8 @@ def build_dashboard() -> str:
     </nav>
     <main class="main">
     <div class="page-section" id="page0">
-      <header class="page-head"><h1>Cities</h1><p>{len(CITIES)} towns across Oregon and Washington \u00B7 click a city to collapse its forecast</p></header>
+      <header class="page-head ph-split"><div><h1>Cities</h1><p>{len(CITIES)} towns across Oregon and Washington \u00B7 click a city to collapse its forecast</p></div>
+        <div class="city-sun" id="city-sun" aria-live="polite"></div></header>
       {c_body}</div>
     <div class="page-section" id="page1" style="display:none" data-init="trailsShown">
       <header class="page-head"><h1>Mountain Trails</h1><p>{len(MOUNTAINS)} peaks from Mt. Baker to Crater Lake, the Olympics to the Wallowas \u00B7 pick a mountain, then summit, mid or base</p></header>

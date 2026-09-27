@@ -88,6 +88,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   24 h. "Feels like" = NWS wind chill (<=50°F, wind >3 mph) / heat index (>=80°F), `feels_like()`;
   h24 hours carry `feels`, and WxCharts draws it as a two-way whisker on the temperature bars.
 
+- Cities header: the selected city's sunrise / sunset / daylight (+ change tomorrow) and the moon,
+  computed in Python (`sun_times`, NOAA solar equations; `moon_phase`, mean synodic month). Coastal
+  cities get a 6-day tide strip under their forecast: `tides.py`, NOAA CO-OPS hi/lo predictions
+  (free, no key), hand-picked stations (nearest-by-distance is often up a river): La Push,
+  Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. Minus tides in teal.
+
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood
 elevation-colored layers) · `RegionLayers(opt)` = the Map tab's full layer engine, also used by
