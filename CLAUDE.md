@@ -80,6 +80,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   re-encoded). Auth: Bearer access_token from localStorage `oidc.user:*` + headers
   `onx-application-id: backcountry`, `onx-application-platform: web` (without them lists come back empty).
 
+- Cities map: slim pills (name + "feels like" now; the selected pill opens into a 2-line card;
+  Portland's opens west) over a soft wash from `window.RegionWash(kind)` in REGION_JS: the Map
+  grid at each cell's ground elevation (`celev` in region data), temp now / gusts now / rain next
+  24 h. "Feels like" = NWS wind chill (<=50°F, wind >3 mph) / heat index (>=80°F), `feels_like()`;
+  h24 hours carry `feels`, and WxCharts draws it as a two-way whisker on the temperature bars.
+
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood
 elevation-colored layers) · `RegionLayers(opt)` = the Map tab's full layer engine, also used by
