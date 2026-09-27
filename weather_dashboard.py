@@ -1471,7 +1471,9 @@ def build_cities_page():
         "icon": s["icon"], "rain": round(s["rain"], 2),
         # right now (the first hour ahead): the pills show "feels like"
         "feels": (s.get("h24") or [{}])[0].get("feels"), "now": (s.get("h24") or [{}])[0].get("temp"),
-        "wnow": (s.get("h24") or [{}])[0].get("wind"),
+        "wnow": (s.get("h24") or [{}])[0].get("wind"), "gnow": (s.get("h24") or [{}])[0].get("gust"),
+        # rain (liquid, in) over the next 24 hours: the pills' number when the map shows Rain
+        "rain24": round(sum(h.get("p", 0) for h in (s.get("h24") or []) if h.get("ty")), 2),
     } for s in summaries])
 
     dashboard_css = (
@@ -1520,11 +1522,11 @@ def build_cities_page():
         ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
         ".weather-marker:hover { z-index:4; }\n"
         ".city-mapbox { position:relative; }\n"
-        ".city-wash { position:absolute; top:10px; left:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
+        ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
         ".city-wash[hidden] { display:none; }\n"
         ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
         ".city-wash button.on { background:#111; color:#fff; }\n"
-        ".city-wash-leg { position:absolute; left:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:#333; }\n"
+        ".city-wash-leg { position:absolute; right:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:#333; }\n"
         ".city-wash-leg:empty { display:none; }\n"
         ".city-wash-leg i { display:block; height:7px; border-radius:4px; margin:4px 0 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }\n"
         ".city-wash-leg span { display:flex; justify-content:space-between; color:#8A8F9C; }\n"
@@ -1538,24 +1540,29 @@ def build_cities_page():
         "  container: 'citymap', style: 'mapbox://styles/mapbox/outdoors-v12',\n"
         "  center: [-122.5, 45.5], zoom: 5, pitch: 0, bearing: 0, attributionControl: false\n"
         "});\n"
-        "map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: 20});\n"
+        "// room at the top and bottom for the shading switch and legend (right-hand corners)\n"
+        "map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: {top: 48, bottom: 44, left: 24, right: 24}});\n"
         "map.on('load', function() {\n"
         "  map.addSource('mapbox-dem', {type:'raster-dem', url:'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize:512});\n"
         "  map.setTerrain({source:'mapbox-dem', exaggeration:1.0});\n"
         "  var tc=function(h){if(h>=80)return'#ED1E29';if(h>=70)return'#FAA21B';if(h>=50)return'#6BBF68';if(h>=35)return'#4FB1BE';return'#368994';};\n"
-        "  // a slim pill per city: name + what it feels like right now; the selected one opens up\n"
+        "  // a slim pill per city: icon, name and one number, which follows the map's shading switch\n"
+        "  var WEST={'Portland':1,'Forks':1,'Cannon Beach':1,'Pacific City':1,'Florence':1};   // pills west of the town: the coast's out over the ocean, Portland's clear of Sandy\n"
+        "  function pillVal(m,kind){\n"
+        "    if(kind==='rain'){var r=m.rain24||0;return{t:r<0.01?'dry':(r<0.1?r.toFixed(2):r.toFixed(1))+'\u2033',c:r<0.01?'#A3ABB8':r<0.25?'#4FB1BE':r<0.75?'#0E9AAE':'#3E3AA8',tip:(r<0.01?'no rain':r.toFixed(2)+'\u2033 of rain')+' in the next 24 h'};}\n"
+        "    if(kind==='wind'){var g=m.gnow==null?m.gust:m.gnow;return{t:g+' mph',c:g<15?'#368994':g<30?'#D08A12':'#C8401A',tip:'gusts '+g+' mph now'};}\n"
+        "    var f=m.feels==null?m.hi:m.feels;return{t:f+'\u00b0',c:tc(f),tip:'feels like '+f+'\u00b0 now'};}\n"
+        "  function pills(kind){window.cityMarkerEls.forEach(function(el,i){var v=pillVal(markers[i],kind),b=el.querySelector('.wm-temp');\n"
+        "    b.textContent=v.t;b.style.background=v.c;el.title=markers[i].name+': '+v.tip;});}\n"
         "  markers.forEach(function(m,i){\n"
-        "    var f=m.feels==null?m.hi:m.feels,el=document.createElement('div');el.className='weather-marker';\n"
-        "    el.title=m.name+': feels like '+f+'\u00b0';\n"
-        "    el.innerHTML='<span class=\"wm-ic\">'+m.icon+'</span><span class=\"wm-name\">'+m.name+'</span>'\n"
-        "      +'<span class=\"wm-temp\" style=\"background:'+tc(f)+'\">'+f+'\u00b0</span>';\n"
+        "    var el=document.createElement('div');el.className='weather-marker';\n"
+        "    el.innerHTML='<span class=\"wm-ic\">'+m.icon+'</span><span class=\"wm-name\">'+m.name+'</span><span class=\"wm-temp\"></span>';\n"
         "    el.addEventListener('click',function(){selectCity(i);});\n"
         "    window.cityMarkerEls[i]=el;\n"
-        "    // Portland sits between Sandy and the coast towns: its pill opens to the west, into open space\n"
-        "    var west=m.name==='Portland';if(west)el.classList.add('west');\n"
+        "    var west=!!WEST[m.name];if(west)el.classList.add('west');\n"
         "    new mapboxgl.Marker({element:el,anchor:west?'right':'left'}).setLngLat([m.lon,m.lat]).addTo(map);\n"
         "  });\n"
-        "  selectCity(undefined,true);\n"
+        "  selectCity(undefined,true);pills('temp');\n"
         "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
         "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
         "  var ctl=document.getElementById('city-wash'),leg=document.getElementById('city-wash-leg');\n"
@@ -1565,7 +1572,7 @@ def build_cities_page():
         "      map.addLayer({id:'wash',type:'raster',source:'wash',paint:{'raster-opacity':0.8,'raster-resampling':'linear','raster-fade-duration':0}},sym);}\n"
         "    leg.innerHTML='<b>'+w.title+'</b><i style=\"background:'+w.bar+'\"></i><span>'+w.ticks.map(function(t){return '<em>'+t+'</em>';}).join('')+'</span>';\n"
         "    ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});});}\n"
-        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b)wash(b.dataset.w);});\n"
+        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){wash(b.dataset.w);pills(b.dataset.w);}});\n"
         "  wash('temp');\n"
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)

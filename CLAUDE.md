@@ -80,8 +80,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   re-encoded). Auth: Bearer access_token from localStorage `oidc.user:*` + headers
   `onx-application-id: backcountry`, `onx-application-platform: web` (without them lists come back empty).
 
-- Cities map: slim pills (icon, name, "feels like" now; the selected one just gets an orange ring,
-  no pop-open details or dot - owner's choice; Portland's pill sits west of the city) over a soft wash from `window.RegionWash(kind)` in REGION_JS: the Map
+- Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /
+  rain next 24 h / gusts now; the selected one just gets an orange ring, no pop-open details or dot -
+  owner's choice). Pills for Forks, Cannon Beach, Pacific City, Florence (over the ocean) and Portland
+  (clear of Sandy) sit west of the town (`WEST` in the map JS); switch + legend in the right corners. over a soft wash from `window.RegionWash(kind)` in REGION_JS: the Map
   grid at each cell's ground elevation (`celev` in region data), temp now / gusts now / rain next
   24 h. "Feels like" = NWS wind chill (<=50°F, wind >3 mph) / heat index (>=80°F), `feels_like()`;
   h24 hours carry `feels`, and WxCharts draws it as a two-way whisker on the temperature bars.
