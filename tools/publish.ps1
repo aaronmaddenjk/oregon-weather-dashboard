@@ -26,6 +26,16 @@ function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Out-Fil
 Set-Location $Root
 if (-not $NoBuild) {
     Log "=== build start"
+    # The packages (python-dotenv, requests, pillow...) are in the per-user site-packages under
+    # AppData\Roaming. A task started at login/wake can run before APPDATA is set, and Python then
+    # looks in the wrong place (2026-09-29: "No module named 'dotenv'"). Point it there explicitly.
+    if (-not $env:APPDATA) { $env:APPDATA = Join-Path $env:USERPROFILE "AppData\Roaming" }
+    $env:PYTHONUSERBASE = Join-Path $env:APPDATA "Python"
+    cmd /c "`"$Python`" -c `"import dotenv, requests, PIL`" >> `"$Log`" 2>&1"
+    if ($LASTEXITCODE -ne 0) {
+        Log "=== build FAILED: Python packages not found (PYTHONUSERBASE=$env:PYTHONUSERBASE); run: python -m pip install -r requirements.txt"
+        exit 1
+    }
     # Fresh data for a scheduled build, but still store responses so dev rebuilds reuse them.
     $env:WX_CACHE_TTL_HOURS = "0.5"
     $env:PYTHONUNBUFFERED = "1"
