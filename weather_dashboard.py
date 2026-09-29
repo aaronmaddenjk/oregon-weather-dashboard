@@ -201,6 +201,46 @@ def nws_overlay(h, n, tshift):
                 h[col][i] = v[key]
 
 
+CLOUD_LAYERS = ("cloud_cover_low", "cloud_cover_mid", "cloud_cover_high")
+
+
+def harmonize_clouds(h, alt=None):
+    """Make the cloud-layer rows agree with the sky cover shown. The total is the NWS sky cover
+    (nws_overlay), the layers come from ECMWF (or HRRR today), and on their own they often disagree
+    (layers empty under a partly cloudy sky). Each hour the layers are scaled together until they
+    add up to the total (random overlap: 1 - (1-low)(1-mid)(1-high)), keeping the model's split
+    between low, mid and high. When ECMWF has no layers at all, the split is borrowed from `alt`
+    ({time: (low, mid, high)}, Open-Meteo's best-match US models); if nobody has any, they stay
+    empty and the Base row says Few / Scattered / Cloudy."""
+    def total(v, k):
+        p = 1.0
+        for x in v:
+            p *= 1 - min(1.0, k * x)
+        return 1 - p
+    for i, t in enumerate(h["time"]):
+        sky = h["cloud_cover"][i]
+        if sky is None:
+            continue
+        v = [(h[k][i] or 0) / 100 for k in CLOUD_LAYERS]
+        if total(v, 1) < 0.05 and alt and t in alt:
+            v = [(x or 0) / 100 for x in alt[t]]
+        if total(v, 1) < 0.05:
+            continue
+        target, lo, hi = min(sky, 100) / 100, 0.0, 100.0
+        for _ in range(40):   # total() rises with k: bisect for the scale that hits the sky cover
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if total(v, mid) < target else (lo, mid)
+        for k, x in zip(CLOUD_LAYERS, v):
+            h[k][i] = round(min(1.0, hi * x) * 100)
+
+
+def alt_layers(hourly):
+    """{time: (low, mid, high)} from an Open-Meteo hourly block that asked for the cloud layers."""
+    if not hourly or "cloud_cover_low" not in hourly:
+        return {}
+    return {t: tuple(hourly[k][i] for k in CLOUD_LAYERS) for i, t in enumerate(hourly["time"])}
+
+
 # ---- Mountain snow model: physics + blend weights live in snow_model.py ----
 
 def blended_qpf(points, days):
@@ -1054,7 +1094,8 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
         ev={"elevation":pe} if pe is not None else {}
         d=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"],"temperature_unit":"fahrenheit","precipitation_unit":"inch","wind_speed_unit":"mph","timezone":"auto","forecast_days":6,"models":"ecmwf_ifs",**ev}).json()
         h=d["hourly"];tz=d.get("timezone","UTC");now=datetime.now(ZoneInfo(tz)).replace(tzinfo=None);elev_ft=d.get("elevation",0)*3.28084
-        h["precipitation_probability"]=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["precipitation_probability"],"timezone":"auto","forecast_days":6,**ev}).json().get("hourly",{}).get("precipitation_probability",[0]*len(h["time"]))
+        bm=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["precipitation_probability","cloud_cover_low","cloud_cover_mid","cloud_cover_high"],"timezone":"auto","forecast_days":6,**ev}).json().get("hourly",{})
+        h["precipitation_probability"]=bm.get("precipitation_probability",[0]*len(h["time"]))
         tr=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m"],"temperature_unit":"fahrenheit","timezone":"auto","forecast_days":6,**ev}).json().get("hourly",{})
         if "temperature_2m" in tr and len(tr["temperature_2m"])==len(h["time"]):h["temperature_2m"]=tr["temperature_2m"];h["dew_point_2m"]=tr["dew_point_2m"]
         hr=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"],"temperature_unit":"fahrenheit","precipitation_unit":"inch","wind_speed_unit":"mph","timezone":"auto","forecast_days":2,"models":"gfs_hrrr",**ev}).json()
@@ -1075,6 +1116,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             tsh=(profile or {}).get("_wp_tshift",[None]*len(waypoints))[wi] or {}
             std=region.STD_LAPSE_F_PER_M*((n["elev_m"] or 0)-(pe or 0))
             nws_overlay(h,n,lambda t,tsh=tsh,std=std:tsh.get(t,std))
+        harmonize_clouds(h,alt_layers(bm))
         if profile and profile.get("_wp_gust"):
             # wind at this waypoint's own elevation, as on the maps: surface model near the
             # ground, free-air wind aloft - whichever is stronger
@@ -2727,13 +2769,14 @@ def build_ski_page():
             url,
             params={
                 "latitude": lat, "longitude": lon,
-                "hourly": ["visibility", "snow_depth", "precipitation_probability"],
+                "hourly": ["visibility", "snow_depth", "precipitation_probability", *CLOUD_LAYERS],
                 "timezone": "auto", "forecast_days": 11, **ev
             }
         ).json().get("hourly", {})
         h["visibility"] = extra.get("visibility", [None] * n)
         h["snow_depth"] = extra.get("snow_depth", [0] * n)
         h["precipitation_probability"] = extra.get("precipitation_probability", [0] * n)
+        alt = alt_layers(extra)
 
         tr = requests.get(
             url,
@@ -2785,6 +2828,7 @@ def build_ski_page():
             tsh = (profile or {}).get("_wp_tshift", [{}] * len(SKI_POINTS))[pi]
             std = region.STD_LAPSE_F_PER_M * ((nw["elev_m"] or 0) - (pe or 0))
             nws_overlay(h, nw, lambda t, tsh=tsh, std=std: tsh.get(t, std))
+        harmonize_clouds(h, alt)
         if profile and profile.get("_wp_gust"):
             # exposed-ridge wind, as on the Trails tab: the stronger of the surface model and the free air
             pw, pg = profile["_wp_wind"][pi], profile["_wp_gust"][pi]
