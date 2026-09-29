@@ -98,6 +98,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   hi/lo, nights shaded (`sunUTC`, a JS port of sun_times), minus tides teal between curve and 0 ft,
   times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice).
+- Cities map shading switch also has "Air": the shared AQL layer (CAMS grid) drawn with
+  `strong` (0.6 alpha everywhere), today's 3-hourly frame nearest now; pills show AQI.
+- Cloud "Base" row: total cover is NWS sky, layers are ECMWF; when all layers are <=5% the row says
+  Few / Scattered / Cloudy instead of a dew-point-guessed height (owner saw bases under empty rows).
 - Cities town search (box top-left on the map): Open-Meteo geocoding, OR/WA only; forecast computed
   live via `window.WxPoint` (trail_live.py's engine, one point at the geocoded elevation), shown as a
   temporary index S = len(CITIES) in H24/SUN/NAMES/select/pills plus `#city_detail_<S>` (7-day
