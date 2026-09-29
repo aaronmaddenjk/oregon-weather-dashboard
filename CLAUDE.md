@@ -1,4 +1,4 @@
-﻿# Oregon Weather Dashboard: notes for Claude
+# Oregon Weather Dashboard: notes for Claude
 
 A static weather dashboard for Oregon/Washington, built by Python into `docs/index.html`
 (one big page, tabs in a left sidebar). Personal project; the owner iterates on it visually
@@ -100,7 +100,7 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice).
 - Cities town search (box top-left on the map): Open-Meteo geocoding, OR/WA only; forecast computed
   live via `window.WxPoint` (trail_live.py's engine, one point at the geocoded elevation), shown as a
-  temporary index S = len(CITIES) in H24/SUN/NAMES/select/pills plus `#city_detail_<S>` (10-day
+  temporary index S = len(CITIES) in H24/SUN/NAMES/select/pills plus `#city_detail_<S>` (7-day
   table from WxPoint.table). NOT saved anywhere (owner: forget saving). Tides for a searched town:
   nearest NOAA station within 25 km from `tides.stations()` (embedded at build), stations east of the
   town (up-river) penalised; fetched live from CO-OPS (CORS ok).
@@ -143,7 +143,7 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 - Trails next steps: OpenStreetMap for the remaining city / county trails; chain
   connected trails into hikes (route builder); NPS API + Recreation.gov descriptions (free keys);
   "My trails" list of everything forecasted.
-- 3-hourly drill-down in the Trail Forecast 10-day table; KML import; recent-trails list;
+- 3-hourly drill-down in the Trail Forecast 7-day table; KML import; recent-trails list;
   OpenStreetMap / Waymarked Trails links + trail search; verify gusts against ridge stations.
 - Move scheduled builds off the PC to an Oracle Cloud Always Free VM (own IP, so Open-Meteo
   doesn't throttle it; owner's preferred host, over Google's e2-micro whose external IP may

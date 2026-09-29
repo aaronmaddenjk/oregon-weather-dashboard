@@ -35,7 +35,7 @@ TRAIL_PAGE_HTML = """
     </div>
     <div class="tl-row1">
       <div class="tl-fc">
-        <div class="tl-sec"><h3>10-day forecast</h3><div class="cc-tiers tl-pick" role="group" aria-label="Point"></div></div>
+        <div class="tl-sec"><h3>7-day forecast</h3><div class="cc-tiers tl-pick" role="group" aria-label="Point"></div></div>
         <div class="tl-10" id="tl-10"></div>
       </div>
       <div class="tl-card tl-prof"><div class="tl-card-t">Trail profile</div><div class="tl-card-s" id="tl-prof-s"></div><div id="tl-profile"></div></div>
@@ -95,7 +95,7 @@ TRAIL_CSS = r"""
 @media (max-width:1000px) { .tl-row1 { grid-template-columns:minmax(0,1fr); } #tlmap { height:460px; } }
 """
 
-# the 10-day table (also used by the Cities tab's town search)
+# the 7-day table (also used by the Cities tab's town search)
 TABLE_CSS = r"""
 .tl-10 { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:8px; }
 .tl-tbl { border-collapse:separate; border-spacing:0; white-space:nowrap; font-size:13px; }
@@ -312,9 +312,10 @@ function icon(ents){   // the same condition icon rule as the other tables
   var kind=snow>=0.2?'snow':rain>=0.1&&chance>=50?'rain':rain>=0.02&&chance>=30?'showers':clouds<10?'clear':clouds<40?'mostly':clouds<75?'partly':'cloudy';
   var windy=Math.max.apply(null,ents.map(function(h){return h.wind||0;}))>=20||Math.max.apply(null,ents.map(function(h){return h.gust||0;}))>=35;
   return'<span class="wxi"><svg class="wx"><use href="#wx-'+kind+'"/></svg>'+(windy?'<svg class="wx wx-wind"><use href="#wx-wind"/></svg>':'')+'</span>';}
-function days(pt){   // the forecast hours from now, by local date, 10 days
+function days(pt){   // the forecast hours from now, by local date: 7 days, about as far as the NWS forecast
+  // runs (past it only the raw GFS is left, which ran 30 degrees hot at Gold Beach; owner: cut it)
   var out=[],by={};pt.hours.slice(pt.now).forEach(function(h){var d=h.t.slice(0,10);if(!by[d]){by[d]=[];out.push(d);}by[d].push(h);});
-  return out.slice(0,10).map(function(d){return{date:d,h:by[d]};});}
+  return out.slice(0,7).map(function(d){return{date:d,h:by[d]};});}
 function table(pt){
   var D=days(pt),lo=Infinity,hi=-Infinity;D.forEach(function(d){d.h.forEach(function(h){lo=Math.min(lo,h.temp);hi=Math.max(hi,h.temp);});});lo-=2;hi+=2;
   var R={time:'',snow:'',temp:'',wind:'',vis:'',chance:''};
@@ -434,7 +435,7 @@ var restored=false;
 // the GPX reader and elevation method, shared with the Map tab's Trails panel ("Add your GPX")
 window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats,profile:profile};
 // the same engine for one spot, used by the Cities tab's town search: forecast([{p:{lat,lon,ele}}]),
-// then table(point) = the 10-day table, icon(hours) = the condition icon
+// then table(point) = the 7-day table, icon(hours) = the condition icon
 window.WxPoint={forecast:forecast,table:table,icon:icon};
 // the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
 window.openTrailForecast=function(poly,name,link){
