@@ -56,10 +56,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Trails (open, unpaved, not state/federal). Not covered yet: Saddle Mountain SNA, non-Metro city
   trails (OSM is the planned fill). The Map tab's "Trails" button (RegionLayers) creates
   `window.TrailsLayer`; the Trail Forecast map gets lines + tips but no panel. GPX uploads live in
-  localStorage `wx-mytrails` (per browser AND per site: localhost and GitHub Pages don't share them;
-  publishing never touches them), measured via `window.WxTrail` from trail_live.py. The panel's
-  Back up / Restore moves them as a JSON file (restore only adds missing ones, keyed link||p).
-  The extension (1.3+) opens the GitHub Pages dashboard by default (options page can set localhost).
+  "Your trails" (GPX uploads + every trail opened from the extension) live in `trails.json` on the repo's
+  `trails` branch (public, owner OK'd; publishing only replaces gh-pages). `window.WxMine` in TRAILS_JS
+  reads it keyless (GitHub API, raw.githubusercontent fallback) and writes it via the contents API with
+  a fine-grained key the owner pastes once per browser (Map → Trails → "connect GitHub"; localStorage
+  `wx-gh-token`, per site origin). localStorage `wx-mytrails` is the local copy; `synced` = came from
+  GitHub (so remote removals propagate); unsynced local ones upload on connect. Never put a key in code.
+  Measured via `window.WxTrail` from trail_live.py. The extension (1.3+) opens the GitHub Pages
+  dashboard by default (options page can set localhost).
   The trail card's elevation profile: build stores elevation every 0.1 mi (ft, 100 m-smoothed,
   from the low end; `prof` field, delta-encoded) - each mile coloured by its average grade:
   Easy <8%, Medium 8-15%, Hard 15-22%, Strenuous 22%+ (one orange ramp; `GR` in TRAILS_JS);

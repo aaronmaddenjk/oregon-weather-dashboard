@@ -425,19 +425,20 @@ function profile(pts){var d=[0],i;for(i=1;i<pts.length;i++)d.push(d[i-1]+km(pts[
     out.push(Math.round((sm[j]+(sm[j+1]-sm[j])*f)*3.28084));}
   if(d[d.length-1]-(x-STEP)>1)out.push(Math.round(sm[sm.length-1]*3.28084));
   return out;}
+// -> a promise of {local, cloud, error}: saved through WxMine (trail_explorer.py), i.e. to GitHub when this
+// browser is connected, so the trail shows on every device
 function keepTrail(poly,name,link,pts,s){
-  try{var a=JSON.parse(localStorage.getItem('wx-mytrails')||'[]')||[],key=link||poly;
-    a=a.filter(function(m){return (m.link||m.p)!==key;});
-    a.push({name:name,p:poly,link:link||'',mi:Math.round(s.km*0.621371*10)/10,gain:Math.round(s.gain*3.28084),
-      hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),prof:profile(pts),added:Date.now()});
-    localStorage.setItem('wx-mytrails',JSON.stringify(a));return true;}catch(e){return false;}}
+  if(!window.WxMine)return Promise.resolve({local:false,cloud:false});
+  return window.WxMine.save({name:name,p:poly,link:link||'',mi:Math.round(s.km*0.621371*10)/10,gain:Math.round(s.gain*3.28084),
+    hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),prof:profile(pts),added:Date.now()});}
 async function load(src,link,save,keep){
-  var kept=false;
+  var kept=null;
   try{
     var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx),name=src.name||nameFromLink(link)||g.name||'Your trail';
     $('tl-link').value=link||'';
     await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s);}:null);
-    if(kept)$('tl-stats').insertAdjacentHTML('beforeend',' · <b>saved to your trails</b> (Map → Trails)');
+    if(kept)kept.then(function(r){$('tl-stats').insertAdjacentHTML('beforeend',r.cloud?' · <b>saved to your trails</b> on every device (Map → Trails)'
+      :r.local?' · <b>saved in this browser</b>'+(r.error?' (GitHub: '+r.error+')':' · connect GitHub in Map → Trails to see it on every device'):'');});
     if(save){try{localStorage.setItem('wx-trail',JSON.stringify(Object.assign({},src,{link:link||''})));}catch(e){}}
   }catch(e){status(((e&&e.message)||'Something went wrong loading that trail.')+(kept?' The trail was still saved to your trails (Map → Trails).':''),true);
     $('tl-load').hidden=false;$('tl-out').hidden=true;}}

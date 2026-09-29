@@ -491,15 +491,15 @@ TRAILS_PANEL_HTML = """
   </div>
   <div class="ex-mine-row"><label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
     + Add your GPX</label>
-    <span class="ex-bk" title="Your trails live in this browser only: back them up to a file, or restore them here from one"><button type="button" id="ex-export">Back up</button> ·
-    <label>Restore<input type="file" id="ex-import" accept=".json,application/json" hidden></label></span></div>
+  </div>
+  <div class="ex-sync" id="ex-sync"></div>
   <div class="ex-card" id="ex-card" hidden></div>
   <div class="ex-listhead"><span id="ex-inview"></span><label>Sort<select id="ex-sort"><option value="name">Name</option>
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
   <ol class="ex-list" id="ex-list"></ol>
   <p class="ex-foot">Trails: USGS National Digital Trails (Forest Service, Park Service, BLM, Fish &amp; Wildlife, WA State
     Parks), Oregon Parks and Recreation, Oregon Dept. of Forestry and Oregon Metro, joined into whole trails. Gain and
-    high point from Mapbox terrain, climbing from the low end. Your trails stay in this browser (Back up to move them).</p>
+    high point from Mapbox terrain, climbing from the low end. Your trails are kept on GitHub, so every device sees them.</p>
 </aside>
 """
 
@@ -525,9 +525,18 @@ TRAILS_CSS = r"""
 .ex-add:hover { text-decoration:underline; }
 .ex-add.busy { color:#8A8F9C; pointer-events:none; }
 .ex-mine-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
-.ex-bk { font-size:11.5px; color:#9A9FAB; }
-.ex-bk button, .ex-bk label { border:0; background:none; padding:0; font:inherit; font-weight:600; color:#6B3FA8; cursor:pointer; }
-.ex-bk button:hover, .ex-bk label:hover { text-decoration:underline; }
+.ex-sync { font-size:11.5px; color:#8A8F9C; line-height:1.45; }
+.ex-sync button { border:0; background:none; padding:0; font:inherit; font-weight:700; color:#6B3FA8; cursor:pointer; }
+.ex-sync button:hover { text-decoration:underline; }
+.ex-sync .ex-ok { color:#2F7A45; font-weight:600; }
+.ex-how ol { margin:6px 0 6px 18px; padding:0; }
+.ex-how li { margin-bottom:3px; }
+.ex-how a { color:#6B3FA8; font-weight:600; }
+.ex-keyrow { display:flex; gap:6px; }
+.ex-keyrow input { flex:1; min-width:0; padding:5px 8px; border:1px solid #DDE0E6; border-radius:6px; font:inherit; font-size:12px; }
+.ex-sync .ex-keyrow button { padding:5px 10px; border-radius:6px; background:#6B3FA8; color:#fff; }
+.ex-sync .ex-keyrow button:hover { text-decoration:none; background:#58328C; }
+.ex-msg { margin-top:4px; color:#5A5F6B; }
 .ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
 .ex-card.mine { border-top-color:#6B3FA8; }
 .ex-card { position:relative; }
@@ -593,8 +602,71 @@ function decode(str){var i=0,lat=0,lng=0,out=[];while(i<str.length){for(var k=0;
 function encode(pts){var out='',pl=0,pn=0;function put(v){v=v<0?~(v<<1):v<<1;while(v>=0x20){out+=String.fromCharCode((0x20|(v&31))+63);v>>=5;}out+=String.fromCharCode(v+63);}
   pts.forEach(function(p){var a=Math.round(p.lat*1e5),b=Math.round(p.lon*1e5);put(a-pl);put(b-pn);pl=a;pn=b;});return out;}
 function meta(t){return t.mi.toFixed(1)+' mi \u00B7 '+(t.gain==null?'':fmt(t.gain)+'\u2032 gain \u00B7 ')+(t.hi==null?'':fmt(t.hi)+'\u2032 top');}
-function readMine(){try{return JSON.parse(localStorage.getItem(MINE_KEY)||'[]')||[];}catch(e){return[];}}
-function writeMine(a){try{localStorage.setItem(MINE_KEY,JSON.stringify(a));return true;}catch(e){return false;}}
+function readMine(){return window.WxMine.list();}
+// ---------- your trails: trails.json on the repo's "trails" branch, so every device (phone, other laptops)
+// and every republish sees them (publishing only replaces gh-pages). Reading is public; saving needs a
+// GitHub key pasted once per browser ("Connect GitHub" in the Trails panel). This browser keeps a copy in
+// localStorage: the list shows instantly and works offline. `synced` marks a copy that came from GitHub,
+// so a trail removed on another device disappears here too; unsynced ones are this browser's own and
+// are uploaded once it's connected (that's how trails saved before connecting move over). ----------
+window.WxMine=(function(){
+  var REPO='aaronmaddenjk/oregon-weather-dashboard',BR='trails',API='https://api.github.com/repos/'+REPO+'/contents/trails.json',KEY='wx-gh-token';
+  var list=localGet(),loading=null,subs=[];
+  function localGet(){try{return JSON.parse(localStorage.getItem(MINE_KEY)||'[]')||[];}catch(e){return[];}}
+  function localSet(a){try{localStorage.setItem(MINE_KEY,JSON.stringify(a));return true;}catch(e){return false;}}
+  function key(m){return m.link||m.p;}
+  function token(){try{return localStorage.getItem(KEY)||'';}catch(e){return'';}}
+  function hdr(raw){var h={Accept:raw?'application/vnd.github.raw+json':'application/vnd.github+json'};if(token())h.Authorization='Bearer '+token();return h;}
+  function b64(s){var u=new TextEncoder().encode(s),out='';for(var i=0;i<u.length;i+=0x8000)out+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(out);}
+  function strip(a){return a.map(function(m){var o=Object.assign({},m);delete o.synced;return o;});}
+  function fire(){subs.forEach(function(f){try{f(list);}catch(e){}});}
+  async function pull(){   // -> {items, sha}
+    try{var r=await fetch(API+'?ref='+BR,{headers:hdr(),cache:'no-store'});
+      if(r.status===404)return{items:[],sha:null};if(!r.ok)throw new Error(r.status);
+      var j=await r.json(),txt=j.content&&j.encoding==='base64'
+        ?new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\s/g,'')),function(c){return c.charCodeAt(0);}))
+        :await (await fetch(API+'?ref='+BR,{headers:hdr(true),cache:'no-store'})).text();   // over 1 MB: the raw form
+      return{items:JSON.parse(txt||'[]'),sha:j.sha};}
+    catch(e){   // GitHub allows 60 keyless API reads an hour per connection: the raw file (cached ~5 min) is the fallback
+      var r2=await fetch('https://raw.githubusercontent.com/'+REPO+'/'+BR+'/trails.json?t='+Date.now());if(!r2.ok)throw e;
+      return{items:await r2.json(),sha:null,raw:true};}}
+  async function push(fn,msg){   // read, change, write; retried if another device saved in between
+    for(var k=0;k<3;k++){var g=await pull();if(g.raw)throw new Error('GitHub isn’t answering right now');
+      var items=fn(g.items.slice()),body={message:msg,content:b64(JSON.stringify(items)),branch:BR};if(g.sha)body.sha=g.sha;
+      var r=await fetch(API,{method:'PUT',headers:Object.assign(hdr(),{'Content-Type':'application/json'}),body:JSON.stringify(body)});
+      if(r.ok)return items;
+      if(r.status===401||r.status===403||r.status===404)throw new Error('GitHub refused the key ('+r.status+'): reconnect in Map → Trails');
+      if(r.status!==409&&r.status!==422)throw new Error('GitHub said '+r.status);}
+    throw new Error('another device kept saving at the same moment; try again');}
+  function merge(cloud){var inC={};cloud.forEach(function(m){inC[key(m)]=1;});
+    var own=localGet().filter(function(m){return!inC[key(m)]&&!m.synced;});
+    list=cloud.map(function(m){return Object.assign({},m,{synced:true});}).concat(own);localSet(list);return own;}
+  function load(){   // GitHub's list (plus this browser's own unsynced trails, uploaded when connected)
+    if(!loading)loading=(async function(){
+      try{var own=merge((await pull()).items);
+        if(own.length&&token())merge(await push(function(c){var h={};c.forEach(function(m){h[key(m)]=1;});
+          return c.concat(strip(own.filter(function(m){return!h[key(m)];})));},'Trails: add '+own.length+' saved in a browser'));}
+      catch(e){}
+      loading=null;fire();return list;})();
+    return loading;}
+  async function save(m){   // add or replace one trail: here at once, on GitHub when connected
+    var k=key(m);list=list.filter(function(x){return key(x)!==k;}).concat([m]);var ok=localSet(list);fire();
+    if(!token())return{local:ok,cloud:false};
+    try{merge(await push(function(c){return c.filter(function(x){return key(x)!==k;}).concat(strip([m]));},'Trails: '+m.name));fire();return{local:ok,cloud:true};}
+    catch(e){return{local:ok,cloud:false,error:e.message};}}
+  async function remove(k){
+    if(!token()&&list.some(function(x){return key(x)===k&&x.synced;}))throw new Error('Connect GitHub (below) to remove it from every device');
+    if(token())merge(await push(function(c){return c.filter(function(x){return key(x)!==k;});},'Trails: remove'));
+    list=list.filter(function(x){return key(x)!==k;});localSet(list);fire();}
+  async function connect(tok){   // check the key can write to the repo before keeping it
+    var r=await fetch('https://api.github.com/repos/'+REPO,{headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+tok}});
+    if(!r.ok)throw new Error(r.status===401?'GitHub didn’t accept that key':'GitHub said '+r.status);
+    var j=await r.json();if(j.permissions&&!j.permissions.push)throw new Error('that key can read but not write: give it Contents → Read and write');
+    localStorage.setItem(KEY,tok);return load();}
+  return{list:function(){return list;},load:load,save:save,remove:remove,connect:connect,key:key,
+    connected:function(){return!!token();},disconnect:function(){try{localStorage.removeItem(KEY);}catch(e){}fire();},
+    on:function(f){subs.push(f);}};
+})();
 function allTrails(bb){   // AllTrails' explore map on this area (its search box doesn't take a URL query)
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
@@ -695,7 +767,7 @@ window.TrailsLayer=function(map,opt){
     chart(card.querySelector('.ex-prof'),t);
     if(t.src==='mine'&&!(t.prof&&t.prof.length))backfill(t,card);
     card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
-    var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t);};
+    var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t,del);};
     card.querySelector('.ex-x').onclick=deselect;
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
     var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
@@ -745,8 +817,8 @@ window.TrailsLayer=function(map,opt){
     box.innerHTML='<div class="ex-prof-t">Elevation profile <span>measuring…</span></div>';
     try{var pts=t.parts[0].map(function(q){return{lat:q[1],lon:q[0]};}),dense=await W.fillElevation(pts);
       t.prof=W.profile(dense);
-      var mine=readMine(),m=mine.find(function(x){return x.p===t.line&&(x.link||'')===t.link;});
-      if(m){m.prof=t.prof;writeMine(mine);}
+      var m=readMine().find(function(x){return x.p===t.line&&(x.link||'')===t.link;});
+      if(m){m=Object.assign({},m,{prof:t.prof});delete m.synced;window.WxMine.save(m);}
       if(sel===t.i)chart(box,t);}
     catch(e){box.innerHTML='<div class="ex-prof-t">Elevation profile <span>unavailable right now</span></div>';}}
   function refresh(){loadData().then(function(d){if(!map.getSource('trl'))return;build(d);map.getSource('trl').setData(features());apply();});}
@@ -758,15 +830,29 @@ window.TrailsLayer=function(map,opt){
       var g=W.parseGPX(await file.text()),name=g.name||file.name.replace(/\.gpx$/i,'');
       var pts=await W.fillElevation(g.pts.map(function(p){return{lat:p.lat,lon:p.lon,ele:p.ele};})),st=W.trailStats(pts);
       var step=Math.max(1,Math.ceil(g.pts.length/1500)),keepPts=g.pts.filter(function(p,i){return i%step===0||i===g.pts.length-1;});
-      var mine=readMine();mine.push({name:name,p:encode(keepPts),mi:Math.round(st.km*0.621371*10)/10,gain:Math.round(st.gain*3.28084),
+      var res=await window.WxMine.save({name:name,p:encode(keepPts),mi:Math.round(st.km*0.621371*10)/10,gain:Math.round(st.gain*3.28084),
         hi:Math.round(pts[st.hi].ele*3.28084),lo:Math.round(pts[st.lo].ele*3.28084),prof:W.profile?W.profile(pts):[],added:Date.now()});
-      if(!writeMine(mine))throw new Error('this browser won\u2019t store it (private window or storage full)');
-      loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();select(T.length-1,true);});
+      if(!res.local&&!res.cloud)throw new Error('this browser won\u2019t store it (private window or storage full)');
+      if(res.error)syncMsg('Saved in this browser only for now: '+res.error);
+      loadData().then(function(d){build(d);map.getSource('trl').setData(features());apply();
+        var k=T.findIndex(function(x){return x.src==='mine'&&x.name===name;});select(k<0?T.length-1:k,true);});
     }catch(e){lab.lastChild.textContent=' Couldn\u2019t add it: '+(e.message||e);setTimeout(function(){lab.lastChild.textContent=keep;},5000);lab.classList.remove('busy');return;}
     lab.classList.remove('busy');lab.lastChild.textContent=keep;}
-  function removeMine(t){var mine=readMine(),k=mine.findIndex(function(m){return m.p===t.line&&(m.link||'')===t.link;});if(k<0)return;
-    mine.splice(k,1);writeMine(mine);sel=-1;$('ex-card').hidden=true;
-    ['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],-1]);});refresh();}
+  async function removeMine(t,btn){var m=readMine().find(function(x){return x.p===t.line&&(x.link||'')===t.link;});if(!m)return;
+    btn.disabled=true;btn.textContent='Removing…';
+    try{await window.WxMine.remove(window.WxMine.key(m));}catch(e){btn.disabled=false;btn.textContent='Remove';syncMsg(e.message);return;}
+    sel=-1;$('ex-card').hidden=true;['trl-sel','trl-sel-case'].forEach(function(l){map.setFilter(l,['==',['get','i'],-1]);});refresh();}
+  // the sync line under "+ Add your GPX": connected, or how to connect this browser
+  var GH_NEW='https://github.com/settings/personal-access-tokens/new';
+  function syncUI(){var el=$('ex-sync');if(!el)return;
+    el.innerHTML=window.WxMine.connected()
+      ?'<span class="ex-ok">☁ Saving to GitHub · every device sees your trails</span> <button type="button" data-a="off">Disconnect</button>'
+      :'Your trails show on every device. To save or remove them from this browser, <button type="button" data-a="how">connect GitHub</button>'
+        +'<div class="ex-how" hidden><ol><li><a target="_blank" rel="noopener" href="'+GH_NEW+'">Create a GitHub key ↗</a>: any name, expiration up to a year, '
+        +'<b>Only select repositories</b> → oregon-weather-dashboard, <b>Repository permissions</b> → Contents → <b>Read and write</b>. Generate, copy.</li>'
+        +'<li>Paste it here (kept in this browser only):</li></ol><div class="ex-keyrow"><input type="password" autocomplete="off" placeholder="github_pat_…" aria-label="GitHub key">'
+        +'<button type="button" data-a="save">Connect</button></div></div>';}
+  function syncMsg(t){var el=$('ex-sync');if(!el)return;var n=el.querySelector('.ex-msg');if(!n){n=document.createElement('div');n.className='ex-msg';el.appendChild(n);}n.textContent=t;}
 
   if(P){
     P.querySelectorAll('select').forEach(function(s){s.addEventListener('change',function(){if(!T.length)return;if(s.id==='ex-sort')list();else apply();});});
@@ -775,27 +861,23 @@ window.TrailsLayer=function(map,opt){
       b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');if(T.length)apply();});});
     $('ex-list').addEventListener('click',function(e){var li=e.target.closest('li[data-i]');if(li)select(+li.dataset.i,true);});
     $('ex-gpx').addEventListener('change',function(){var f=this.files[0];this.value='';if(f)addGPX(f);});
-    // back up / restore: your trails are per browser and per site (localhost and GitHub Pages don't share
-    // them), so a file carries them across; a restore adds the ones missing here and never replaces any
-    $('ex-export').addEventListener('click',function(){var mine=readMine(),b=this;
-      if(!mine.length){b.textContent='Nothing to back up yet';setTimeout(function(){b.textContent='Back up';},2500);return;}
-      var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(mine)],{type:'application/json'}));
-      a.download='my-trails-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();
-      setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);});
-    $('ex-import').addEventListener('change',async function(){var f=this.files[0],lab=this.parentNode,keep='Restore';this.value='';if(!f)return;
-      var msg;try{var got=JSON.parse(await f.text());if(!Array.isArray(got))throw 0;
-        var mine=readMine(),have={},n=0;mine.forEach(function(m){have[m.link||m.p]=1;});
-        got.forEach(function(m){if(m&&m.p&&m.name&&!have[m.link||m.p]){mine.push(m);have[m.link||m.p]=1;n++;}});
-        if(n&&!writeMine(mine))throw 0;msg=n?'Added '+n+' trail'+(n>1?'s':''):'All already here';if(n&&ready)refresh();}
-      catch(e){msg='Not a trails backup';}
-      lab.firstChild.textContent=msg;setTimeout(function(){lab.firstChild.textContent=keep;},3000);});
-    // another tab (the extension's forecast) saved a trail: show it here too
-    window.addEventListener('storage',function(e){if(e.key===MINE_KEY&&ready)refresh();});
+    syncUI();
+    $('ex-sync').addEventListener('click',async function(e){var b=e.target.closest('button[data-a]');if(!b)return;var a=b.dataset.a,el=$('ex-sync');
+      if(a==='how'){el.querySelector('.ex-how').hidden=false;el.querySelector('input').focus();}
+      else if(a==='off'){window.WxMine.disconnect();syncUI();}
+      else if(a==='save'){var v=el.querySelector('input').value.trim();if(!v)return;b.disabled=true;b.textContent='Checking…';
+        try{await window.WxMine.connect(v);syncUI();syncMsg('Connected. Any trails saved only in this browser were added to GitHub.');}
+        catch(err){b.disabled=false;b.textContent='Connect';syncMsg(err.message);}}});
+    // another tab (the extension's forecast) saved a trail: fetch the list again
+    window.addEventListener('storage',function(e){if(e.key===MINE_KEY&&ready)window.WxMine.load();});
   }
+  // GitHub's list arrived or changed: redraw
+  window.WxMine.on(function(){if(ready)ready.then(refresh);});
 
   return{
     show:function(v){on=v;if(P){P.hidden=!v;P.parentNode.classList.toggle('trl',v);setTimeout(function(){map.resize();},0);}
-      if(v&&!ready)ready=loadData().then(function(d){build(d);addLayers();apply();}).catch(function(){if(P)$('ex-count').textContent='Trail data isn\u2019t available in this build.';});
+      if(v&&!ready){ready=loadData().then(function(d){build(d);addLayers();apply();}).catch(function(){if(P)$('ex-count').textContent='Trail data isn\u2019t available in this build.';});
+        window.WxMine.load();}
       if(ready)ready.then(function(){vis(on);if(on)list();});
       if(!v&&tip)tip.hidden=true;},
     // the map's mousemove: a trail under the pointer gets the tip (return true), else the weather does
