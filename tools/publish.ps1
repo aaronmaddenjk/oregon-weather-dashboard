@@ -26,14 +26,12 @@ function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Out-Fil
 Set-Location $Root
 if (-not $NoBuild) {
     Log "=== build start"
-    # The packages (python-dotenv, requests, pillow...) are in the per-user site-packages under
-    # AppData\Roaming. A task started at login/wake can run before APPDATA is set, and Python then
-    # looks in the wrong place (2026-09-29: "No module named 'dotenv'"). Point it there explicitly.
-    if (-not $env:APPDATA) { $env:APPDATA = Join-Path $env:USERPROFILE "AppData\Roaming" }
-    $env:PYTHONUSERBASE = Join-Path $env:APPDATA "Python"
-    cmd /c "`"$Python`" -c `"import dotenv, requests, PIL`" >> `"$Log`" 2>&1"
+    # The scheduled task doesn't see the per-user site-packages (AppData\Roaming\Python; it isn't on
+    # sys.path there, 2026-09-29: "No module named 'dotenv'"), so the packages must be installed in
+    # Python's own Lib\site-packages:  set PYTHONNOUSERSITE=1 then python -m pip install -r requirements.txt
+    cmd /c "`"$Python`" -c `"import dotenv, requests, PIL, bs4`" >> `"$Log`" 2>&1"
     if ($LASTEXITCODE -ne 0) {
-        Log "=== build FAILED: Python packages not found (PYTHONUSERBASE=$env:PYTHONUSERBASE); run: python -m pip install -r requirements.txt"
+        Log "=== build FAILED: Python packages missing; run (PowerShell): `$env:PYTHONNOUSERSITE='1'; python -m pip install -r requirements.txt"
         exit 1
     }
     # Fresh data for a scheduled build, but still store responses so dev rebuilds reuse them.
