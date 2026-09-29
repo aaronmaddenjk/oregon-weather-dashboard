@@ -1475,6 +1475,123 @@ window.selectCity=function(i,init){
   charts.set(H24[i]);
   NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d)d.hidden=j!==i;});
 };
+
+// ---------- tides: NOAA's highs and lows drawn as a curve (coastal towns, default or searched) ----------
+// times are wall-clock ms (the local time read as if UTC); OFF = the UTC offset in seconds
+var DAY=864e5,LL=__LATLON__,TIDES=__TIDES__,TIDE_ST=__TIDEST__,OFF=__OFF__;
+function sunUTC(lat,lon,day){   // day = a local date's wall-clock midnight -> [sunrise, sunset] epoch ms (NOAA, as sun_times())
+  var n=(day-Date.UTC(new Date(day).getUTCFullYear(),0,1))/DAY+1,g=2*Math.PI/365*(n-1);
+  var eqt=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
+  var dec=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)-0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)-0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  var la=lat*Math.PI/180,ha=Math.acos(Math.cos(90.833*Math.PI/180)/(Math.cos(la)*Math.cos(dec))-Math.tan(la)*Math.tan(dec))*180/Math.PI;
+  return[day+(720-4*(lon+ha)-eqt)*6e4,day+(720-4*(lon-ha)-eqt)*6e4];}
+var WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function clock(ms,short){var d=new Date(ms),h=d.getUTCHours(),m=d.getUTCMinutes(),mm=(m<10?'0':'')+m;
+  return short?((h%12)||12)+':'+mm+(h<12?'a':'p'):((h%12)||12)+':'+mm+(h<12?' am':' pm');}
+function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' curve
+  var now=Date.now()+off*1000,t0=Math.floor(now/DAY)*DAY,t1=t0+6*DAY,W=960,H=230,pl=34,pr=8,pt=32,pb=24;
+  var fts=ev.map(function(e){return e.ft;}),lo=Math.min(0,Math.min.apply(null,fts))-1.6,hi=Math.max.apply(null,fts)+1.8;
+  var X=function(t){return pl+(t-t0)/(t1-t0)*(W-pl-pr);},Y=function(v){return pt+(hi-v)/(hi-lo)*(H-pt-pb);},f1=function(v){return v.toFixed(1);};
+  function height(t){for(var k=0;k+1<ev.length;k++){var a=ev[k],b=ev[k+1];if(a.t<=t&&t<=b.t){var f=(t-a.t)/(b.t-a.t);   // half-cosine between extremes
+    return(a.ft+b.ft)/2+(a.ft-b.ft)/2*Math.cos(Math.PI*f);}}return null;}
+  var P=[];for(var t=t0;t<=t1;t+=20*6e4){var v=height(t);if(v!=null)P.push([X(t),Y(v)]);}
+  if(P.length<2)return'';
+  var line='M'+P.map(function(p){return f1(p[0])+','+f1(p[1]);}).join('L'),base=Y(lo),z=Y(0),s=[];
+  for(var k=-1;k<6;k++){   // nights (sunset to sunrise): tide-pooling wants daylight
+    var a=Math.max(t0,sunUTC(lat,lon,t0+k*DAY)[1]+off*1000),b=Math.min(t1,sunUTC(lat,lon,t0+(k+1)*DAY)[0]+off*1000);
+    if(b>a)s.push('<rect x="'+f1(X(a))+'" y="'+(pt-4)+'" width="'+f1(X(b)-X(a))+'" height="'+(H-pt-pb+4)+'" fill="#EEF0F5"/>');}
+  for(k=0;k<6;k++){var d=t0+k*DAY,dt=new Date(d);   // a hairline at each midnight and the day's name
+    s.push('<line x1="'+f1(X(d))+'" x2="'+f1(X(d))+'" y1="'+(pt-18)+'" y2="'+(H-pb)+'" stroke="#DDE0E6"/><text x="'+f1(X(d)+5)+'" y="'+(pt-9)+'" class="td-day">'+WD[dt.getUTCDay()].toUpperCase()+' '+dt.getUTCDate()+'</text>');}
+  // water, and teal only between the curve and the 0 ft line where it dips below (minus tides)
+  var last=P[P.length-1][0],first=P[0][0];
+  s.push('<clipPath id="tclip'+id+'"><rect x="'+pl+'" y="'+f1(z)+'" width="'+(W-pl-pr)+'" height="'+f1(base-z)+'"/></clipPath>');
+  s.push('<path d="'+line+'L'+f1(last)+','+f1(base)+'L'+f1(first)+','+f1(base)+'Z" fill="#CFE6F2" fill-opacity=".75"/>');
+  s.push('<path d="'+line+'L'+f1(last)+','+f1(z)+'L'+f1(first)+','+f1(z)+'Z" fill="#0B7A87" fill-opacity=".6" clip-path="url(#tclip'+id+')"/>');
+  var top=Math.floor(hi-1.8);
+  s.push('<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+f1(z)+'" y2="'+f1(z)+'" stroke="#8A9AA8" stroke-dasharray="3 3"/><text x="'+(pl-5)+'" y="'+f1(z+3.5)+'" text-anchor="end" class="td-ax">0′</text>'
+    +'<text x="'+(pl-5)+'" y="'+f1(Y(top)+3.5)+'" text-anchor="end" class="td-ax">'+top+'′</text>');
+  s.push('<path d="'+line+'" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>');
+  if(now>=t0&&now<=t1)s.push('<line x1="'+f1(X(now))+'" x2="'+f1(X(now))+'" y1="'+(pt-4)+'" y2="'+(H-pb)+'" stroke="#FE5000" stroke-width="1.5"/><text x="'+f1(X(now)+3)+'" y="'+(H-pb+13)+'" class="td-now">now</text>');
+  ev.forEach(function(e){if(e.t<t0||e.t>t1)return;   // highs and lows: a dot (hover for height and time) and the time
+    var x=X(e.t),y=Y(e.ft),minus=!e.hi&&e.ft<0,tip=(e.hi?'High ':'Low ')+e.ft.toFixed(1).replace('-','−')+'′ at '+WD[new Date(e.t).getUTCDay()]+' '+clock(e.t).toUpperCase();
+    s.push('<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+(minus?4:3)+'" fill="'+(minus?'#0B7A87':'#1F5F8B')+'" stroke="#fff" stroke-width="1.5"><title>'+tip+'</title></circle>');
+    s.push(e.hi?'<text x="'+f1(x)+'" y="'+f1(y-7)+'" text-anchor="middle" class="td-hi">'+clock(e.t,1)+'</text>'
+      :'<text x="'+f1(x)+'" y="'+f1(y+15)+'" text-anchor="middle" class="td-lo'+(minus?' td-minus':'')+'">'+clock(e.t,1)+'</text>');});
+  return'<svg class="tide-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tides, next six days">'+s.join('')+'</svg>';}
+function tideBox(ev,station,lat,lon,off,id){var svg=tideSVG(ev,lat,lon,off,id);if(!svg)return'';
+  return'<div class="tide-box"><div class="tide-h">Tides <span>NOAA · '+station+' · feet above mean lower low water · grey = night · <i class="minus">minus tides</i> are the best for tide-pooling · hover a high or low for its exact time</span></div>'+svg+'</div>';}
+function evOf(rows){return rows.map(function(r){return{t:Date.parse(r[0]+':00Z'),ft:r[1],hi:r[2]};});}
+Object.keys(TIDES).forEach(function(i){var slot=document.querySelector('#city_body_'+i+' .tide-slot');
+  if(slot)slot.innerHTML=tideBox(evOf(TIDES[i].ev),TIDES[i].st,LL[i][0],LL[i][1],OFF,'c'+i);});
+
+// ---------- search any Oregon / Washington town: forecast live in this browser, nothing kept ----------
+var S=NAMES.length,sInput=document.getElementById('city-q'),sList=document.getElementById('city-q-list'),sTok=0,tTok=0,sTimer;
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function kmTo(a,b,c,d){var R=6371,p1=a*Math.PI/180,p2=c*Math.PI/180,dl=(d-b)*Math.PI/180;
+  return 2*R*Math.asin(Math.sqrt(Math.pow(Math.sin((p2-p1)/2),2)+Math.cos(p1)*Math.cos(p2)*Math.pow(Math.sin(dl/2),2)));}
+function lookup(qs){var tok=++sTok;
+  fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(qs)+'&count=25&language=en&countryCode=US&format=json')
+    .then(function(r){return r.json();}).then(function(j){if(tok!==sTok)return;
+      var R=(j.results||[]).filter(function(x){return x.admin1==='Oregon'||x.admin1==='Washington';}).slice(0,7);
+      sList.innerHTML=R.length?R.map(function(x,k){return'<button type="button" data-k="'+k+'"><b>'+esc(x.name)+'</b><span>'+esc((x.admin2?x.admin2+' County, ':'')+(x.admin1==='Oregon'?'OR':'WA'))+'</span></button>';}).join('')
+        :'<div class="cq-none">No town by that name in Oregon or Washington</div>';
+      sList.hidden=false;sList._r=R;})
+    .catch(function(){if(tok===sTok){sList.innerHTML='<div class="cq-none">Search is unavailable right now</div>';sList.hidden=false;}});}
+sInput.addEventListener('input',function(){clearTimeout(sTimer);var v=sInput.value.trim();
+  if(v.length<2){sList.hidden=true;return;}sTimer=setTimeout(function(){lookup(v);},250);});
+sInput.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();var b=sList.querySelector('[data-k]');if(b&&!sList.hidden)b.click();}
+  else if(e.key==='Escape')sList.hidden=true;});
+document.addEventListener('click',function(e){if(!e.target.closest('.city-search'))sList.hidden=true;});
+sList.addEventListener('click',function(e){var b=e.target.closest('[data-k]');if(!b)return;var g=sList._r[+b.dataset.k];
+  sList.hidden=true;sInput.value='';sInput.blur();showTown(g);});
+var sMarker=null,sDetail=document.getElementById('city_detail_'+S);
+function clearTown(){if(sMarker){sMarker.remove();sMarker=null;}delete cityMarkerEls[S];
+  var o=document.querySelector('#cc-city option[value="'+S+'"]');if(o)o.remove();
+  sDetail.hidden=true;sDetail.innerHTML='';H24.length=SUN.length=NAMES.length=S;if(ccSel===S)selectCity(0);}
+function sunFor(lat,lon,off){var t0=Math.floor((Date.now()+off*1000)/DAY)*DAY,a=sunUTC(lat,lon,t0),b=sunUTC(lat,lon,t0+DAY);
+  var d0=(a[1]-a[0])/6e4,d1=(b[1]-b[0])/6e4;
+  return{rise:clock(a[0]+off*1000),set:clock(a[1]+off*1000),len:Math.floor(d0/60)+'h '+Math.floor(d0%60)+'m',delta:Math.round(d1-d0)};}
+async function showTown(g){
+  var name=g.name,st=(g.admin1==='Oregon'?'OR':'WA'),lat=g.latitude,lon=g.longitude,ele=g.elevation||0,tok=++tTok;
+  clearTown();NAMES[S]=name;
+  sDetail.innerHTML='<div class="cq-status">Getting the forecast for '+esc(name)+'…</div>';sDetail.hidden=false;
+  NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d&&j!==S)d.hidden=true;});
+  try{
+    var P=[{p:{lat:lat,lon:lon,ele:ele}}],f=await window.WxPoint.forecast(P),pt=P[0];if(tok!==tTok)return;
+    var h24=pt.h24,today=pt.hours.slice(pt.now).filter(function(h){return h.t.slice(0,10)===pt.hours[pt.now].t.slice(0,10);});
+    var hi=Math.max.apply(null,today.map(function(h){return h.temp;})),lo=Math.min.apply(null,today.map(function(h){return h.temp;}));
+    var ic=window.WxPoint.icon(pt.hours.slice(pt.now,pt.now+12));
+    H24[S]=h24;SUN[S]=sunFor(lat,lon,f.off);
+    var o=document.createElement('option');o.value=S;o.textContent=name+', '+st;document.getElementById('cc-city').appendChild(o);
+    // its pill on the map, dashed: it goes away with the next search or the ×
+    var mk=window.cityMarkers;mk[S]={name:name,lat:lat,lon:lon,icon:ic,feels:h24[0].feels,now:h24[0].temp,wnow:h24[0].wind,gnow:h24[0].gust,gust:h24[0].gust,hi:Math.round(hi),
+      rain24:Math.round(h24.reduce(function(a,h){return a+(h.ty?h.p:0);},0)*100)/100};
+    var el=document.createElement('div');el.className='weather-marker searched';
+    el.innerHTML='<span class="wm-ic">'+ic+'</span><span class="wm-name">'+esc(name)+'</span><span class="wm-temp"></span>';
+    el.addEventListener('click',function(){selectCity(S);});cityMarkerEls[S]=el;
+    var map=window.cityMap;if(map){sMarker=new mapboxgl.Marker({element:el,anchor:'left'}).setLngLat([lon,lat]).addTo(map);
+      if(!map.getBounds().contains([lon,lat]))map.easeTo({center:[lon,lat],duration:800});}
+    if(window.cityPills)window.cityPills();
+    // tides, when a NOAA tide station is within 25 km. The nearest is often up a river (Seaside's is on
+    // the Youngs River), where the tide runs late, so a station east of the town counts double that distance
+    var best=null;TIDE_ST.forEach(function(s){var d=kmTo(lat,lon,s[2],s[3]),e=d+2*Math.max(0,s[3]-lon)*79;
+      if(d<=25&&(!best||e<best.e))best={id:s[0],name:s[1],d:d,e:e};});
+    sDetail.innerHTML='<div class="city-detail-header"><span class="ch-icon">'+ic+'</span><span class="ch-name">'+esc(name)+', '+st+'</span>'
+      +'<span class="ch-temps"><b>'+Math.round(hi)+'°</b> / '+Math.round(lo)+'°</span>'
+      +'<span class="ch-meta">'+Math.round(ele*3.28084).toLocaleString('en-US')+'′ MSL · '+lat.toFixed(4)+', '+lon.toFixed(4)+' · searched, not saved</span>'
+      +'<button type="button" class="cq-clear" aria-label="Clear the searched town">×</button></div>'
+      +'<div class="city-detail-body"><div class="tl-10">'+window.WxPoint.table(pt)+'</div><div class="tide-slot"></div>'
+      +'<p class="cq-foot">'+(pt.nws?'National Weather Service forecast':'Open-Meteo forecast')+' at the town’s elevation, computed live in your browser (the same engine as Trail Forecast)</p></div>';
+    sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
+    selectCity(S);
+    if(best){var d0=new Date(Date.now()+f.off*1000-DAY),ymd=d0.toISOString().slice(0,10).replace(/-/g,'');
+      fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&station='+best.id+'&time_zone=lst_ldt&units=english&interval=hilo&format=json&begin_date='+ymd+'&range=192&application=oregon-weather-dashboard')
+        .then(function(r){return r.json();}).then(function(j){if(tok!==tTok)return;var p=j.predictions||[];if(p.length<4)return;
+          var ev=p.map(function(x){return{t:Date.parse(x.t.replace(' ','T')+':00Z'),ft:+x.v,hi:x.type==='H'};});
+          var slot=sDetail.querySelector('.tide-slot');if(slot)slot.innerHTML=tideBox(ev,esc(best.name)+' ('+(best.d*0.621371).toFixed(1)+' mi away)',lat,lon,f.off,'s');})
+        .catch(function(){});}
+  }catch(e){if(tok!==tTok)return;sDetail.innerHTML='<div class="cq-status err">'+esc((e&&e.message)||'The forecast couldn’t be loaded.')+'</div>';}
+}
 selectCity(0,true);
 """
 
@@ -1595,11 +1712,29 @@ def build_cities_page():
         ".city-wash-leg i { display:block; height:7px; border-radius:4px; margin:4px 0 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }\n"
         ".city-wash-leg span { display:flex; justify-content:space-between; color:#8A8F9C; }\n"
         ".city-wash-leg em { font-style:normal; }\n"
+        ".city-search { position:absolute; top:10px; left:10px; z-index:3; width:240px; max-width:calc(100% - 20px); }\n"
+        ".city-search > svg { position:absolute; left:10px; top:8px; width:15px; height:15px; color:#8A8F9C; pointer-events:none; }\n"
+        ".city-search input { width:100%; padding:6px 10px 6px 31px; border:0; border-radius:9px; background:rgba(255,255,255,.95); box-shadow:0 1px 3px rgba(20,24,35,.18); font:inherit; font-size:12.5px; color:#111; }\n"
+        ".city-search input:focus { outline:2px solid #FE5000; outline-offset:0; }\n"
+        ".city-q-list { margin-top:4px; background:#fff; border-radius:9px; box-shadow:0 4px 14px rgba(20,24,35,.2); overflow:hidden; }\n"
+        ".city-q-list button { display:flex; justify-content:space-between; align-items:baseline; gap:8px; width:100%; border:0; background:none; padding:7px 10px; font:inherit; font-size:12.5px; text-align:left; cursor:pointer; }\n"
+        ".city-q-list button + button { border-top:1px solid #F0F1F4; }\n"
+        ".city-q-list button:hover, .city-q-list button:focus-visible { background:#FFF4EE; outline:0; }\n"
+        ".city-q-list b { color:#111; }\n"
+        ".city-q-list span { color:#8A8F9C; font-size:11.5px; white-space:nowrap; }\n"
+        ".cq-none { padding:8px 10px; font-size:12px; color:#8A8F9C; }\n"
+        ".weather-marker.searched { box-shadow:0 0 0 1.5px #111,0 1px 4px rgba(0,0,0,0.22); }\n"
+        ".weather-marker.searched.sel { box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".cq-status { padding:12px 14px; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); font-size:13px; color:#5A5F6B; }\n"
+        ".cq-status.err { color:#9B1C1C; background:#FDF1F1; }\n"
+        ".cq-clear { margin-left:auto; border:1px solid #DDE0E6; background:#fff; border-radius:7px; width:26px; height:26px; font-size:16px; line-height:1; color:#5A5F6B; cursor:pointer; }\n"
+        ".cq-clear:hover { border-color:#FE5000; color:#FE5000; }\n"
+        ".cq-foot { margin:8px 0 0; font-size:11px; color:#9A9FAB; }\n"
     ) + detail_css
 
     map_js = (
         "mapboxgl.accessToken = '__TOKEN__';\n"
-        "var markers = __MARKERS__;\n"
+        "var markers = window.cityMarkers = __MARKERS__, washKind = 'temp';\n"
         "var map = new mapboxgl.Map({\n"
         "  container: 'citymap', style: 'mapbox://styles/mapbox/outdoors-v12',\n"
         "  center: [-122.5, 45.5], zoom: 5, pitch: 0, bearing: 0, attributionControl: false\n"
@@ -1626,6 +1761,7 @@ def build_cities_page():
         "    var west=!!WEST[m.name];if(west)el.classList.add('west');\n"
         "    new mapboxgl.Marker({element:el,anchor:west?'right':'left'}).setLngLat([m.lon,m.lat]).addTo(map);\n"
         "  });\n"
+        "  window.cityMap=map;window.cityPills=function(){pills(washKind);};\n"
         "  selectCity(undefined,true);pills('temp');\n"
         "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
         "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
@@ -1636,7 +1772,7 @@ def build_cities_page():
         "      map.addLayer({id:'wash',type:'raster',source:'wash',paint:{'raster-opacity':0.8,'raster-resampling':'linear','raster-fade-duration':0}},sym);}\n"
         "    leg.innerHTML='<b>'+w.title+'</b><i style=\"background:'+w.bar+'\"></i><span>'+w.ticks.map(function(t){return '<em>'+t+'</em>';}).join('')+'</span>';\n"
         "    ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});});}\n"
-        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){wash(b.dataset.w);pills(b.dataset.w);}});\n"
+        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){washKind=b.dataset.w;wash(washKind);pills(washKind);}});\n"
         "  wash('temp');\n"
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)
@@ -1655,87 +1791,19 @@ def build_cities_page():
     mname, memoji, mfrac = moon_phase(datetime.now(ZoneInfo(tzname)))
     moon = {"name": mname, "emoji": memoji, "pct": round(mfrac * 100)}
 
-    # tides for the coastal towns: highs and lows for the six forecast days
-    def tide_block(city):
-        """The six forecast days' tide curve: a smooth line through NOAA's highs and lows (the usual
-        half-cosine between extremes), nights shaded, minus tides in teal, highs and lows labelled."""
-        ev = tides.hilo(city["name"], today - timedelta(days=1), days=8)   # a day either side, for the curve's ends
-        if not ev or len(ev) < 4:
-            return ""
-        t0 = datetime(today.year, today.month, today.day)
-        t1 = t0 + timedelta(days=6)
-        W, H, pl, pr, pt, pb = 960, 230, 34, 8, 32, 24
-        lo = min(0.0, min(e["ft"] for e in ev)) - 1.6   # room under the lows for their times
-        hi = max(e["ft"] for e in ev) + 1.8   # and over the highs
-        X = lambda t: pl + (t - t0).total_seconds() / (t1 - t0).total_seconds() * (W - pl - pr)
-        Y = lambda v: pt + (hi - v) / (hi - lo) * (H - pt - pb)
+    # tides for the coastal towns: NOAA's highs and lows, a day either side of the six forecast days
+    # (for the curve's ends); drawn in the page by tideBox() in CITY_JS, like a searched town's
+    tide_data = {}
+    for ci, c in enumerate(CITIES):
+        ev = tides.hilo(c["name"], today - timedelta(days=1), days=8)
+        if ev and len(ev) >= 4:
+            tide_data[ci] = {"st": tides.station_name(c["name"]),
+                             "ev": [[e["t"].strftime("%Y-%m-%dT%H:%M"), round(e["ft"], 2), e["hi"]] for e in ev]}
+    tide_stations = tides.stations()
+    utc_off = int(datetime.now(ZoneInfo(tzname)).utcoffset().total_seconds())
 
-        def height(t):   # half-cosine between the surrounding extremes
-            for a, b in zip(ev, ev[1:]):
-                if a["t"] <= t <= b["t"]:
-                    f = (t - a["t"]).total_seconds() / (b["t"] - a["t"]).total_seconds()
-                    return (a["ft"] + b["ft"]) / 2 + (a["ft"] - b["ft"]) / 2 * math.cos(math.pi * f)
-            return None
-        pts = []
-        t = t0
-        while t <= t1:
-            v = height(t)
-            if v is not None:
-                pts.append((X(t), Y(v)))
-            t += timedelta(minutes=20)
-        if len(pts) < 2:
-            return ""
-        line = "M" + "L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-        base = Y(lo)
-        s = []
-        # nights (sunset to sunrise): tide-pooling wants daylight
-        for k in range(-1, 6):
-            d = today + timedelta(days=k)
-            _, sset = sun_times(city["lat"], city["lon"], d, tzname)
-            rise, _ = sun_times(city["lat"], city["lon"], d + timedelta(days=1), tzname)
-            a, b = max(t0, sset.replace(tzinfo=None)), min(t1, rise.replace(tzinfo=None))
-            if b > a:
-                s.append(f'<rect x="{X(a):.1f}" y="{pt - 4}" width="{X(b) - X(a):.1f}" height="{H - pt - pb + 4}" fill="#EEF0F5"/>')
-        # day columns: a hairline at each midnight and the day's name
-        for k in range(6):
-            d = t0 + timedelta(days=k)
-            s.append(f'<line x1="{X(d):.1f}" x2="{X(d):.1f}" y1="{pt - 18}" y2="{H - pb}" stroke="#DDE0E6"/>'
-                     f'<text x="{X(d) + 5:.1f}" y="{pt - 9}" class="td-day">{d.strftime("%a %d").replace(" 0", " ").upper()}</text>')
-        # water, and the part below 0 ft (minus tides) in teal
-        s.append(f'<clipPath id="tclip{city["name"].replace(" ", "")}"><rect x="{pl}" y="{Y(0):.1f}" width="{W - pl - pr}" height="{base - Y(0):.1f}"/></clipPath>')
-        area = f'{line}L{pts[-1][0]:.1f},{base:.1f}L{pts[0][0]:.1f},{base:.1f}Z'
-        s.append(f'<path d="{area}" fill="#CFE6F2" fill-opacity=".75"/>')
-        # teal only between the curve and the 0 ft line, where the curve dips below it
-        zero = f'{line}L{pts[-1][0]:.1f},{Y(0):.1f}L{pts[0][0]:.1f},{Y(0):.1f}Z'
-        s.append(f'<path d="{zero}" fill="#0B7A87" fill-opacity=".6" clip-path="url(#tclip{city["name"].replace(" ", "")})"/>')
-        s.append(f'<line x1="{pl}" x2="{W - pr}" y1="{Y(0):.1f}" y2="{Y(0):.1f}" stroke="#8A9AA8" stroke-dasharray="3 3"/>'
-                 f'<text x="{pl - 5}" y="{Y(0) + 3.5:.1f}" text-anchor="end" class="td-ax">0′</text>'
-                 f'<text x="{pl - 5}" y="{Y(math.floor(hi - 1.8)) + 3.5:.1f}" text-anchor="end" class="td-ax">{math.floor(hi - 1.8)}′</text>')
-        s.append(f'<path d="{line}" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>')
-        # now
-        now = datetime.now(ZoneInfo(tzname)).replace(tzinfo=None)
-        if t0 <= now <= t1:
-            s.append(f'<line x1="{X(now):.1f}" x2="{X(now):.1f}" y1="{pt - 4}" y2="{H - pb}" stroke="#FE5000" stroke-width="1.5"/>'
-                     f'<text x="{X(now) + 3:.1f}" y="{H - pb + 13}" class="td-now">now</text>')
-        # highs and lows: a dot each (hover for exact time and height); heights on highs, times on lows
-        for e in ev:
-            if not (t0 <= e["t"] <= t1):
-                continue
-            x, y = X(e["t"]), Y(e["ft"])
-            hm_ = e["t"].strftime("%I:%M%p").lstrip("0").lower()[:-1]
-            ft = f'{e["ft"]:.1f}'.replace("-", "−") + "′"
-            minus = not e["hi"] and e["ft"] < 0
-            tip = f'{"High" if e["hi"] else "Low"} {ft} at {e["t"].strftime("%a %I:%M %p").replace(" 0", " ")}'
-            s.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{4 if minus else 3}" fill="{"#0B7A87" if minus else "#1F5F8B"}" stroke="#fff" stroke-width="1.5"><title>{tip}</title></circle>')
-            if e["hi"]:
-                s.append(f'<text x="{x:.1f}" y="{y - 7:.1f}" text-anchor="middle" class="td-hi">{hm_}</text>')
-            else:
-                s.append(f'<text x="{x:.1f}" y="{y + 15:.1f}" text-anchor="middle" class="td-lo{" td-minus" if minus else ""}">{hm_}</text>')
-        svg = (f'<svg class="tide-svg" viewBox="0 0 {W} {H}" role="img" aria-label="Tides at {html.escape(tides.station_name(city["name"]))}, next six days">'
-               + "".join(s) + '</svg>')
-        return ('<div class="tide-box"><div class="tide-h">Tides <span>NOAA · ' + html.escape(tides.station_name(city["name"]))
-                + ' · feet above mean lower low water · grey = night · <i class="minus">minus tides</i> are the best for tide-pooling · hover a high or low for its exact time</span></div>'
-                + svg + '</div>')
+    def tide_block(city):
+        return '<div class="tide-slot"></div>'
 
     detail_sections = ""
     for ci, (city, body, sm) in enumerate(zip(CITIES, detail_bodies, summaries)):
@@ -1760,7 +1828,10 @@ def build_cities_page():
     full_html += ('<div class="map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
                   '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
                   '<button data-w="rain">Rain</button><button data-w="wind">Wind</button></div>'
-                  '<div class="city-wash-leg" id="city-wash-leg"></div></div>')
+                  '<div class="city-wash-leg" id="city-wash-leg"></div>'
+                  '<div class="city-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+                  '<input id="city-q" type="search" autocomplete="off" placeholder="Any town in OR or WA" aria-label="Search a town in Oregon or Washington">'
+                  '<div class="city-q-list" id="city-q-list" hidden></div></div></div>')
     full_html += '<div class="legend">Click a city for its next 24 hours \u00b7 pills show what it feels like now (wind chill / heat index) \u00b7 shading: the Map tab\u2019s forecast at ground level \u00b7 National Weather Service forecast</div>'
     full_html += '</div></div>'
     full_html += ('<div class="cc-panel" id="city-cc"><div class="cc-head"><div><div class="cc-kicker">Next 24 hours</div>'
@@ -1770,10 +1841,14 @@ def build_cities_page():
                   '<div class="cc-now"></div></div>'
                   '<div class="cc-charts"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
-    full_html += '<div class="detail-list">' + detail_sections + '</div>'
+    full_html += ('<div class="detail-list"><div class="city-detail cq-detail" id="city_detail_' + str(len(CITIES)) + '" hidden></div>'
+                  + detail_sections + '</div>')
     full_html += ('<script>' + CITY_JS.replace("__H24__", json.dumps([s.get("h24", []) for s in summaries]))
                   .replace("__SUN__", json.dumps(sun)).replace("__MOON__", json.dumps(moon))
-                  .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES])) + '</script>')
+                  .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES]))
+                  .replace("__LATLON__", json.dumps([[c["lat"], c["lon"]] for c in CITIES]))
+                  .replace("__TIDES__", json.dumps(tide_data)).replace("__TIDEST__", json.dumps(tide_stations))
+                  .replace("__OFF__", str(utc_off)) + '</script>')
     full_html += '<script>' + map_js + '</script>'
     full_html += '</body></html>'
     return full_html
@@ -3445,7 +3520,7 @@ def build_dashboard() -> str:
     # ---- Merge CSS (shared base + page-specific) ----
     # the Mt Hood page's stylesheet uses generic names (.map-panel, table, th...) - scope it to
     # its own tab so it can't restyle the Cities / Trails pages
-    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4')
+    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4') + '\n' + scope_css(trail_live.TABLE_CSS, '#page0')
 
     # Shell CSS: left sidebar nav, page headers, section headers (loaded last, so it wins)
     tab_css = """
@@ -3618,7 +3693,7 @@ def build_dashboard() -> str:
     </nav>
     <main class="main">
     <div class="page-section" id="page0">
-      <header class="page-head ph-split"><div><h1>Cities</h1><p>{len(CITIES)} towns across Oregon and Washington \u00B7 click a city to collapse its forecast</p></div>
+      <header class="page-head ph-split"><div><h1>Cities</h1><p>{len(CITIES)} towns across Oregon and Washington \u00B7 click a city for its forecast \u00B7 search the map for any other town</p></div>
         <div class="city-sun" id="city-sun" aria-live="polite"></div></header>
       {c_body}</div>
     <div class="page-section" id="page1" style="display:none" data-init="trailsShown">

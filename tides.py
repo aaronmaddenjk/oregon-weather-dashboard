@@ -37,5 +37,25 @@ def hilo(city, start, days=7):
         return None
 
 
+def _nice(name):
+    """NOAA's all-caps names ('YAQUINA USCG STA, NEWPORT') in title case; others as they are."""
+    if name != name.upper():
+        return name
+    return " ".join(w if w in ("USCG", "USGS") else w.capitalize() for w in name.replace("STA,", "Station,").split(" "))
+
+
+def stations():
+    """Every NOAA tide-prediction station in Oregon and Washington, [[id, name, lat, lon], ...]:
+    the Cities tab's town search picks the nearest one in the browser. [] if NOAA is unavailable."""
+    try:
+        r = requests.get("https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json",
+                         params={"type": "tidepredictions"}, timeout=(10, 60)).json()
+        return [[s["id"], _nice(s["name"]), round(s["lat"], 4), round(s["lng"], 4)]
+                for s in r.get("stations", []) if s.get("state") in ("OR", "WA")]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        print(f"  WARNING: tide station list unavailable ({e})", flush=True)
+        return []
+
+
 def station_name(city):
     return STATIONS[city][1] if city in STATIONS else None

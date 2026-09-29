@@ -93,9 +93,17 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   computed in Python (`sun_times`, NOAA solar equations; `moon_phase`, mean synodic month). Coastal
   cities get a 6-day tide strip under their forecast: `tides.py`, NOAA CO-OPS hi/lo predictions
   (free, no key), hand-picked stations (nearest-by-distance is often up a river): La Push,
-  Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. Drawn as a static
-  SVG tide curve (`tide_block`): half-cosine between hi/lo, nights shaded (sun_times), minus tides
-  teal between curve and 0 ft, times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
+  Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. The build embeds
+  the hi/lo events; `tideBox`/`tideSVG` in CITY_JS draw the curve in the page: half-cosine between
+  hi/lo, nights shaded (`sunUTC`, a JS port of sun_times), minus tides teal between curve and 0 ft,
+  times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
+- Cities detail: only the selected city's 6-day forecast shows (owner's choice).
+- Cities town search (box top-left on the map): Open-Meteo geocoding, OR/WA only; forecast computed
+  live via `window.WxPoint` (trail_live.py's engine, one point at the geocoded elevation), shown as a
+  temporary index S = len(CITIES) in H24/SUN/NAMES/select/pills plus `#city_detail_<S>` (10-day
+  table from WxPoint.table). NOT saved anywhere (owner: forget saving). Tides for a searched town:
+  nearest NOAA station within 25 km from `tides.stations()` (embedded at build), stations east of the
+  town (up-river) penalised; fetched live from CO-OPS (CORS ok).
 
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood

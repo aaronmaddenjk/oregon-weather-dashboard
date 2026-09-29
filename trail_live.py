@@ -92,7 +92,11 @@ TRAIL_CSS = r"""
 .tl-pin small { font-weight:500; color:#8A8F9C; margin-left:4px; }
 .tl-pin.peak { border-left-color:#FE5000; }
 .tl-pin.active { box-shadow:0 0 0 2px #FE5000, 0 2px 6px rgba(0,0,0,.25); }
-/* the 10-day table */
+@media (max-width:1000px) { .tl-row1 { grid-template-columns:minmax(0,1fr); } #tlmap { height:460px; } }
+"""
+
+# the 10-day table (also used by the Cities tab's town search)
+TABLE_CSS = r"""
 .tl-10 { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); padding:8px; }
 .tl-tbl { border-collapse:separate; border-spacing:0; white-space:nowrap; font-size:13px; }
 .tl-tbl th { position:sticky; left:0; z-index:2; background:#fff; text-align:left; padding:7px 12px 7px 0; font-size:12px; color:#555; font-weight:600; min-width:96px; vertical-align:middle; }
@@ -113,8 +117,8 @@ TRAIL_CSS = r"""
 .tl-tbl .wv { font-weight:700; }
 .tl-tbl .gust { font-size:10.5px; color:#8A8F9C; margin-left:3px; }
 .tl-tbl .vis { font-size:11px; }
-@media (max-width:1000px) { .tl-row1 { grid-template-columns:minmax(0,1fr); } #tlmap { height:460px; } }
 """
+TRAIL_CSS += TABLE_CSS
 
 TRAIL_LIVE_JS = r"""
 (function(){
@@ -245,18 +249,26 @@ async function run(pts,name,link,onStats){
   pts=await fillElevation(pts);
   var s=trailStats(pts),P=[{key:'base',name:'Base',p:pts[s.lo]},{key:'peak',name:'Peak',p:pts[s.hi]}];
   if(onStats)onStats(pts,s);   // before the forecast fetches, so a failed forecast still keeps the trail
-  var mid={lat:(P[0].p.lat+P[1].p.lat)/2,lon:(P[0].p.lon+P[1].p.lon)/2};
   status('Fetching the forecast for the base ('+ft(P[0].p.ele)+') and peak ('+ft(P[1].p.ele)+')…');
+  var f=await forecast(P);
+  st.pts=pts;st.stats=s;st.P=P;st.tz=f.tz;st.off=f.off;st.nowKey=f.nowKey;
+  st.name=name;st.link=link;
+  render();
+}
+// the forecast for a few points ({p:{lat,lon,ele}}, ele in m): each gets hours, now, h24
+async function forecast(P){
+  var mid={lat:P.reduce(function(a,x){return a+x.p.lat;},0)/P.length,lon:P.reduce(function(a,x){return a+x.p.lon;},0)/P.length};
   var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth'];
   var common={temperature_unit:'fahrenheit',wind_speed_unit:'mph',precipitation_unit:'inch',timezone:'auto'};
   var gfsVars=[];PL.forEach(function(p){['temperature','geopotential_height','relative_humidity','wind_speed'].forEach(function(v){gfsVars.push(v+'_'+p+'hPa');});});
+  var col=function(k){return P.map(function(x){return x.p[k];}).join(',');};
   var got=await Promise.all([
-    getJSON(OM+'?'+q(Object.assign({latitude:P[0].p.lat+','+P[1].p.lat,longitude:P[0].p.lon+','+P[1].p.lon,elevation:P[0].p.ele+','+P[1].p.ele,
+    getJSON(OM+'?'+q(Object.assign({latitude:col('lat'),longitude:col('lon'),elevation:col('ele'),
       hourly:hourly.join(','),past_days:15,forecast_days:11},common))),
     getJSON(OM+'?'+q(Object.assign({latitude:mid.lat,longitude:mid.lon,models:'gfs_global',forecast_days:8,
-      hourly:['temperature_2m','relative_humidity_2m','wind_gusts_10m'].concat(gfsVars).join(',')},common))),
-    nwsPoint(P[0].p),nwsPoint(P[1].p)]);
-  var om=got[0],G=got[1],off=om[0].utc_offset_seconds,tz=om[0].timezone;
+      hourly:['temperature_2m','relative_humidity_2m','wind_gusts_10m'].concat(gfsVars).join(',')},common)))]
+    .concat(P.map(function(x){return nwsPoint(x.p);})));
+  var om=got[0],G=got[1];if(!Array.isArray(om))om=[om];var off=om[0].utc_offset_seconds,tz=om[0].timezone;
   var gi={};G.hourly.time.forEach(function(t,i){gi[t]=i;});
   var nowKey=new Date(Date.now()+off*1000).toISOString().slice(0,13)+':00';
   P.forEach(function(pt,k){
@@ -273,12 +285,18 @@ async function run(pts,name,link,onStats){
       return h;});
     pt.now=Math.max(0,pt.hours.findIndex(function(h){return h.t>=nowKey;}));
     pt.h24=pt.hours.slice(pt.now,pt.now+24).map(function(h){return{t:label(h.t),temp:Math.round(h.temp),wind:Math.round(h.wind||0),gust:Math.round(h.gust||0),
-      sky:Math.round(h.sky||0),p:+h.p.toFixed(3),s:+h.s.toFixed(2),ty:h.ty,vis:h.vis==null?null:+h.vis.toFixed(2)};});
+      sky:Math.round(h.sky||0),p:+h.p.toFixed(3),s:+h.s.toFixed(2),ty:h.ty,vis:h.vis==null?null:+h.vis.toFixed(2),feels:feels(h.temp,h.wind,h.dew)};});
   });
-  st.pts=pts;st.stats=s;st.P=P;st.tz=tz;st.off=off;st.nowKey=nowKey;
-  st.name=name;st.link=link;
-  render();
+  return{tz:tz,off:off,nowKey:nowKey};
 }
+// "feels like" the NWS way (feels_like() in weather_dashboard.py): wind chill at 50°F and below with
+// wind over 3 mph, heat index at 80°F and up
+function feels(t,v,d){if(t==null)return null;v=v||0;var f=t;
+  if(t<=50&&v>3)f=35.74+0.6215*t-35.75*Math.pow(v,0.16)+0.4275*t*Math.pow(v,0.16);
+  else if(t>=80&&d!=null){var rh=rhFromDew(t,Math.min(d,t)),hi=0.5*(t+61+(t-68)*1.2+rh*0.094);
+    if(hi>=80)hi=-42.379+2.04901523*t+10.14333127*rh-0.22475541*t*rh-0.00683783*t*t-0.05481717*rh*rh+0.00122874*t*t*rh+0.00085282*t*rh*rh-0.00000199*t*t*rh*rh;
+    f=Math.max(t,hi);}
+  return Math.round(f);}
 
 // ---------- rendering ----------
 function ft(m){return Math.round(m*3.28084).toLocaleString('en-US')+'′';}
@@ -415,6 +433,9 @@ if(location.hash.indexOf('#trail=')===0){
 var restored=false;
 // the GPX reader and elevation method, shared with the Map tab's Trails panel ("Add your GPX")
 window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats,profile:profile};
+// the same engine for one spot, used by the Cities tab's town search: forecast([{p:{lat,lon,ele}}]),
+// then table(point) = the 10-day table, icon(hours) = the condition icon
+window.WxPoint={forecast:forecast,table:table,icon:icon};
 // the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
 window.openTrailForecast=function(poly,name,link){
   pending={src:{poly:poly,name:name||''},link:link||''};
