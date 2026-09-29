@@ -22,8 +22,10 @@ and asks for features in plain language. See README.md for data sources and dev 
   timeouts (tried; removed the workflow). `tools/publish.ps1` builds fresh and force-pushes docs/
   as a single commit to gh-pages (`-NoBuild` = publish current docs/); log in `logs/publish.log`.
   `tools/schedule.ps1` registers the Windows task "Oregon Weather Dashboard" (5 AM + 3 PM).
-  The task is DISABLED while the owner is still developing (2026-09-25); publish by hand.
-  Re-enable: `Enable-ScheduledTask -TaskName "Oregon Weather Dashboard"`.
+  The task is ENABLED since 2026-09-28 (owner ready for a refresh cadence); pause it with
+  `Disable-ScheduledTask -TaskName "Oregon Weather Dashboard"`. Open-Meteo's day resets ~5 PM
+  Pacific, so 5 AM + 3 PM share one quota day (~9,200 of 10,000): don't run an extra fresh build
+  between 5 PM and 3 PM, or the 3 PM build can run out (publish with -NoBuild instead).
   A full fresh build is ~4,600 Open-Meteo calls (Map grid ~3,100) and ~19 min, so max ~2/day
   until the split refresh (hourly light build, grid every few hours) exists.
 - git/gh are installed but not on PowerShell's PATH in this shell: prefix commands with
