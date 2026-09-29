@@ -92,7 +92,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   computed in Python (`sun_times`, NOAA solar equations; `moon_phase`, mean synodic month). Coastal
   cities get a 6-day tide strip under their forecast: `tides.py`, NOAA CO-OPS hi/lo predictions
   (free, no key), hand-picked stations (nearest-by-distance is often up a river): La Push,
-  Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. Minus tides in teal.
+  Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. Drawn as a static
+  SVG tide curve (`tide_block`): half-cosine between hi/lo, nights shaded (sun_times), minus tides
+  teal between curve and 0 ft, heights on highs, times on lows, hover titles on the dots.
 
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood

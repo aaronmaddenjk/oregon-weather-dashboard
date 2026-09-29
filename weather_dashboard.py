@@ -1577,7 +1577,15 @@ def build_cities_page():
         ".tide-day .th { color:#1F3A52; }\n"
         ".tide-day .tl { color:#5A5F6B; }\n"
         ".tide-day .minus, .tide-day .minus em { color:#0B7A87; font-weight:700; }\n"
-        "@media (max-width:760px) { .tide-days { grid-template-columns:repeat(3,minmax(0,1fr)); } }\n"
+        ".tide-svg { display:block; width:100%; height:auto; overflow:visible; }\n"
+        ".tide-svg text { font-family:inherit; font-size:10.5px; font-variant-numeric:tabular-nums; }\n"
+        ".tide-svg .td-day { font-size:10.5px; font-weight:700; letter-spacing:.05em; fill:#111; }\n"
+        ".tide-svg .td-ax { fill:#9A9FAB; }\n"
+        ".tide-svg .td-hi { fill:#1F5F8B; font-weight:700; }\n"
+        ".tide-svg .td-lo { fill:#5A5F6B; }\n"
+        ".tide-svg .td-minus { fill:#0B7A87; font-weight:700; }\n"
+        ".tide-svg .td-now { fill:#FE5000; font-weight:700; font-size:10px; }\n"
+        ".tide-svg circle { cursor:default; }\n"
         ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
         ".city-wash[hidden] { display:none; }\n"
         ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
@@ -1649,25 +1657,86 @@ def build_cities_page():
 
     # tides for the coastal towns: highs and lows for the six forecast days
     def tide_block(city):
-        ev = tides.hilo(city["name"], today, days=6)
-        if not ev:
+        """The six forecast days' tide curve: a smooth line through NOAA's highs and lows (the usual
+        half-cosine between extremes), nights shaded, minus tides in teal, highs and lows labelled."""
+        ev = tides.hilo(city["name"], today - timedelta(days=1), days=8)   # a day either side, for the curve's ends
+        if not ev or len(ev) < 4:
             return ""
-        by_day = OrderedDict()
+        t0 = datetime(today.year, today.month, today.day)
+        t1 = t0 + timedelta(days=6)
+        W, H, pl, pr, pt, pb = 960, 230, 34, 8, 32, 24
+        lo = min(0.0, min(e["ft"] for e in ev)) - 2.4   # room under the lows for their labels
+        hi = max(e["ft"] for e in ev) + 1.6
+        X = lambda t: pl + (t - t0).total_seconds() / (t1 - t0).total_seconds() * (W - pl - pr)
+        Y = lambda v: pt + (hi - v) / (hi - lo) * (H - pt - pb)
+
+        def height(t):   # half-cosine between the surrounding extremes
+            for a, b in zip(ev, ev[1:]):
+                if a["t"] <= t <= b["t"]:
+                    f = (t - a["t"]).total_seconds() / (b["t"] - a["t"]).total_seconds()
+                    return (a["ft"] + b["ft"]) / 2 + (a["ft"] - b["ft"]) / 2 * math.cos(math.pi * f)
+            return None
+        pts = []
+        t = t0
+        while t <= t1:
+            v = height(t)
+            if v is not None:
+                pts.append((X(t), Y(v)))
+            t += timedelta(minutes=20)
+        if len(pts) < 2:
+            return ""
+        line = "M" + "L".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        base = Y(lo)
+        s = []
+        # nights (sunset to sunrise): tide-pooling wants daylight
+        for k in range(-1, 6):
+            d = today + timedelta(days=k)
+            _, sset = sun_times(city["lat"], city["lon"], d, tzname)
+            rise, _ = sun_times(city["lat"], city["lon"], d + timedelta(days=1), tzname)
+            a, b = max(t0, sset.replace(tzinfo=None)), min(t1, rise.replace(tzinfo=None))
+            if b > a:
+                s.append(f'<rect x="{X(a):.1f}" y="{pt - 4}" width="{X(b) - X(a):.1f}" height="{H - pt - pb + 4}" fill="#EEF0F5"/>')
+        # day columns: a hairline at each midnight and the day's name
         for k in range(6):
-            by_day[today + timedelta(days=k)] = []
+            d = t0 + timedelta(days=k)
+            s.append(f'<line x1="{X(d):.1f}" x2="{X(d):.1f}" y1="{pt - 18}" y2="{H - pb}" stroke="#DDE0E6"/>'
+                     f'<text x="{X(d) + 5:.1f}" y="{pt - 9}" class="td-day">{d.strftime("%a %d").replace(" 0", " ").upper()}</text>')
+        # water, and the part below 0 ft (minus tides) in teal
+        s.append(f'<clipPath id="tclip{city["name"].replace(" ", "")}"><rect x="{pl}" y="{Y(0):.1f}" width="{W - pl - pr}" height="{base - Y(0):.1f}"/></clipPath>')
+        area = f'{line}L{pts[-1][0]:.1f},{base:.1f}L{pts[0][0]:.1f},{base:.1f}Z'
+        s.append(f'<path d="{area}" fill="#CFE6F2" fill-opacity=".75"/>')
+        # teal only between the curve and the 0 ft line, where the curve dips below it
+        zero = f'{line}L{pts[-1][0]:.1f},{Y(0):.1f}L{pts[0][0]:.1f},{Y(0):.1f}Z'
+        s.append(f'<path d="{zero}" fill="#0B7A87" fill-opacity=".6" clip-path="url(#tclip{city["name"].replace(" ", "")})"/>')
+        s.append(f'<line x1="{pl}" x2="{W - pr}" y1="{Y(0):.1f}" y2="{Y(0):.1f}" stroke="#8A9AA8" stroke-dasharray="3 3"/>'
+                 f'<text x="{pl - 5}" y="{Y(0) + 3.5:.1f}" text-anchor="end" class="td-ax">0′</text>'
+                 f'<text x="{pl - 5}" y="{Y(math.floor(hi - 1.4)) + 3.5:.1f}" text-anchor="end" class="td-ax">{math.floor(hi - 1.4)}′</text>')
+        s.append(f'<path d="{line}" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>')
+        # now
+        now = datetime.now(ZoneInfo(tzname)).replace(tzinfo=None)
+        if t0 <= now <= t1:
+            s.append(f'<line x1="{X(now):.1f}" x2="{X(now):.1f}" y1="{pt - 4}" y2="{H - pb}" stroke="#FE5000" stroke-width="1.5"/>'
+                     f'<text x="{X(now) + 3:.1f}" y="{H - pb + 13}" class="td-now">now</text>')
+        # highs and lows: a dot each (hover for exact time and height); heights on highs, times on lows
         for e in ev:
-            if e["t"].date() in by_day:
-                by_day[e["t"].date()].append(e)
-        cols = ""
-        for d, es in by_day.items():
-            rows = "".join(
-                f'<span class="{"th" if e["hi"] else "tl"}{" minus" if not e["hi"] and e["ft"] < 0 else ""}">'
-                f'{"▲" if e["hi"] else "▼"} {e["t"].strftime("%I:%M%p").lstrip("0").lower()[:-1]}'
-                f' <em>{e["ft"]:.1f}′</em></span>'.replace("<em>-", "<em>−") for e in es)
-            cols += f'<div class="tide-day"><b>{d.strftime("%a %d").replace(" 0", " ")}</b>{rows}</div>'
+            if not (t0 <= e["t"] <= t1):
+                continue
+            x, y = X(e["t"]), Y(e["ft"])
+            hm_ = e["t"].strftime("%I:%M%p").lstrip("0").lower()[:-1]
+            ft = f'{e["ft"]:.1f}'.replace("-", "−") + "′"
+            minus = not e["hi"] and e["ft"] < 0
+            tip = f'{"High" if e["hi"] else "Low"} {ft} at {e["t"].strftime("%a %I:%M %p").replace(" 0", " ")}'
+            s.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{4 if minus else 3}" fill="{"#0B7A87" if minus else "#1F5F8B"}" stroke="#fff" stroke-width="1.5"><title>{tip}</title></circle>')
+            if e["hi"]:
+                s.append(f'<text x="{x:.1f}" y="{y - 7:.1f}" text-anchor="middle" class="td-hi">{ft}</text>')
+            else:
+                s.append(f'<text x="{x:.1f}" y="{y + 15:.1f}" text-anchor="middle" class="td-lo{" td-minus" if minus else ""}">{hm_}</text>'
+                         + (f'<text x="{x:.1f}" y="{y + 27:.1f}" text-anchor="middle" class="td-lo td-minus">{ft}</text>' if minus else ''))
+        svg = (f'<svg class="tide-svg" viewBox="0 0 {W} {H}" role="img" aria-label="Tides at {html.escape(tides.station_name(city["name"]))}, next six days">'
+               + "".join(s) + '</svg>')
         return ('<div class="tide-box"><div class="tide-h">Tides <span>NOAA · ' + html.escape(tides.station_name(city["name"]))
-                + ' · feet above mean lower low water · <i class="minus">minus tides</i> are the best for tide-pooling</span></div>'
-                '<div class="tide-days">' + cols + '</div></div>')
+                + ' · feet above mean lower low water · grey = night · <i class="minus">minus tides</i> are the best for tide-pooling · hover a high or low for its exact time</span></div>'
+                + svg + '</div>')
 
     detail_sections = ""
     for ci, (city, body, sm) in enumerate(zip(CITIES, detail_bodies, summaries)):
