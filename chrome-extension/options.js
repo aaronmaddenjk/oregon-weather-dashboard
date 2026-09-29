@@ -1,4 +1,4 @@
-const DEFAULT_URL = "http://localhost:8000/";
+const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
 const input = document.getElementById("url");
 chrome.storage.sync.get({ dashboardUrl: DEFAULT_URL }, (v) => { input.value = v.dashboardUrl; });
 document.getElementById("save").addEventListener("click", () => {

@@ -5,7 +5,7 @@
 //   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline}
 // Nothing is sent anywhere else; the dashboard computes the forecast in the browser.
 
-const DEFAULT_URL = "http://localhost:8000/";
+const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
 const SITES = [
   { re: /^https:\/\/(www\.)?alltrails\.com\//, func: extractRoute },
   { re: /^https:\/\/(webmap|backcountry)\.onxmaps\.com\//, func: extractOnx },

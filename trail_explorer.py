@@ -489,15 +489,17 @@ TRAILS_PANEL_HTML = """
     <button type="button" data-use="r" aria-pressed="false">Horses OK</button>
     <button type="button" data-use="nm" aria-pressed="true">No motorized</button>
   </div>
-  <label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
+  <div class="ex-mine-row"><label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
     + Add your GPX</label>
+    <span class="ex-bk" title="Your trails live in this browser only: back them up to a file, or restore them here from one"><button type="button" id="ex-export">Back up</button> ·
+    <label>Restore<input type="file" id="ex-import" accept=".json,application/json" hidden></label></span></div>
   <div class="ex-card" id="ex-card" hidden></div>
   <div class="ex-listhead"><span id="ex-inview"></span><label>Sort<select id="ex-sort"><option value="name">Name</option>
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
   <ol class="ex-list" id="ex-list"></ol>
   <p class="ex-foot">Trails: USGS National Digital Trails (Forest Service, Park Service, BLM, Fish &amp; Wildlife, WA State
     Parks), Oregon Parks and Recreation, Oregon Dept. of Forestry and Oregon Metro, joined into whole trails. Gain and
-    high point from Mapbox terrain, climbing from the low end. Your GPX trails stay in this browser.</p>
+    high point from Mapbox terrain, climbing from the low end. Your trails stay in this browser (Back up to move them).</p>
 </aside>
 """
 
@@ -522,6 +524,10 @@ TRAILS_CSS = r"""
 .ex-add { align-self:flex-start; font-size:12.5px; font-weight:700; color:#6B3FA8; cursor:pointer; }
 .ex-add:hover { text-decoration:underline; }
 .ex-add.busy { color:#8A8F9C; pointer-events:none; }
+.ex-mine-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.ex-bk { font-size:11.5px; color:#9A9FAB; }
+.ex-bk button, .ex-bk label { border:0; background:none; padding:0; font:inherit; font-weight:600; color:#6B3FA8; cursor:pointer; }
+.ex-bk button:hover, .ex-bk label:hover { text-decoration:underline; }
 .ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
 .ex-card.mine { border-top-color:#6B3FA8; }
 .ex-card { position:relative; }
@@ -769,6 +775,20 @@ window.TrailsLayer=function(map,opt){
       b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');if(T.length)apply();});});
     $('ex-list').addEventListener('click',function(e){var li=e.target.closest('li[data-i]');if(li)select(+li.dataset.i,true);});
     $('ex-gpx').addEventListener('change',function(){var f=this.files[0];this.value='';if(f)addGPX(f);});
+    // back up / restore: your trails are per browser and per site (localhost and GitHub Pages don't share
+    // them), so a file carries them across; a restore adds the ones missing here and never replaces any
+    $('ex-export').addEventListener('click',function(){var mine=readMine(),b=this;
+      if(!mine.length){b.textContent='Nothing to back up yet';setTimeout(function(){b.textContent='Back up';},2500);return;}
+      var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(mine)],{type:'application/json'}));
+      a.download='my-trails-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();
+      setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);});
+    $('ex-import').addEventListener('change',async function(){var f=this.files[0],lab=this.parentNode,keep='Restore';this.value='';if(!f)return;
+      var msg;try{var got=JSON.parse(await f.text());if(!Array.isArray(got))throw 0;
+        var mine=readMine(),have={},n=0;mine.forEach(function(m){have[m.link||m.p]=1;});
+        got.forEach(function(m){if(m&&m.p&&m.name&&!have[m.link||m.p]){mine.push(m);have[m.link||m.p]=1;n++;}});
+        if(n&&!writeMine(mine))throw 0;msg=n?'Added '+n+' trail'+(n>1?'s':''):'All already here';if(n&&ready)refresh();}
+      catch(e){msg='Not a trails backup';}
+      lab.firstChild.textContent=msg;setTimeout(function(){lab.firstChild.textContent=keep;},3000);});
     // another tab (the extension's forecast) saved a trail: show it here too
     window.addEventListener('storage',function(e){if(e.key===MINE_KEY&&ready)refresh();});
   }
