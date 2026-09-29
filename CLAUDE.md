@@ -1,4 +1,4 @@
-# Oregon Weather Dashboard: notes for Claude
+﻿# Oregon Weather Dashboard: notes for Claude
 
 A static weather dashboard for Oregon/Washington, built by Python into `docs/index.html`
 (one big page, tabs in a left sidebar). Personal project; the owner iterates on it visually
@@ -94,7 +94,7 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   (free, no key), hand-picked stations (nearest-by-distance is often up a river): La Push,
   Garibaldi (no Cannon Beach station), Nestucca Bay entrance, Florence USCG Pier. Drawn as a static
   SVG tide curve (`tide_block`): half-cosine between hi/lo, nights shaded (sun_times), minus tides
-  teal between curve and 0 ft, heights on highs, times on lows, hover titles on the dots.
+  teal between curve and 0 ft, time + height on highs, time on lows (+ height on minus tides), hover titles on the dots.
 
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood

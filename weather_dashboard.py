@@ -1666,7 +1666,7 @@ def build_cities_page():
         t1 = t0 + timedelta(days=6)
         W, H, pl, pr, pt, pb = 960, 230, 34, 8, 32, 24
         lo = min(0.0, min(e["ft"] for e in ev)) - 2.4   # room under the lows for their labels
-        hi = max(e["ft"] for e in ev) + 1.6
+        hi = max(e["ft"] for e in ev) + 3.0   # room over the highs for their time and height
         X = lambda t: pl + (t - t0).total_seconds() / (t1 - t0).total_seconds() * (W - pl - pr)
         Y = lambda v: pt + (hi - v) / (hi - lo) * (H - pt - pb)
 
@@ -1710,7 +1710,7 @@ def build_cities_page():
         s.append(f'<path d="{zero}" fill="#0B7A87" fill-opacity=".6" clip-path="url(#tclip{city["name"].replace(" ", "")})"/>')
         s.append(f'<line x1="{pl}" x2="{W - pr}" y1="{Y(0):.1f}" y2="{Y(0):.1f}" stroke="#8A9AA8" stroke-dasharray="3 3"/>'
                  f'<text x="{pl - 5}" y="{Y(0) + 3.5:.1f}" text-anchor="end" class="td-ax">0′</text>'
-                 f'<text x="{pl - 5}" y="{Y(math.floor(hi - 1.4)) + 3.5:.1f}" text-anchor="end" class="td-ax">{math.floor(hi - 1.4)}′</text>')
+                 f'<text x="{pl - 5}" y="{Y(math.floor(hi - 3.0)) + 3.5:.1f}" text-anchor="end" class="td-ax">{math.floor(hi - 3.0)}′</text>')
         s.append(f'<path d="{line}" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>')
         # now
         now = datetime.now(ZoneInfo(tzname)).replace(tzinfo=None)
@@ -1728,7 +1728,8 @@ def build_cities_page():
             tip = f'{"High" if e["hi"] else "Low"} {ft} at {e["t"].strftime("%a %I:%M %p").replace(" 0", " ")}'
             s.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{4 if minus else 3}" fill="{"#0B7A87" if minus else "#1F5F8B"}" stroke="#fff" stroke-width="1.5"><title>{tip}</title></circle>')
             if e["hi"]:
-                s.append(f'<text x="{x:.1f}" y="{y - 7:.1f}" text-anchor="middle" class="td-hi">{ft}</text>')
+                s.append(f'<text x="{x:.1f}" y="{y - 19:.1f}" text-anchor="middle" class="td-lo">{hm_}</text>'
+                         f'<text x="{x:.1f}" y="{y - 7:.1f}" text-anchor="middle" class="td-hi">{ft}</text>')
             else:
                 s.append(f'<text x="{x:.1f}" y="{y + 15:.1f}" text-anchor="middle" class="td-lo{" td-minus" if minus else ""}">{hm_}</text>'
                          + (f'<text x="{x:.1f}" y="{y + 27:.1f}" text-anchor="middle" class="td-lo td-minus">{ft}</text>' if minus else ''))
