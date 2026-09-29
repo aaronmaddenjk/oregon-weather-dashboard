@@ -368,11 +368,11 @@ window.AQL=(function(){
   function c(v){if(v<=S[0][0])return S[0][1];for(var i=1;i<S.length;i++){if(v<=S[i][0]){var f=(v-S[i-1][0])/(S[i][0]-S[i-1][0]),p=S[i-1][1],q=S[i][1];return [0,1,2,3].map(function(k){return p[k]+(q[k]-p[k])*f;});}}return S[S.length-1][1];}
   // h: index into the day's 3-hourly frames, or undefined/null for the day's worst hour
   function vals(d,h){return (h==null||!AQ.days[d].frames)?AQ.days[d].aqi:AQ.days[d].frames[h];}
-  function image(d,h){
-    var key=d+'-'+(h==null?'day':h);if(cache[key])return cache[key];
+  function image(d,h,strong){   // strong: every cell at 0.6 alpha (the Cities map's Air quality shading)
+    var key=d+'-'+(h==null?'day':h)+(strong?'s':'');if(cache[key])return cache[key];
     var cv=document.createElement('canvas');cv.width=AQ.nx;cv.height=AQ.ny;
     var x=cv.getContext('2d'),im=x.createImageData(AQ.nx,AQ.ny),v=vals(d,h);
-    for(var i=0;i<v.length;i++){var k=c(v[i]==null?0:v[i]);im.data[i*4]=k[0];im.data[i*4+1]=k[1];im.data[i*4+2]=k[2];im.data[i*4+3]=Math.round(k[3]*255);}
+    for(var i=0;i<v.length;i++){var k=c(v[i]==null?0:v[i]);im.data[i*4]=k[0];im.data[i*4+1]=k[1];im.data[i*4+2]=k[2];im.data[i*4+3]=Math.round((strong?0.6:k[3])*255);}
     x.putImageData(im,0,0);return cache[key]=cv.toDataURL();
   }
   function at(lat,lon,d,h){var j=Math.min(AQ.ny-1,Math.max(0,Math.round((AQ.lat0-lat)/AQ.step))),i=Math.min(AQ.nx-1,Math.max(0,Math.round((lon-AQ.lon0)/AQ.step)));return vals(d,h)[j*AQ.nx+i];}
@@ -388,10 +388,10 @@ window.AQL=(function(){
     map.addSource('aq',{type:'image',url:image(0),coordinates:AQ.coords});
     map.addLayer({id:'aq',type:'raster',source:'aq',layout:{visibility:'none'},paint:{'raster-resampling':'linear','raster-fade-duration':0}},before);
   }
-  function show(map,d,on,h){
+  function show(map,d,on,h,strong){
     if(!map.getLayer('aq'))return;
     map.setLayoutProperty('aq','visibility',on?'visible':'none');
-    if(on)map.getSource('aq').updateImage({url:image(d,h),coordinates:AQ.coords});
+    if(on)map.getSource('aq').updateImage({url:image(d,h,strong),coordinates:AQ.coords});
   }
   function worst(d,h){   // the region's worst cell for a day / frame, so the legend can point at the smoke
     var v=vals(d,h),bi=-1;for(var i=0;i<v.length;i++)if(v[i]!=null&&(bi<0||v[i]>v[bi]))bi=i;
@@ -887,6 +887,11 @@ def cloud_base_display(cb_m, c_low, c_mid, c_high, cloud_pct, temp_f, dew_f, vis
     c_low=c_low or 0; c_mid=c_mid or 0; c_high=c_high or 0
     if cloud_pct<10: return "Clear"
     if cloud_pct<20 and c_low<10 and c_mid<15 and c_high<20: return "Few"
+    # total cover is the NWS sky cover, the layers are ECMWF's: when the layers show nothing there's
+    # no cloud to put a base under, so don't guess one from the dew point (owner saw bases under
+    # empty cloud rows)
+    if max(c_low, c_mid, c_high) <= 5:
+        return "Few" if cloud_pct < 25 else "Scattered" if cloud_pct < 50 else "Cloudy"
     alt_ft=None; spread=max(0,temp_f-dew_f)
     if vis_m is not None and vis_m<1000 and c_low>10:
         alt_ft=max(0,(spread/4.4)*1000)+elev_ft
@@ -1135,7 +1140,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
                 for ix,e in enumerate(ents):
                     bdr='border-left:1px solid #DDE0E6;' if ix==0 else ''
                     R[band]+=f'<td class="{D} cc" style="display:none;{bdr}" title="{nm} cloud {e[key]:.0f}%">{cloud_puff(e[key])}</td>'
-            bases=[e["cb"] for e in ents if e["cb"] not in ("Clear","Few","--")]
+            bases=[e["cb"] for e in ents if e["cb"] not in ("Clear","Few","Scattered","Cloudy","--")]
             cbs=bases[0] if len(set(bases))<=1 and bases else ("Clear" if not bases else f"{bases[0]}\u2013{bases[-1]}")
             R["cb"]+=f'<td class="{S} cb" colspan="{nc}" {oc}>{html.escape(cbs)}</td>'
             for ei,e in enumerate(ents):
@@ -1747,7 +1752,11 @@ def build_cities_page():
         "  var tc=function(h){if(h>=80)return'#ED1E29';if(h>=70)return'#FAA21B';if(h>=50)return'#6BBF68';if(h>=35)return'#4FB1BE';return'#368994';};\n"
         "  // a slim pill per city: icon, name and one number, which follows the map's shading switch\n"
         "  var WEST={'Portland':1,'Forks':1,'Cannon Beach':1,'Pacific City':1,'Florence':1};   // pills west of the town: the coast's out over the ocean, Portland's clear of Sandy\n"
+        "  // air quality now: today's 3-hourly frame nearest the hour (the same CAMS grid as the Map tab's layer)\n"
+        "  var hrPT=+new Date().toLocaleString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',hour12:false})%24,AQF=Math.max(0,Math.min(7,Math.round((hrPT-2)/3)));\n"
+        "  function aqCol(v){return v<=50?'#3E9A4A':v<=100?'#C99A06':v<=150?'#E8710A':v<=200?'#D93025':v<=300?'#8F3F97':'#7E0023';}\n"
         "  function pillVal(m,kind){\n"
+        "    if(kind==='air'){var a=window.AQL&&window.AQL.at(m.lat,m.lon,0,AQF);return a==null?{t:'--',c:'#A3ABB8',tip:'no air-quality data'}:{t:'AQI '+a,c:aqCol(a),tip:'air quality '+a+' ('+window.AQL.cat(a)+') now'};}\n"
         "    if(kind==='rain'){var r=m.rain24||0;return{t:r<0.01?'dry':(r<0.1?r.toFixed(2):r.toFixed(1))+'\u2033',c:r<0.01?'#A3ABB8':r<0.25?'#4FB1BE':r<0.75?'#0E9AAE':'#3E3AA8',tip:(r<0.01?'no rain':r.toFixed(2)+'\u2033 of rain')+' in the next 24 h'};}\n"
         "    if(kind==='wind'){var g=m.gnow==null?m.gust:m.gnow;return{t:g+' mph',c:g<15?'#368994':g<30?'#D08A12':'#C8401A',tip:'gusts '+g+' mph now'};}\n"
         "    var f=m.feels==null?m.hi:m.feels;return{t:f+'\u00b0',c:tc(f),tip:'feels like '+f+'\u00b0 now'};}\n"
@@ -1766,7 +1775,13 @@ def build_cities_page():
         "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
         "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
         "  var ctl=document.getElementById('city-wash'),leg=document.getElementById('city-wash-leg');\n"
-        "  function wash(kind){if(!window.RegionWash)return;window.RegionWash(kind).then(function(w){if(!w){ctl.hidden=true;return;}\n"
+        "  if(window.AQL)window.AQL.attach(map,sym);\n"
+        "  function wash(kind){\n"
+        "    if(window.AQL)window.AQL.show(map,0,kind==='air',AQF,true);\n"
+        "    if(map.getLayer('wash'))map.setLayoutProperty('wash','visibility',kind==='air'?'none':'visible');\n"
+        "    if(kind==='air'){ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});\n"
+        "      leg.innerHTML='<b>Air quality now (AQI)</b><i style=\"background:linear-gradient(90deg,#00C800 0%,#00C800 14%,#F5E100 21%,#FF7E00 36%,#EB1414 50%,#8F3F97 71%,#7E0023 100%)\"></i><span><em>Good</em><em>Unhealthy</em><em>Hazardous</em></span>';return;}\n"
+        "    if(!window.RegionWash)return;window.RegionWash(kind).then(function(w){if(kind!==washKind)return;if(!w){ctl.hidden=true;return;}\n"
         "    if(map.getSource('wash'))map.getSource('wash').updateImage({url:w.url,coordinates:w.coords});\n"
         "    else{map.addSource('wash',{type:'image',url:w.url,coordinates:w.coords});\n"
         "      map.addLayer({id:'wash',type:'raster',source:'wash',paint:{'raster-opacity':0.8,'raster-resampling':'linear','raster-fade-duration':0}},sym);}\n"
@@ -1827,7 +1842,7 @@ def build_cities_page():
     full_html += '<div class="dashboard-layout">'
     full_html += ('<div class="map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
                   '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
-                  '<button data-w="rain">Rain</button><button data-w="wind">Wind</button></div>'
+                  '<button data-w="rain">Rain</button><button data-w="wind">Wind</button><button data-w="air" title="Air quality (AQI)">Air</button></div>'
                   '<div class="city-wash-leg" id="city-wash-leg"></div>'
                   '<div class="city-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
                   '<input id="city-q" type="search" autocomplete="off" placeholder="Any town in OR or WA" aria-label="Search a town in Oregon or Washington">'
@@ -2901,7 +2916,7 @@ def build_ski_page():
             mv = min((e["vis_mi"] for e in ents if e["vis_mi"] is not None), default=None)
             sn = sum(e["snow_in"] for e in ents)
             mp = max(e["precip"] for e in ents)
-            bases = [e["cb"] for e in ents if e["cb"] not in ("Clear", "Few", "--")]
+            bases = [e["cb"] for e in ents if e["cb"] not in ("Clear", "Few", "Scattered", "Cloudy", "--")]
             cb = bases[0] if len(set(bases)) <= 1 and bases else ("Clear" if not bases else f'{bases[0]}–{bases[-1]}')
             ci = condition_icon(ents)
             dd = datetime.strptime(ents[0]["date_key"], "%Y-%m-%d")
