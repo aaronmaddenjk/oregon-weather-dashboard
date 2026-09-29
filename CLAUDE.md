@@ -28,6 +28,10 @@ and asks for features in plain language. See README.md for data sources and dev 
   between 5 PM and 3 PM, or the 3 PM build can run out (publish with -NoBuild instead).
   A full fresh build is ~4,600 Open-Meteo calls (Map grid ~3,100) and ~19 min, so max ~2/day
   until the split refresh (hourly light build, grid every few hours) exists.
+- The scheduled task's Python doesn't see the per-user site-packages (AppData\Roaming\Python), so
+  packages must live in Python's own Lib\site-packages: `$env:PYTHONNOUSERSITE='1'; python -m pip
+  install -r requirements.txt` (first scheduled run 2026-09-29 failed on `import dotenv`). This Claude
+  shell is sandboxed: to check the real environment or the real task, run with the sandbox disabled.
 - git/gh are installed but not on PowerShell's PATH in this shell: prefix commands with
   `$env:Path = "C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;" + $env:Path`.
   Commit as aaronmaddenjk / 242111455+aaronmaddenjk@users.noreply.github.com (set in repo config).
