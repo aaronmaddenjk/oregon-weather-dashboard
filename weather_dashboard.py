@@ -2139,7 +2139,7 @@ window.selectMountain=function(i,init){
   var s=document.getElementById('mtn-pick');if(s){s.value=i;document.getElementById('mtn-name').innerHTML=MT[i].icon+MT[i].name;}
   document.querySelectorAll('.mtn-marker').forEach(function(el,j){el.classList.toggle('active',j===i);});
   if(window.pinFlip)window.pinFlip();
-  var d=document.getElementById('mtn_'+i);if(d&&!init)d.parentNode.insertBefore(d,d.parentNode.firstChild);
+  MT.forEach(function(_,j){var d=document.getElementById('mtn_'+j);if(d)d.hidden=j!==i;});   // only this one's forecast table
   show();
   setView(view);   // stays on Cameras if this mountain has any, else back to the forecast
   if(window.ovApply)window.ovApply();
@@ -2191,7 +2191,7 @@ def build_trails_page(aq):
         temps = f'<b>{s["hi"]:.0f}\u00b0</b> / {s["lo"]:.0f}\u00b0 at the summit today' if "hi" in s else ''
         elev = f'Summit {s["elev_ft"]:,.0f}\u2032 MSL \u00b7 ' if "elev_ft" in s else ''
         details += (
-            f'<section class="city-detail mtn-detail" id="mtn_{mi}">'
+            f'<section class="city-detail mtn-detail" id="mtn_{mi}"{"" if mi == DEFAULT_MTN else " hidden"}>'
             '<div class="city-detail-header" onclick="var b=this.nextElementSibling;'
             'b.style.display=b.style.display===\'none\'?\'block\':\'none\';this.classList.toggle(\'collapsed\')">'
             f'<span class="ch-icon">{mtn_icon(m["uid"], 30)}</span>'
