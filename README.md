@@ -24,7 +24,7 @@ emails the result.
   `prototype.html` uses a placeholder div for the map panels. It'll work fine
   once this runs as a real page in a real browser; just don't expect to
   preview it inside Claude's artifact viewer.
-- The dashboard has 3 tabs: **Cities**, **Mountain Trails** (South Sister + Mt
+- The dashboard has 3 tabs: **Cities**, **Volcanos** (South Sister + Mt
   St Helens hiking forecasts with a custom cloud-base-altitude estimate), and
   **Mt Hood Ski** (lift status, road cams, scraped snow forecast).
 

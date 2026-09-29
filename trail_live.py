@@ -117,6 +117,14 @@ TABLE_CSS = r"""
 .tl-tbl .wv { font-weight:700; }
 .tl-tbl .gust { font-size:10.5px; color:#8A8F9C; margin-left:3px; }
 .tl-tbl .vis { font-size:11px; }
+.tl-tbl td[hidden] { display:none !important; }
+.tl-tbl td.dsum { cursor:pointer; }
+.tl-tbl td.dsum:hover { background:#FFF8F4; }
+.tl-tbl td.ddet { cursor:pointer; min-width:56px; padding:7px 6px; border-left-color:#F0F1F4; }
+.tl-tbl td.ddet.d0 { border-left-color:#DDE0E6; }
+.tl-tbl .d3t { font-size:11px; font-weight:600; color:#8A8F9C; }
+.tl-tbl .tp3 { display:inline-block; border-radius:5px; color:#fff; font-size:12.5px; font-weight:700; padding:2px 6px; }
+.tl-hint { margin-top:6px; font-size:11px; color:#9A9FAB; }
 """
 TRAIL_CSS += TABLE_CSS
 
@@ -316,24 +324,43 @@ function days(pt){   // the forecast hours from now, by local date: 7 days, abou
   // runs (past it only the raw GFS is left, which ran 30 degrees hot at Gold Beach; owner: cut it)
   var out=[],by={};pt.hours.slice(pt.now).forEach(function(h){var d=h.t.slice(0,10);if(!by[d]){by[d]=[];out.push(d);}by[d].push(h);});
   return out.slice(0,7).map(function(d){return{date:d,h:by[d]};});}
+// a day's hours in 3-hour blocks (12a, 3a, 6a, ... from now on): the table's drill-down
+function blocks(H){var out=[],by={};H.forEach(function(h){var k=Math.floor(+h.t.slice(11,13)/3);if(!by[k]){by[k]=[];out.push(k);}by[k].push(h);});
+  return out.map(function(k){return by[k];});}
+function hr3(t){var h=+t.slice(11,13);return((h%12)||12)+(h<12?'am':'pm');}
 function table(pt){
   var D=days(pt),lo=Infinity,hi=-Infinity;D.forEach(function(d){d.h.forEach(function(h){lo=Math.min(lo,h.temp);hi=Math.max(hi,h.temp);});});lo-=2;hi+=2;
   var R={time:'',snow:'',temp:'',wind:'',vis:'',chance:''};
-  D.forEach(function(d,di){var H=d.h,dt=new Date(d.date+'T12:00:00Z'),wk=dt.getUTCDay()===0||dt.getUTCDay()===6?' class="wkd"':'';
+  var mx=function(H,k){return Math.max.apply(null,H.map(function(h){return h[k]||0;}));};
+  var minVis=function(H){var vs=H.map(function(h){return h.vis;}).filter(function(v){return v!=null;});return vs.length?Math.min.apply(null,vs):null;};
+  var drop=function(mp){return'<svg class="pd pd'+(mp===0?0:mp<30?1:mp<60?2:3)+'"><use href="#wx-pdrop"/></svg> '+Math.round(mp)+'%';};
+  var snowTxt=function(sn){return sn>=0.05?'<span class="snow-day">'+inch(sn)+'</span>':'<span class="snow-none">0</span>';};
+  D.forEach(function(d,di){var H=d.h,dt=new Date(d.date+'T12:00:00Z'),wkd=dt.getUTCDay()===0||dt.getUTCDay()===6?' wkd':'';
+    var S=' class="dsum'+wkd+'" data-d="'+di+'" title="Click for 3-hourly detail"';
     var tmax=Math.max.apply(null,H.map(function(h){return h.temp;})),tmin=Math.min.apply(null,H.map(function(h){return h.temp;}));
-    var mw=Math.max.apply(null,H.map(function(h){return h.wind||0;})),mg=Math.max.apply(null,H.map(function(h){return h.gust||0;}));
-    var vs=H.map(function(h){return h.vis;}).filter(function(v){return v!=null;}),mv=vs.length?Math.min.apply(null,vs):null;
-    var sn=H.reduce(function(a,h){return a+h.s;},0),mp=Math.max.apply(null,H.map(function(h){return h.pop||0;}));
-    var lvl=mp===0?0:mp<30?1:mp<60?2:3;
-    R.time+='<td'+wk+'><div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div><div class="ds-ci">'+icon(H)+'</div></td>';
-    R.snow+='<td'+wk+'>'+(sn>=0.05?'<span class="snow-day">'+inch(sn)+'</span>':'<span class="snow-none">0</span>')+'</td>';
-    R.temp+='<td'+wk+'><div class="trange"><span class="th">'+Math.round(tmax)+'°</span><div class="tr-track"><i style="top:'+((hi-tmax)/(hi-lo)*100).toFixed(0)+'%;bottom:'+((tmin-lo)/(hi-lo)*100).toFixed(0)+'%;background:linear-gradient('+tempBg(tmax)+','+tempBg(tmin)+')"></i></div><span class="tl2">'+Math.round(tmin)+'°</span></div></td>';
-    R.wind+='<td'+wk+'><span class="wv" style="color:'+windCol(mw)+'">'+Math.round(mw)+'</span><span class="gust">g'+Math.round(mg)+'</span></td>';
-    R.vis+='<td'+wk+'><span class="vis" style="color:'+visCol(mv)+'">'+fmtVis(mv)+'</span></td>';
-    R.chance+='<td'+wk+'><svg class="pd pd'+lvl+'"><use href="#wx-pdrop"/></svg> '+Math.round(mp)+'%</td>';});
+    var mw=mx(H,'wind'),mg=mx(H,'gust'),mv=minVis(H),sn=H.reduce(function(a,h){return a+h.s;},0),mp=mx(H,'pop');
+    var dh='<div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div>';
+    R.time+='<td'+S+'>'+dh+'<div class="ds-ci">'+icon(H)+'</div></td>';
+    R.snow+='<td'+S+'>'+snowTxt(sn)+'</td>';
+    R.temp+='<td'+S+'><div class="trange"><span class="th">'+Math.round(tmax)+'°</span><div class="tr-track"><i style="top:'+((hi-tmax)/(hi-lo)*100).toFixed(0)+'%;bottom:'+((tmin-lo)/(hi-lo)*100).toFixed(0)+'%;background:linear-gradient('+tempBg(tmax)+','+tempBg(tmin)+')"></i></div><span class="tl2">'+Math.round(tmin)+'°</span></div></td>';
+    R.wind+='<td'+S+'><span class="wv" style="color:'+windCol(mw)+'">'+Math.round(mw)+'</span><span class="gust">g'+Math.round(mg)+'</span></td>';
+    R.vis+='<td'+S+'><span class="vis" style="color:'+visCol(mv)+'">'+fmtVis(mv)+'</span></td>';
+    R.chance+='<td'+S+'>'+drop(mp)+'</td>';
+    // the same day in 3-hour blocks, hidden until the day is clicked
+    blocks(H).forEach(function(B,bi){var C=' class="ddet'+wkd+(bi?'':' d0')+'" data-d="'+di+'" hidden',t=B[0].temp,w=mx(B,'wind'),g=mx(B,'gust'),v=minVis(B);
+      R.time+='<td'+C+'>'+(bi?'<div class="dh">&nbsp;</div>':dh)+'<div class="d3t">'+hr3(B[0].t)+'</div><div class="ds-ci">'+icon(B)+'</div></td>';
+      R.snow+='<td'+C+'>'+snowTxt(B.reduce(function(a,h){return a+h.s;},0))+'</td>';
+      R.temp+='<td'+C+'><span class="tp3" style="background:'+tempBg(t)+'">'+Math.round(t)+'°</span></td>';
+      R.wind+='<td'+C+'><span class="wv" style="color:'+windCol(w)+'">'+Math.round(w)+'</span><span class="gust">g'+Math.round(g)+'</span></td>';
+      R.vis+='<td'+C+'><span class="vis" style="color:'+visCol(v)+'">'+fmtVis(v)+'</span></td>';
+      R.chance+='<td'+C+'>'+drop(mx(B,'pop'))+'</td>';});});
   var ri=function(n){return'<svg class="rl" aria-hidden="true"><use href="#ri-'+n+'"/></svg>';};
-  return'<table class="tl-tbl"><tr><th></th>'+R.time+'</tr><tr><th>'+ri('flake')+'New snow</th>'+R.snow+'</tr><tr><th>'+ri('temp')+'High / low</th>'+R.temp+'</tr>'
-    +'<tr><th>'+ri('wind')+'Wind, gust</th>'+R.wind+'</tr><tr><th>'+ri('eye')+'Visibility</th>'+R.vis+'</tr><tr><th>'+ri('chance')+'Chance</th>'+R.chance+'</tr></table>';}
+  return'<table class="tl-tbl" onclick="wxTableDay(event)"><tr><th></th>'+R.time+'</tr><tr><th>'+ri('flake')+'New snow</th>'+R.snow+'</tr><tr><th>'+ri('temp')+'Temp</th>'+R.temp+'</tr>'
+    +'<tr><th>'+ri('wind')+'Wind, gust</th>'+R.wind+'</tr><tr><th>'+ri('eye')+'Visibility</th>'+R.vis+'</tr><tr><th>'+ri('chance')+'Chance</th>'+R.chance+'</tr></table>'
+    +'<div class="tl-hint">Click a day for its 3-hourly detail</div>';}
+// a click on a day swaps it for its 3-hour blocks (and back)
+window.wxTableDay=function(e){var td=e.target.closest('td[data-d]');if(!td)return;var tb=td.closest('table'),d=td.dataset.d,open=td.classList.contains('dsum');
+  tb.querySelectorAll('td[data-d="'+d+'"]').forEach(function(c){c.hidden=c.classList.contains('dsum')?open:!open;});};
 function profile(){   // elevation vs distance, base and peak marked
   var p=st.pts,s=st.stats,W=Math.max(260,$('tl-profile').clientWidth||420),H=170,L=46,B=20,T=10,mi=s.km*0.621371;
   var zs=p.map(function(x){return x.ele*3.28084;}),z0=Math.min.apply(null,zs),z1=Math.max.apply(null,zs),pad=Math.max(50,(z1-z0)*0.08);z0-=pad;z1+=pad;

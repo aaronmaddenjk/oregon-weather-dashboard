@@ -1278,7 +1278,7 @@ CITIES = [
 ]
 
 
-# 24-hour chart panel shared by the Cities and Mountain Trails tabs: wind (gust whisker),
+# 24-hour chart panel shared by the Cities and Volcanos tabs: wind (gust whisker),
 # temperature, cloud cover, precipitation by type with a running total. Plain SVG, redrawn
 # on select and resize; one hover column and tooltip shared by all four. Rain/mix/snow
 # colours were run through the dataviz palette validator (CVD-separable, >=3:1 on white).
@@ -1855,7 +1855,7 @@ def build_cities_page():
 
 
 # ---------------------------------------------------------------------------
-# Page 2: Mountain Trails - PNW overview map + 24-hour charts, 6-day forecasts below
+# Page 2: Volcanos (formerly Mountain Trails) - PNW overview map + 24-hour charts, 6-day forecasts below
 # ---------------------------------------------------------------------------
 # North to south. Waypoints run summit -> mid -> base; the first is the default view and
 # the map-marker summary.
@@ -3511,7 +3511,7 @@ def build_dashboard() -> str:
     # Page 1: Cities
     c_css, c_body, c_scripts = _extract(cities_full_html)
 
-    # Page 2: Mountain Trails
+    # Page 2: Volcanos
     trails_css, trails_body, trails_scripts = _extract(trails_full_html)
 
     # Page 3: Mt Hood Ski
@@ -3684,7 +3684,7 @@ def build_dashboard() -> str:
     <nav class="side-nav" aria-label="Forecast sections">
       <div class="brand">Oregon Weather<small>Daily forecast</small></div>
       <button class="tab-btn active" onclick="showTab(0)"><svg class="nv" aria-hidden="true"><use href="#ri-city"/></svg>Cities</button>
-      <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg>Mountain Trails</button>
+      <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg>Volcanos</button>
       <button class="tab-btn" onclick="showTab(2)"><svg class="nv" aria-hidden="true"><use href="#ri-map"/></svg>Map</button>
       <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg>Mt Hood</button>
       <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
@@ -3697,7 +3697,7 @@ def build_dashboard() -> str:
         <div class="city-sun" id="city-sun" aria-live="polite"></div></header>
       {c_body}</div>
     <div class="page-section" id="page1" style="display:none" data-init="trailsShown">
-      <header class="page-head"><h1>Mountain Trails</h1><p>{len(MOUNTAINS)} peaks from Mt. Baker to Crater Lake, the Olympics to the Wallowas \u00B7 pick a mountain, then summit, mid or base</p></header>
+      <header class="page-head"><h1>Volcanos</h1><p>{len(MOUNTAINS)} peaks from Mt. Baker to Crater Lake, the Olympics to the Wallowas \u00B7 pick a mountain, then summit, mid or base</p></header>
       {trails_body}</div>
     <div class="page-section" id="page2" style="display:none" data-init="initRegionMap">
       <header class="page-head"><h1>Map</h1><p>Oregon and Washington \u00B7 temperature, new snow and wind gusts at every elevation, plus air quality \u00B7 turn on Trails to explore {n_explorer:,} trails and send one to Trail Forecast \u00B7 drag, zoom and tilt, hover for values</p></header>

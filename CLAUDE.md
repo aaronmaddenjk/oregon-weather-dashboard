@@ -35,7 +35,7 @@ and asks for features in plain language. See README.md for data sources and dev 
   visually (screenshots) and with small JS checks before reporting done.
 
 ## Tabs (page ids in the shell, `build_dashboard()`)
-page0 Cities · page1 Mountain Trails · page2 Map (+ Trails layer and side panel) · page3 Mt Hood ·
+page0 Cities · page1 Volcanos (was Mountain Trails) · page2 Map (+ Trails layer and side panel) · page3 Mt Hood ·
 page4 Trail Forecast (`TRAIL_TAB=4` in trail_live.py) · page5 Accuracy.
 Sidebar button order must match page index. `data-init` / `data-lazy` build maps on first view
 (Mapbox bills per map load).
