@@ -1467,13 +1467,13 @@ function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||
     +'<span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 12V7M9.5 9.5 12 12l2.5-2.5" fill="none" stroke="#D9580F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sunset <b>'+s.set+'</b></span>'
     +'<span>Daylight <b>'+s.len+'</b> <em>'+(s.delta<0?'−'+(-s.delta):'+'+s.delta)+' min tomorrow</em></span>'
     +'<span class="cs-moon">'+MOON.emoji+' '+MOON.name+' <em>'+MOON.pct+'% lit</em></span>';}
-// the chosen city: its charts, its marker, its sun times, and its 6-day forecast moved to the top of the list
+// the chosen city: its charts, its marker, its sun times, and only its 6-day forecast below
 window.selectCity=function(i,init){
   if(i===undefined)i=ccSel;ccSel=i;sunLine(i);
   var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;}
   cityMarkerEls.forEach(function(el,j){el.classList.toggle('sel',j===i);});
   charts.set(H24[i]);
-  var d=document.getElementById('city_detail_'+i);if(d&&!init)d.parentNode.insertBefore(d,d.parentNode.firstChild);
+  NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d)d.hidden=j!==i;});
 };
 selectCity(0,true);
 """
@@ -1741,7 +1741,7 @@ def build_cities_page():
     for ci, (city, body, sm) in enumerate(zip(CITIES, detail_bodies, summaries)):
         temps = f'<b>{sm["hi"]:.0f}°</b> / {sm["lo"]:.0f}°' if "hi" in sm else ''
         elev = f'{sm["elev_ft"]:,.0f}′ MSL · ' if "elev_ft" in sm else ''
-        detail_sections += '<div class="city-detail" id="city_detail_' + str(ci) + '">'
+        detail_sections += '<div class="city-detail" id="city_detail_' + str(ci) + '"' + (' hidden' if ci else '') + '>'
         detail_sections += (
             '<div class="city-detail-header" onclick="var b=document.getElementById(\'city_body_' + str(ci) + '\');'
             'b.style.display=b.style.display==\'none\'?\'block\':\'none\';this.classList.toggle(\'collapsed\')">'
@@ -3473,6 +3473,7 @@ def build_dashboard() -> str:
     .sec-rule{margin:32px 0;border:none;border-top:1px solid #E3E5EA;}
     /* section headers: city rows, trail waypoints, ski points */
     .city-detail{margin-bottom:24px;}
+    .city-detail[hidden]{display:none!important;}
     .city-detail-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:4px 2px 9px;
       border-bottom:1px solid #E3E5EA;cursor:pointer;color:#111;}
     .ch-icon{display:flex;font-size:20px;}
