@@ -1525,7 +1525,7 @@ window.selectCity=function(i,init){
 
 // ---------- tides: NOAA's highs and lows drawn as a curve (coastal towns, default or searched) ----------
 // times are wall-clock ms (the local time read as if UTC); OFF = the UTC offset in seconds
-var DAY=864e5,LL=__LATLON__,TIDES=__TIDES__,TIDE_ST=__TIDEST__,OFF=__OFF__;
+var DAY=864e5,LL=__LATLON__,TIDES=__TIDES__,TIDE_ST=__TIDEST__,OFF=__OFF__,COAST=__COAST__;
 function sunUTC(lat,lon,day){   // day = a local date's wall-clock midnight -> [sunrise, sunset] epoch ms (NOAA, as sun_times())
   var n=(day-Date.UTC(new Date(day).getUTCFullYear(),0,1))/DAY+1,g=2*Math.PI/365*(n-1);
   var eqt=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)-0.014615*Math.cos(2*g)-0.040849*Math.sin(2*g));
@@ -1619,9 +1619,12 @@ async function showTown(g){
     var map=window.cityMap;if(map){sMarker=new mapboxgl.Marker({element:el,anchor:'left'}).setLngLat([lon,lat]).addTo(map);
       if(!map.getBounds().contains([lon,lat]))map.easeTo({center:[lon,lat],duration:800});}
     if(window.cityPills)window.cityPills();
-    // tides, when a NOAA tide station is within 25 km. The nearest is often up a river (Seaside's is on
-    // the Youngs River), where the tide runs late, so a station east of the town counts double that distance
-    var best=null;TIDE_ST.forEach(function(s){var d=kmTo(lat,lon,s[2],s[3]),e=d+2*Math.max(0,s[3]-lon)*79;
+    // tides only for coastal towns: within 5 miles of the Pacific shore (COAST: the OR/WA ocean coastline
+    // with its estuaries and bays, no Puget Sound; coast_or_wa.json). Then the NOAA station within 25 km;
+    // the nearest is often up a river (Seaside's is on the Youngs River), where the tide runs late, so a
+    // station east of the town counts double that distance
+    var coastKm=Infinity;COAST.forEach(function(c){var d=kmTo(lat,lon,c[1],c[0]);if(d<coastKm)coastKm=d;});
+    var best=null;if(coastKm<=8.05)TIDE_ST.forEach(function(s){var d=kmTo(lat,lon,s[2],s[3]),e=d+2*Math.max(0,s[3]-lon)*79;
       if(d<=25&&(!best||e<best.e))best={id:s[0],name:s[1],d:d,e:e};});
     sDetail.innerHTML='<div class="city-detail-header"><span class="ch-icon">'+ic+'</span><span class="ch-name">'+esc(name)+', '+st+'</span>'
       +'<span class="ch-temps"><b>'+Math.round(hi)+'°</b> / '+Math.round(lo)+'°</span>'
@@ -1905,7 +1908,9 @@ def build_cities_page():
                   .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES]))
                   .replace("__LATLON__", json.dumps([[c["lat"], c["lon"]] for c in CITIES]))
                   .replace("__TIDES__", json.dumps(tide_data)).replace("__TIDEST__", json.dumps(tide_stations))
-                  .replace("__OFF__", str(utc_off)) + '</script>')
+                  .replace("__OFF__", str(utc_off))
+                  .replace("__COAST__", open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "coast_or_wa.json"), encoding="utf-8").read())
+                  + '</script>')
     full_html += '<script>' + map_js + '</script>'
     full_html += '</body></html>'
     return full_html
