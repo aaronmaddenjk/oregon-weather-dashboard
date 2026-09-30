@@ -1496,7 +1496,7 @@ window.WxCharts=function(panel,opt){
         val:function(h){return h.ty?h.p:0;},col:function(h){return PT[h.ty]||'#ccc';},lines:lines,empty:wet?'':'No precipitation expected'});},
     pop:function(W,PH){   // chance of precipitation, with the chance of thunder inside it (both %, one scale)
       var px=Math.max.apply(null,d.map(function(h){return h.pop||0;})),tx=Math.max.apply(null,d.map(function(h){return h.th||0;}));
-      return chart('Chance of precipitation','Max '+px+'%'+(tx?' · thunder '+tx+'%':''),[[POP,'Precipitation'],[THUN,'Thunder']],d,W,PH,{lo:0,hi:100,ticks:[0,50,100],fmt:function(v){return v+'%';},
+      return chart('Chance','Max '+px+'%'+(tx?' · thunder '+tx+'%':''),[[POP,'Precipitation'],[THUN,'Thunder']],d,W,PH,{lo:0,hi:100,ticks:[0,50,100],fmt:function(v){return v+'%';},
         val:function(h){return h.pop==null?0:h.pop;},col:function(){return POP;},val2:function(h){return h.th||0;},col2:THUN});},
     aqi:function(W,PH){   // US AQI (CAMS via Open-Meteo, includes wildfire smoke), coloured by category
       var vs=d.map(function(h){return h.aqi;}).filter(function(v){return v!=null;}),mx=vs.length?Math.max.apply(null,vs):null,hi=mx==null||mx<=100?100:nice(mx);
@@ -1812,7 +1812,7 @@ LAYOUT_CSS = """
 .lay-a .scroll-wrap table, .lay-a .tl-tbl { width:100%; }
 .cc-charts.cc-grid { flex:none; overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:stretch; padding-top:12px; }
 .cc-grid .cc-chart { background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; padding:9px 10px 4px; }
-.cc-grid .cc-ct { padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #EEF0F3; font-size:12.5px; }
+.cc-grid .cc-ct { padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #EEF0F3; font-size:12.5px; flex-wrap:wrap; row-gap:2px; }
 .cc-grid .cc-band { fill:#EDEFF3; }
 .cc-extra:empty { display:none; }
 .cc-extra .tide-box { box-shadow:none; background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; margin:14px 0 0; }
