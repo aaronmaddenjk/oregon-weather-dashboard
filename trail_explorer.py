@@ -538,7 +538,7 @@ TRAILS_CSS = r"""
 .ex-sync .ex-keyrow button:hover { text-decoration:none; background:#58328C; }
 .ex-msg { margin-top:4px; color:#5A5F6B; }
 .ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
-.ex-card.mine { border-top-color:#6B3FA8; }
+.ex-card.mine { border-top-color:var(--mc,#B0457E); }
 .ex-card { position:relative; }
 .ex-x { position:absolute; top:6px; right:6px; width:26px; height:26px; border:0; border-radius:6px; background:none; font-size:18px; line-height:1; color:#8A8F9C; cursor:pointer; }
 .ex-x:hover { background:#F2F3F6; color:#111; }
@@ -572,7 +572,7 @@ TRAILS_CSS = r"""
 .ex-list li:first-child { border-top:0; }
 .ex-list li:hover { background:#FAFAFB; }
 .ex-list li.sel { background:#FFF4EE; box-shadow:inset 3px 0 0 #FE5000; }
-.ex-list li.mine .n::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:#6B3FA8; margin-right:6px; vertical-align:1px; }
+.ex-list li.mine .n::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--mc,#B0457E); margin-right:6px; vertical-align:1px; }
 .ex-list .n { font-size:13px; font-weight:700; color:#111; }
 .ex-list .n span, .ex-list .m { font-size:11.5px; font-weight:400; color:#8A8F9C; font-variant-numeric:tabular-nums; }
 .ex-list .more { color:#8A8F9C; font-size:12px; cursor:default; }
@@ -586,7 +586,11 @@ TRAILS_JS = r"""
 var AG={fs:'National Forest',nps:'National Park',blm:'BLM',wsp:'WA State Park',fws:'Wildlife Refuge',osp:'Oregon State Park',
   odf:'Oregon State Forest',local:'City & county',mine:'Your trail',other:'Other'};
 var USE={h:'Hiking',b:'Bikes',r:'Horses',m:'Motorized'};
-function agOf(t){return t.src==='mine'?(t.act==='mtb'?'Your MTB trail':'Your hike'):AG[t.src];}
+// your trails' colours: hikes raspberry; MTB trails by Trailforks difficulty (purple = access road / fire road)
+var HIKE_C='#B0457E',MTB_C='#1E8A5A',DIF={green:{c:'#2F9E44',k:'Green'},blue:{c:'#1C6FD9',k:'Blue'},black:{c:'#1B1B1B',k:'Black'},
+  dblack:{c:'#1B1B1B',k:'Double black'},access:{c:'#7E3FB8',k:'Access / fire road'}};
+function mineCol(t){return t.act==='mtb'?(DIF[t.dif]?DIF[t.dif].c:MTB_C):HIKE_C;}
+function agOf(t){return t.src==='mine'?(t.act==='mtb'?'Your MTB trail'+(DIF[t.dif]?' \u00B7 '+DIF[t.dif].k:''):'Your hike'):AG[t.src];}
 function siteOf(u){return window.WxSiteName?window.WxSiteName(u):/onxmaps\.com/.test(u)?'onX':/trailforks\.com/.test(u)?'Trailforks':'AllTrails';}
 var MINE_KEY='wx-mytrails',DATA=null;
 // average grade of a mile of climb: one orange ramp, light to dark (downhill/flat miles stay grey)
@@ -603,7 +607,8 @@ function decode(str){var i=0,lat=0,lng=0,out=[];while(i<str.length){for(var k=0;
   out.push([lng/1e5,lat/1e5]);}return out;}
 function encode(pts){var out='',pl=0,pn=0;function put(v){v=v<0?~(v<<1):v<<1;while(v>=0x20){out+=String.fromCharCode((0x20|(v&31))+63);v>>=5;}out+=String.fromCharCode(v+63);}
   pts.forEach(function(p){var a=Math.round(p.lat*1e5),b=Math.round(p.lon*1e5);put(a-pl);put(b-pn);pl=a;pn=b;});return out;}
-function meta(t){return t.mi.toFixed(1)+' mi \u00B7 '+(t.gain==null?'':fmt(t.gain)+'\u2032 gain \u00B7 ')+(t.hi==null?'':fmt(t.hi)+'\u2032 top');}
+function meta(t){return t.mi.toFixed(1)+' mi \u00B7 '+(t.gain==null?'':fmt(t.gain)+'\u2032 gain \u00B7 ')
+  +(t.act==='mtb'&&t.loss!=null?fmt(t.loss)+'\u2032 descent \u00B7 ':'')+(t.hi==null?'':fmt(t.hi)+'\u2032 top');}
 function readMine(){return window.WxMine.list();}
 // ---------- your trails: trails.json on the repo's "trails" branch, so every device (phone, other laptops)
 // and every republish sees them (publishing only replaces gh-pages). Reading is public; saving needs a
@@ -682,12 +687,14 @@ window.TrailsLayer=function(map,opt){
     parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
     var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
       diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,
-      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||'',act:r[13]||''};   // [12]: your trail's source page, [13]: hike | mtb
+      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||'',act:r[13]||'',dif:r[14]||'',loss:r[15]==null?null:r[15]};
+    // your trails: [12] source page, [13] hike | mtb, [14] Trailforks difficulty, [15] descent (ft)
     t.lc=(t.name+' '+t.num).toLowerCase();return t;}
   function mineRows(){return readMine().map(function(m){var mtb=m.act==='mtb';   // act: hike | mtb (older entries: hike)
-    return[m.name,'','mine',m.mi,mtb?'b':'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||'',mtb?'mtb':'hike'];});}
+    var loss=m.loss!=null?m.loss:window.WxDescent?window.WxDescent(m.prof||[]):null;   // older entries: from the profile
+    return[m.name,'','mine',m.mi,mtb?'b':'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||'',mtb?'mtb':'hike',m.dif||'',loss];});}
   function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
-    properties:{i:t.i,lc:t.lc,src:t.src,act:t.act,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
+    properties:{i:t.i,lc:t.lc,src:t.src,act:t.act,dif:t.dif,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
       b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
   function build(d){var ix={};d.fields.forEach(function(f,k){ix[f]=k;});
     var rows=d.trails.concat(mineRows());T=rows.map(function(r,i){return trail(r,ix,i);});}
@@ -696,7 +703,8 @@ window.TrailsLayer=function(map,opt){
     var before=opt.beforeId,mine=['==',['get','src'],'mine'];   // zoom must be the top-level input
     var w=['interpolate',['linear'],['zoom'],5,['case',mine,0.9,0.5],9,['case',mine,2.1,1.3],14,['case',mine,4.8,3]];
     map.addLayer({id:'trl-line',type:'line',source:'trl',layout:{'line-join':'round','line-cap':'round',visibility:'none'},
-      paint:{'line-color':['case',['all',mine,['==',['get','act'],'mtb']],'#1E8A5A',mine,'#6B3FA8','#1F3A52'],'line-width':w,'line-opacity':0.85}},before);   // your MTB trails green, your hikes purple
+      paint:{'line-color':['case',['all',mine,['==',['get','act'],'mtb']],['match',['get','dif'],'green',DIF.green.c,'blue',DIF.blue.c,'black',DIF.black.c,'dblack',DIF.dblack.c,'access',DIF.access.c,MTB_C],
+        mine,HIKE_C,'#1F3A52'],'line-width':w,'line-opacity':0.85}},before);   // your MTB trails by difficulty, your hikes raspberry
     map.addLayer({id:'trl-hover',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
       paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
     map.addLayer({id:'trl-sel-case',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
@@ -744,7 +752,7 @@ window.TrailsLayer=function(map,opt){
     rows.sort(k==='name'?function(a,b){return a.name.localeCompare(b.name);}:function(a,b){return (b[k]==null?-1:b[k])-(a[k]==null?-1:a[k]);});
     $('ex-count').innerHTML='<b>'+all.toLocaleString('en-US')+'</b> match';
     $('ex-inview').innerHTML='<b>'+rows.length.toLocaleString('en-US')+'</b> in view';
-    var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"><div class="n">'+esc(t.name)+
+    var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"'+(t.src==='mine'?' style="--mc:'+mineCol(t)+'"':'')+'><div class="n">'+esc(t.name)+
       (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+agOf(t)+'</div></li>';}).join('');
     if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
     if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
@@ -759,10 +767,10 @@ window.TrailsLayer=function(map,opt){
     if(!P){if(window.openTrailForecast&&opt.onPick)opt.onPick(t);return;}
     var uses=t.uses.split('').filter(function(u){return USE[u];}).map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
     if(t.diff)uses+='<span>'+esc(t.diff)+'</span>';
-    var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');
+    var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');card.style.setProperty('--mc',t.src==='mine'?mineCol(t):'');
     card.innerHTML='<button class="ex-x" type="button" aria-label="Close">×</button><h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+agOf(t)+'</div>'+
       '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
-      '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
+      (t.act==='mtb'&&t.loss!=null?'<div>Descent<b>'+fmt(t.loss)+'\u2032</b></div>':'<div>High<b>'+fmt(t.hi)+'\u2032</b></div>')+'<div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
       '<div class="ex-prof"></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
       '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
       (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+siteOf(t.link)+' \u2197</a>':'')+

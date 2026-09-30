@@ -98,8 +98,13 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Trailforks (extension 1.4): /trails/<slug>/ and /route/<slug>/ pages carry the line inline in the map
   script - `geoJSON.push({... properties:{'type':'trail'|'route','name':...}, geometry:{type:'LineString',
   encodedpath:'<polyline p5>'}})` (JS single-quoted, backslash-escaped). Activity: `"a"` in #trail
-  (Trailforks + onX BikeRoute = mtb, else hike) -> saved as `act` in trails.json; the Trails layer draws
-  your MTB trails green / hikes purple, "Your hikes" / "Your MTB trails" land filters, MTB = "Bikes OK".
+  (Trailforks + onX BikeRoute = mtb, else hike) -> saved as `act` in trails.json; "Your hikes" / "Your
+  MTB trails" land filters, MTB = "Bikes OK". Extension 1.5 adds `"d"`: the page's "Difficulty rating"
+  (trails "Blue", routes "Black Diamond"; else the first dicon title) -> green | blue | black | dblack |
+  access, saved as `dif`. Your MTB trails are drawn in Trailforks colours (owner: green / blue / black,
+  purple = access / fire road; `DIF` in TRAILS_JS), your hikes raspberry `#B0457E` (not purple any more).
+  MTB trails also show descent (`loss`, ft, summed drops of the 0.1-mi profile; older entries computed
+  from `prof`); Lower Hide and Seek 626' vs Trailforks' 635'.
 
 - Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /
   rain next 24 h / gusts now; the selected one just gets an orange ring, no pop-open details or dot -

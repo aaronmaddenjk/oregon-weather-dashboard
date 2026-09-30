@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trail Forecast for AllTrails, onX and Trailforks",
-  "version": "1.4",
+  "version": "1.5",
   "description": "On an AllTrails trail page, a Trailforks trail or route, or a route or track in the onX Backcountry web map, click to forecast it in your Oregon Weather dashboard and save it to your trails.",
   "action": {
     "default_title": "Forecast this trail and save it to your trails",

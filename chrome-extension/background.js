@@ -2,7 +2,8 @@
 // Click the button on an AllTrails trail page, one of your routes or tracks in the onX Backcountry
 // web map, or a Trailforks trail or route: the route is read (in your own, logged-in session) and
 // handed to the dashboard's Trail Forecast tab in the URL:
-//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline, "a": "hike" | "mtb"}
+//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline, "a": "hike" | "mtb",
+//                      "d": Trailforks difficulty: green | blue | black | dblack | access}
 // Nothing is sent anywhere else; the dashboard computes the forecast in the browser.
 
 const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
@@ -141,8 +142,15 @@ function extractTrailforks() {
   const f = feats.find((x) => x.type === "trail" || x.type === "route") || feats[0];
   if (!f || f.p.length < 4) return { error: "Trailforks didn't include the route on this page" };
   const title = document.title || "";
+  // difficulty: the page's "Difficulty rating" (trails: "Blue", routes: "Black Diamond"), else the
+  // first difficulty icon's title ("Intermediate / Blue Square", "Access Trail, Road or Doubletrack")
+  const dt = (/Difficulty rating\s*\n\s*([^\n]+)/i.exec(document.body.innerText) || [])[1]
+    || [...document.querySelectorAll('[class*="dicon"][title]')].map((e) => e.title)
+         .find((x) => /green|blue|black|access|white|easiest|pro line/i.test(x)) || "";
+  const d = /double black|pro line|orange/i.test(dt) ? "dblack" : /black/i.test(dt) ? "black" : /blue/i.test(dt) ? "blue"
+    : /green|white|easiest|easy/i.test(dt) ? "green" : /access|road|doubletrack/i.test(dt) ? "access" : "";
   return { n: f.name || title.split(/ (Mountain Biking|Hiking)/)[0], u: location.origin + location.pathname,
-           p: f.p, a: /Hiking (Trail|Route)/i.test(title) ? "hike" : "mtb" };
+           p: f.p, a: /Hiking (Trail|Route)/i.test(title) ? "hike" : "mtb", d };
 }
 
 // Runs inside the AllTrails page. AllTrails' map view embeds the route as an encoded polyline

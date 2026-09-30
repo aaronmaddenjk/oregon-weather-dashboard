@@ -386,7 +386,8 @@ function render(){
   var s=st.stats,P=st.P;status('');
   $('tl-load').hidden=true;$('tl-out').hidden=false;
   $('tl-name').textContent=st.name||'Your trail';
-  $('tl-stats').innerHTML='<b>'+(s.km*0.621371).toFixed(1)+' mi</b> · <b>'+Math.round(s.gain*3.28084).toLocaleString('en-US')+'′</b> gain · base <b>'+ft(P[0].p.ele)+'</b> · peak <b>'+ft(P[1].p.ele)+'</b>';
+  $('tl-stats').innerHTML='<b>'+(s.km*0.621371).toFixed(1)+' mi</b> · <b>'+Math.round(s.gain*3.28084).toLocaleString('en-US')+'′</b> gain'
+    +(st.act==='mtb'?' · <b>'+descentFt(profileFt(st.pts)).toLocaleString('en-US')+'′</b> descent':'')+' · base <b>'+ft(P[0].p.ele)+'</b> · peak <b>'+ft(P[1].p.ele)+'</b>';
   var at=$('tl-at');at.hidden=!st.link;if(st.link){at.href=st.link;at.textContent=siteName(st.link)+' ↗';}
   $('tl-prof-s').textContent=(s.km*0.621371).toFixed(1)+' mi · '+ft(P[0].p.ele)+' to '+ft(P[1].p.ele)+' · elevation from '+(st.pts.elevSrc||'the file');
   $('tl-foot').textContent=(P.every(function(x){return x.nws;})?'National Weather Service forecast as the base':'Open-Meteo forecast (the NWS covers the US only)')
@@ -433,16 +434,19 @@ function profileFt(pts){var d=[0],i;for(i=1;i<pts.length;i++)d.push(d[i-1]+km(pt
 // the site a trail link points back to, for its link label
 function siteName(u){return /onxmaps\.com/i.test(u)?'onX':/trailforks\.com/i.test(u)?'Trailforks':'AllTrails';}
 window.WxSiteName=siteName;
-function keepTrail(poly,name,link,pts,s,act){
+// descent (ft) from a profile (ft every 0.1 mi, 100 m-smoothed): the drops added up
+function descentFt(prof){var d=0;for(var i=1;i<(prof||[]).length;i++)if(prof[i]<prof[i-1])d+=prof[i-1]-prof[i];return Math.round(d);}
+window.WxDescent=descentFt;
+function keepTrail(poly,name,link,pts,s,act,dif){var prof=profileFt(pts);
   if(!window.WxMine)return Promise.resolve({local:false,cloud:false});
   return window.WxMine.save({name:name,p:poly,link:link||'',mi:Math.round(s.km*0.621371*10)/10,gain:Math.round(s.gain*3.28084),
-    hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),prof:profileFt(pts),act:act==='mtb'?'mtb':'hike',added:Date.now()});}
+    hi:Math.round(pts[s.hi].ele*3.28084),lo:Math.round(pts[s.lo].ele*3.28084),prof:prof,loss:descentFt(prof),act:act==='mtb'?'mtb':'hike',dif:dif||'',added:Date.now()});}
 async function load(src,link,save,keep){
   var kept=null;
   try{
     var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx),name=src.name||nameFromLink(link)||g.name||'Your trail';
-    $('tl-link').value=link||'';
-    await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s,src.act);}:null);
+    $('tl-link').value=link||'';st.act=src.act||'';
+    await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s,src.act,src.dif);}:null);
     if(kept)kept.then(function(r){$('tl-stats').insertAdjacentHTML('beforeend',r.cloud?' · <b>saved to your trails</b> on every device (Map → Trails)'
       :r.local?' · <b>saved in this browser</b>'+(r.error?' (GitHub: '+r.error+')':' · connect GitHub in Map → Trails to see it on every device'):'');});
     if(save){try{localStorage.setItem('wx-trail',JSON.stringify(Object.assign({},src,{link:link||''})));}catch(e){}}
@@ -461,7 +465,7 @@ window.addEventListener('resize',function(){if(st.pts&&!$('tl-out').hidden)profi
 // a route handed over in the URL by the Chrome extension: #trail={"n":name,"u":link,"p":polyline,"a":"hike"|"mtb"}
 var pending=null;
 if(location.hash.indexOf('#trail=')===0){
-  try{var h=JSON.parse(decodeURIComponent(location.hash.slice(7)));if(h&&h.p)pending={src:{poly:h.p,name:h.n||'',act:h.a||'hike'},link:h.u||'',keep:true};}catch(e){}
+  try{var h=JSON.parse(decodeURIComponent(location.hash.slice(7)));if(h&&h.p)pending={src:{poly:h.p,name:h.n||'',act:h.a||'hike',dif:h.d||''},link:h.u||'',keep:true};}catch(e){}
   history.replaceState(null,'',location.pathname+location.search);   // a reload shouldn't re-import it
   window.addEventListener('load',function(){if(window.showTab)showTab(TRAIL_TAB);});
 }
