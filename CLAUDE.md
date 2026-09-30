@@ -191,6 +191,9 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 - Wants concise status while working and a short summary of what changed at the end.
 
 ## Open ideas (not done)
+- (Owner passed for now, 2026-09-29) OSM MTB trails in the Trails layer (Overpass: bike-designated /
+  mtb:scale ways; Post Canyon had 253 ways, 80 named, ~45 with mtb:scale:imba -> difficulty colours)
+  plus a "Download GPX of the trails in view" button. Never bulk-pull Trailforks (their data, not OSM).
 - Trails next steps: OpenStreetMap for the remaining city / county trails; chain
   connected trails into hikes (route builder); NPS API + Recreation.gov descriptions (free keys);
   "My trails" list of everything forecasted.
