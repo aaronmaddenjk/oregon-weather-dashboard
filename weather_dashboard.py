@@ -1515,7 +1515,7 @@ window.WxCharts=function(panel,opt){
     if(!box.clientWidth||!d.length)return;
     var W=box.clientWidth,out='';
     if(grid){   // two per row (one on a phone), a fixed plot height
-      var two=W>=560,cw=two?Math.floor((W-18)/2):W,PH=two?78:64;
+      var two=W>=560,cw=(two?Math.floor((W-14)/2):W)-22,PH=two?78:64;   // 22 = the tile's padding + border
       box.classList.toggle('one',!two);
       out=grid.map(function(k){return C[k](cw,PH);}).join('');
     }else{
@@ -1648,7 +1648,7 @@ window.WxCams=function(root){
 
 CITY_JS = r"""
 var HRS=__HRS__.map(function(c){return WxCharts.hours(c);}), SUN=__SUN__, MOON=__MOON__, NAMES=__CITYNAMES__, cityMarkerEls=window.cityMarkerEls=[], ccSel=0, daySel=null;
-var charts=WxCharts(document.getElementById('city-cc'),{grid:['temp','precip','pop','wind','cloud','aqi']});
+var charts=WxCharts(document.getElementById('city-cc'),{grid:['temp','cloud','wind','pop','aqi','precip']});
 // the charts: the next 24 hours, or the day clicked in the forecast table (click it again for the next 24)
 function drawCharts(){var hs=HRS[ccSel]||[];charts.set(WxCharts.day(hs,daySel));
   document.getElementById('cc-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(hs,daySel);
@@ -1669,6 +1669,7 @@ window.selectCity=function(i,init){
   cityMarkerEls.forEach(function(el,j){el.classList.toggle('sel',j===i);});
   NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d)d.hidden=j!==i;});
   drawCharts();   // (the chosen day stays chosen, so towns compare day for day)
+  if(typeof showTide==='function')showTide();
 };
 
 // ---------- tides: NOAA's highs and lows drawn as a curve (coastal towns, default or searched) ----------
@@ -1716,8 +1717,9 @@ function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' cur
 function tideBox(ev,station,lat,lon,off,id){var svg=tideSVG(ev,lat,lon,off,id);if(!svg)return'';
   return'<div class="tide-box"><div class="tide-h">Tides <span>NOAA · '+station+' · feet above mean lower low water · grey = night · <i class="minus">minus tides</i> are the best for tide-pooling · hover a high or low for its exact time</span></div>'+svg+'</div>';}
 function evOf(rows){return rows.map(function(r){return{t:Date.parse(r[0]+':00Z'),ft:r[1],hi:r[2]};});}
-Object.keys(TIDES).forEach(function(i){var slot=document.querySelector('#city_body_'+i+' .tide-slot');
-  if(slot)slot.innerHTML=tideBox(evOf(TIDES[i].ev),TIDES[i].st,LL[i][0],LL[i][1],OFF,'c'+i);});
+// the selected city's tides go under its charts (cc-extra); built once per city
+var TIDE_HTML={};Object.keys(TIDES).forEach(function(i){TIDE_HTML[i]=tideBox(evOf(TIDES[i].ev),TIDES[i].st,LL[i][0],LL[i][1],OFF,'c'+i);});
+function showTide(){var x=document.getElementById('cc-extra');if(x)x.innerHTML=TIDE_HTML[ccSel]||'';}
 
 // ---------- search any Oregon / Washington town: forecast live in this browser, nothing kept ----------
 var S=NAMES.length,sInput=document.getElementById('city-q'),sList=document.getElementById('city-q-list'),sTok=0,tTok=0,sTimer;
@@ -1742,7 +1744,7 @@ sList.addEventListener('click',function(e){var b=e.target.closest('[data-k]');if
 var sMarker=null,sDetail=document.getElementById('city_detail_'+S);
 function clearTown(){if(sMarker){sMarker.remove();sMarker=null;}delete cityMarkerEls[S];
   var o=document.querySelector('#cc-city option[value="'+S+'"]');if(o)o.remove();
-  sDetail.hidden=true;sDetail.innerHTML='';HRS.length=SUN.length=NAMES.length=S;if(ccSel===S)selectCity(0);}
+  sDetail.hidden=true;sDetail.innerHTML='';delete TIDE_HTML[S];HRS.length=SUN.length=NAMES.length=S;if(ccSel===S)selectCity(0);}
 function sunFor(lat,lon,off){var t0=Math.floor((Date.now()+off*1000)/DAY)*DAY,a=sunUTC(lat,lon,t0),b=sunUTC(lat,lon,t0+DAY);
   var d0=(a[1]-a[0])/6e4,d1=(b[1]-b[0])/6e4;
   return{rise:clock(a[0]+off*1000),set:clock(a[1]+off*1000),len:Math.floor(d0/60)+'h '+Math.floor(d0%60)+'m',delta:Math.round(d1-d0)};}
@@ -1778,7 +1780,7 @@ async function showTown(g){
       +'<span class="ch-temps"><b>'+Math.round(hi)+'°</b> / '+Math.round(lo)+'°</span>'
       +'<span class="ch-meta">'+Math.round(ele*3.28084).toLocaleString('en-US')+'′ MSL · '+lat.toFixed(4)+', '+lon.toFixed(4)+' · searched, not saved</span>'
       +'<button type="button" class="cq-clear" aria-label="Clear the searched town">×</button></div>'
-      +'<div class="city-detail-body"><div class="tl-10">'+window.WxPoint.table(pt,'search')+'</div><div class="tide-slot"></div>'
+      +'<div class="city-detail-body"><div class="tl-10">'+window.WxPoint.table(pt,'search')+'</div>'
       +'<p class="cq-foot">'+(pt.nws?'National Weather Service forecast':'Open-Meteo forecast')+' at the town’s elevation, computed live in your browser (the same engine as Trail Forecast)</p></div>';
     sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
     selectCity(S);
@@ -1786,7 +1788,7 @@ async function showTown(g){
       fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&station='+best.id+'&time_zone=lst_ldt&units=english&interval=hilo&format=json&begin_date='+ymd+'&range=192&application=oregon-weather-dashboard')
         .then(function(r){return r.json();}).then(function(j){if(tok!==tTok)return;var p=j.predictions||[];if(p.length<4)return;
           var ev=p.map(function(x){return{t:Date.parse(x.t.replace(' ','T')+':00Z'),ft:+x.v,hi:x.type==='H'};});
-          var slot=sDetail.querySelector('.tide-slot');if(slot)slot.innerHTML=tideBox(ev,esc(best.name)+' ('+(best.d*0.621371).toFixed(1)+' mi away)',lat,lon,f.off,'s');})
+          TIDE_HTML[S]=tideBox(ev,esc(best.name)+' ('+(best.d*0.621371).toFixed(1)+' mi away)',lat,lon,f.off,'s');if(ccSel===S)showTide();})
         .catch(function(){});}
   }catch(e){if(tok!==tTok)return;sDetail.innerHTML='<div class="cq-status err">'+esc((e&&e.message)||'The forecast couldn’t be loaded.')+'</div>';}
 }
@@ -1808,7 +1810,12 @@ LAYOUT_CSS = """
 .lay-a #citymap, .lay-a #trailmap { flex:1; height:auto; min-height:600px; }
 .lay-a .cc-panel { flex:none; }
 .lay-a .scroll-wrap table, .lay-a .tl-tbl { width:100%; }
-.cc-charts.cc-grid { flex:none; overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 18px; align-items:start; }
+.cc-charts.cc-grid { flex:none; overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:stretch; padding-top:12px; }
+.cc-grid .cc-chart { background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; padding:9px 10px 4px; }
+.cc-grid .cc-ct { padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #EEF0F3; font-size:12.5px; }
+.cc-grid .cc-band { fill:#EDEFF3; }
+.cc-extra:empty { display:none; }
+.cc-extra .tide-box { box-shadow:none; background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; margin:14px 0 0; }
 .cc-charts.cc-grid.one { grid-template-columns:minmax(0,1fr); }
 #page0 .city-search { right:10px; width:auto; }
 #page0 .city-wash { top:46px; }
@@ -2046,7 +2053,7 @@ def build_cities_page():
     utc_off = int(datetime.now(ZoneInfo(tzname)).utcoffset().total_seconds())
 
     def tide_block(city):
-        return '<div class="tide-slot"></div>'
+        return ''   # (tides are drawn under the charts by CITY_JS)
 
     detail_sections = ""
     for ci, (city, body, sm) in enumerate(zip(CITIES, detail_bodies, summaries)):
@@ -2076,7 +2083,7 @@ def build_cities_page():
                   '<svg width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="#A0A5B1" stroke-width="1.6"/></svg>'
                   '<select id="cc-city" aria-label="City" onchange="selectCity(+this.value)">' + opts + '</select></label></div>'
                   '<div class="cc-now"></div></div>'
-                  '<div class="cc-charts"></div><div class="cc-tip" hidden></div></div>')
+                  '<div class="cc-charts"></div><div class="cc-extra" id="cc-extra"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
     full_html += ('<div class="la-map map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
                   '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
@@ -2253,7 +2260,7 @@ def mtn_icon(uid, w=28, cls="mtn-ic"):
 TRAILS_JS = r"""
 var MT=__MT__, UIDS=MT.map(function(m){return m.uid;}), sel=-1, tier=0, daySel=null;
 MT.forEach(function(m){m.points.forEach(function(p){p.hours=WxCharts.hours(p.hrs);delete p.hrs;});});
-var charts=WxCharts(document.getElementById('mtn-cc'),{grid:['temp','precip','pop','wind','vis','sl']}), tiers=document.getElementById('mtn-tiers');
+var charts=WxCharts(document.getElementById('mtn-cc'),{grid:['temp','vis','wind','pop','sl','precip']}), tiers=document.getElementById('mtn-tiers');
 // the charts: the next 24 hours, or the day clicked in the table (again: back to the next 24), at the chosen elevation
 function drawCharts(){var p=MT[sel].points[tier];charts.set(WxCharts.day(p.hours,daySel),{elev:p.elev_ft});
   document.getElementById('mtn-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(p.hours,daySel);
