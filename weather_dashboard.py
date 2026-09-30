@@ -1416,7 +1416,7 @@ function chart(title,sum,keys,d,W,PH,o){
   var dirs=o.dirs&&d.some(function(h){return h.dir!=null;});
   d.forEach(function(h,i){
     var cx=L+bw*i+bw/2,x=cx-w/2,v=o.val(h),top=v==null?y0:Y(v);
-    if(v!=null)s+='<path d="'+bar(x,top,w,y0-top,4)+'" fill="'+o.col(h)+'"/>';
+    if(v!=null&&!o.line)s+='<path d="'+bar(x,top,w,y0-top,4)+'" fill="'+o.col(h)+'"/>';
     // a second, narrower bar inside the first on the same scale (thunder inside the precipitation chance)
     var v2=o.val2?o.val2(h):null;if(v2){var t2=Y(v2),w2=Math.max(2,w*0.45);s+='<path d="'+bar(cx-w2/2,t2,w2,y0-t2,2)+'" fill="'+o.col2+'"/>';}
     // whisker from the bar's top to a second value: up (gusts) or down into the bar (feels-like below
@@ -1429,6 +1429,10 @@ function chart(title,sum,keys,d,W,PH,o){
     // wind direction: an arrow pointing where the wind blows (every hour, or every other when tight)
     if(dirs&&h.dir!=null&&(bw>=13||i%2===0))s+='<path d="M0,-4.5L3,2.5L0,1L-3,2.5Z" transform="translate('+cx.toFixed(1)+' '+(xl+11)+') rotate('+Math.round(h.dir+180)+')" fill="#5A5F6B"/>';
   });
+  // o.line: a line through the hours instead of bars, each segment in its starting hour's colour
+  if(o.line)d.forEach(function(h,i){var a=o.val(h),n=d[i+1],b=n?o.val(n):null;if(a==null)return;var x1=L+bw*i+bw/2;
+    if(b!=null)s+='<line x1="'+x1.toFixed(1)+'" y1="'+Y(a).toFixed(1)+'" x2="'+(x1+bw).toFixed(1)+'" y2="'+Y(b).toFixed(1)+'" stroke="'+o.col(h)+'" stroke-width="2.5" stroke-linecap="round"/>';
+    else if(!d[i-1]||o.val(d[i-1])==null)s+='<circle cx="'+x1.toFixed(1)+'" cy="'+Y(a).toFixed(1)+'" r="2.5" fill="'+o.col(h)+'"/>';});
   // a reference line across the plot (the selected elevation on the snow-level chart)
   if(o.ref&&o.ref.v>lo&&o.ref.v<hi)s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(o.ref.v)+'" y2="'+Y(o.ref.v)+'" stroke="#3F4450" stroke-width="1.25" stroke-dasharray="4 3"/>'
     +'<text x="'+(W-6)+'" y="'+(Y(o.ref.v)-4)+'" text-anchor="end" style="fill:#3F4450;font-weight:700">'+o.ref.lab+'</text>';
@@ -1507,9 +1511,9 @@ window.WxCharts=function(panel,opt){
       if(!vs.length)return chart('Snow level','No forecast',[],d,W,PH,{lo:0,hi:10000,ticks:[0,5000,10000],fmt:function(v){return v/1000+'k';},val:function(){return null;},col:function(){return'#ccc';},empty:'No snow-level forecast for these hours'});
       var mn=Math.min.apply(null,vs.concat(el?[el]:[])),mx=Math.max.apply(null,vs.concat(el?[el]:[])),lo=Math.max(0,Math.floor((mn-1500)/2000)*2000),hi=Math.ceil((mx+1500)/2000)*2000;
       var tk=[lo,(lo+hi)/2,hi],low=Math.min.apply(null,vs);
-      return chart('Snow level','Lowest '+ft(low)+(el?(low<=el?' · snow here':' · above this spot'):''),[[PT.snow,'Snow here'],['#A3ABB8','Rain here']],d,W,PH,
+      return chart('Snow level','Lowest '+ft(low)+(el?(low<=el?' · snow here':' · above this spot'):''),[[PT.snow,'Snow here',1],['#A3ABB8','Rain here',1]],d,W,PH,
         {lo:lo,hi:hi,ticks:tk,fmt:function(v){return(v/1000).toFixed(v%1000?1:0)+'k';},val:function(h){return h.sl;},col:function(h){return el&&h.sl<=el?PT.snow:'#A3ABB8';},
-         ref:el?{v:el,lab:'This spot '+ft(el)}:null});}
+         ref:el?{v:el,lab:'This spot '+ft(el)}:null,line:true});}
   };
   function draw(){
     if(!box.clientWidth||!d.length)return;
