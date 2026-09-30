@@ -1619,8 +1619,8 @@ async function showTown(g){
     var map=window.cityMap;if(map){sMarker=new mapboxgl.Marker({element:el,anchor:'left'}).setLngLat([lon,lat]).addTo(map);
       if(!map.getBounds().contains([lon,lat]))map.easeTo({center:[lon,lat],duration:800});}
     if(window.cityPills)window.cityPills();
-    // tides only for coastal towns: within 5 miles of the Pacific shore (COAST: the OR/WA ocean coastline
-    // with its estuaries and bays, no Puget Sound; coast_or_wa.json). Then the NOAA station within 25 km;
+    // tides only for coastal towns: within 5 miles of salt water (COAST: the OR/WA coastline, outer coast,
+    // estuaries and bays, the Strait and Puget Sound; coast_or_wa.json). Then the NOAA station within 25 km;
     // the nearest is often up a river (Seaside's is on the Youngs River), where the tide runs late, so a
     // station east of the town counts double that distance
     var coastKm=Infinity;COAST.forEach(function(c){var d=kmTo(lat,lon,c[1],c[0]);if(d<coastKm)coastKm=d;});

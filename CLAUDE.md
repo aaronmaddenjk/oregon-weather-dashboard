@@ -122,9 +122,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   live via `window.WxPoint` (trail_live.py's engine, one point at the geocoded elevation), shown as a
   temporary index S = len(CITIES) in H24/SUN/NAMES/select/pills plus `#city_detail_<S>` (7-day
   table from WxPoint.table). NOT saved anywhere (owner: forget saving). Tides for a searched town only
-  within 5 miles of the Pacific shore (owner's rule): `coast_or_wa.json` = Natural Earth 10 m coastline
-  clipped to the OR/WA ocean side incl. estuaries/bays (Columbia to Astoria, Willapa, Grays Harbor,
-  Umpqua to Reedsport), no Puget Sound / inner Strait; then the nearest NOAA station within 25 km from
+  within 5 miles of salt water (owner's rule; Puget Sound counts): `coast_or_wa.json` = Natural Earth
+  10 m coastline in the OR/WA box (outer coast, estuaries/bays, Strait, Puget Sound, Hood Canal, San
+  Juans; not the Columbia above Cathlamet); then the nearest NOAA station within 25 km from
   `tides.stations()` (embedded at build), stations east of the town (up-river) penalised; fetched
   live from CO-OPS (CORS ok).
 
