@@ -1646,6 +1646,17 @@ selectCity(0,true);
 """
 
 
+# Cities + Volcanos: the forecast table on top, then the map at 1/3 of the width and the 24-hour
+# charts at 2/3 (owner). The narrow Cities map stacks its search box over the shading switch.
+LAYOUT_CSS = """
+#page0 .detail-list, #page1 .detail-list { margin-bottom:18px; }
+#page0 .dashboard-layout > .map-panel, #page1 .dashboard-layout > .map-panel { flex:1 1 0; }
+#page0 .dashboard-layout > .cc-panel, #page1 .dashboard-layout > .cc-panel { flex:2 1 0; }
+#page0 .city-search { right:10px; width:auto; }
+#page0 .city-wash { top:46px; }
+"""
+
+
 def build_cities_page():
     # --- Single source of truth: fetch detail + extract summary in one pass ---
     summaries = []; detail_bodies = []; detail_css = ""
@@ -1789,14 +1800,14 @@ def build_cities_page():
         "  container: 'citymap', style: 'mapbox://styles/mapbox/outdoors-v12',\n"
         "  center: [-122.5, 45.5], zoom: 5, pitch: 0, bearing: 0, attributionControl: false\n"
         "});\n"
-        "// room at the top and bottom for the shading switch and legend (right-hand corners)\n"
-        "map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: {top: 48, bottom: 44, left: 24, right: 24}});\n"
+        "// room at the top for the search box and shading switch, and the bottom for the legend\n"
+        "map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: {top: 84, bottom: 40, left: 30, right: 30}});\n"
         "map.on('load', function() {\n"
         "  map.addSource('mapbox-dem', {type:'raster-dem', url:'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize:512});\n"
         "  map.setTerrain({source:'mapbox-dem', exaggeration:1.0});\n"
         "  var tc=function(h){if(h>=80)return'#ED1E29';if(h>=70)return'#FAA21B';if(h>=50)return'#6BBF68';if(h>=35)return'#4FB1BE';return'#368994';};\n"
         "  // a slim pill per city: icon, name and one number, which follows the map's shading switch\n"
-        "  var WEST={'Portland':1,'Forks':1,'Cannon Beach':1,'Pacific City':1,'Florence':1};   // pills west of the town: the coast's out over the ocean, Portland's clear of Sandy\n"
+        "  var MK=[],WEST={'Portland':1,'Forks':1,'Cannon Beach':1,'Pacific City':1,'Florence':1};   // pills west of the town: the coast's out over the ocean, Portland's clear of Sandy\n"
         "  // air quality now: today's 3-hourly frame nearest the hour (the same CAMS grid as the Map tab's layer)\n"
         "  var hrPT=+new Date().toLocaleString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',hour12:false})%24,AQF=Math.max(0,Math.min(7,Math.round((hrPT-2)/3)));\n"
         "  function aqCol(v){return v<=50?'#3E9A4A':v<=100?'#C99A06':v<=150?'#E8710A':v<=200?'#D93025':v<=300?'#8F3F97':'#7E0023';}\n"
@@ -1812,11 +1823,22 @@ def build_cities_page():
         "    el.innerHTML='<span class=\"wm-ic\">'+m.icon+'</span><span class=\"wm-name\">'+m.name+'</span><span class=\"wm-temp\"></span>';\n"
         "    el.addEventListener('click',function(){selectCity(i);});\n"
         "    window.cityMarkerEls[i]=el;\n"
-        "    var west=!!WEST[m.name];if(west)el.classList.add('west');\n"
-        "    new mapboxgl.Marker({element:el,anchor:west?'right':'left'}).setLngLat([m.lon,m.lat]).addTo(map);\n"
+        "    MK[i]={el:el,west:!!WEST[m.name],mk:new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([m.lon,m.lat]).addTo(map)};\n"
         "  });\n"
-        "  window.cityMap=map;window.cityPills=function(){pills(washKind);};\n"
-        "  selectCity(undefined,true);pills('temp');\n"
+        "  // each pill beside its town on its preferred side (east; the WEST ones west), flipped to the other\n"
+        "  // side, below or above when that side would leave the map, cover another pill or the controls (the\n"
+        "  // map is a narrow third of the page)\n"
+        "  function place(){var C=map.getContainer(),W=C.clientWidth,H=C.clientHeight,taken=[[0,0,W,80],[W-205,H-64,W,H]];\n"
+        "    var hit=function(b){return taken.some(function(t){return b[0]<t[2]&&b[2]>t[0]&&b[1]<t[3]&&b[3]>t[1];});};\n"
+        "    MK.forEach(function(o){var p=map.project(o.mk.getLngLat()),w=o.el.offsetWidth,h=o.el.offsetHeight,g=5,box=null,side=null;\n"
+        "      var off={e:[g+w/2,0],w:[-(g+w/2),0],s:[0,g+h/2],n:[0,-(g+h/2)]},order=o.west?['w','s','n','e']:['e','s','n','w'];\n"
+        "      for(var k=0;k<order.length&&!side;k++){var d=off[order[k]],x=p.x+d[0]-w/2,y=p.y+d[1]-h/2,b=[x,y,x+w,y+h];\n"
+        "        if(b[0]>=2&&b[1]>=2&&b[2]<=W-2&&b[3]<=H-2&&!hit(b)){side=order[k];box=b;}}\n"
+        "      if(!side){side=order[0];var d0=off[side];box=[p.x+d0[0]-w/2,p.y+d0[1]-h/2,p.x+d0[0]+w/2,p.y+d0[1]+h/2];}\n"
+        "      o.mk.setOffset(off[side]);o.el.classList.toggle('west',side==='w');taken.push(box);});}\n"
+        "  window.cityMap=map;window.cityPills=function(){pills(washKind);place();};\n"
+        "  selectCity(undefined,true);pills('temp');place();\n"
+        "  map.on('moveend',place);map.on('resize',place);\n"
         "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
         "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
         "  var ctl=document.getElementById('city-wash'),leg=document.getElementById('city-wash-leg');\n"
@@ -1832,7 +1854,7 @@ def build_cities_page():
         "      map.addLayer({id:'wash',type:'raster',source:'wash',paint:{'raster-opacity':0.8,'raster-resampling':'linear','raster-fade-duration':0}},sym);}\n"
         "    leg.innerHTML='<b>'+w.title+'</b><i style=\"background:'+w.bar+'\"></i><span>'+w.ticks.map(function(t){return '<em>'+t+'</em>';}).join('')+'</span>';\n"
         "    ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});});}\n"
-        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){washKind=b.dataset.w;wash(washKind);pills(washKind);}});\n"
+        "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){washKind=b.dataset.w;wash(washKind);pills(washKind);place();}});\n"
         "  wash('temp');\n"
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)
@@ -1884,6 +1906,9 @@ def build_cities_page():
 
     full_html = '<html><head><link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"><script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script><style>' + dashboard_css + '</style></head><body>'
     opts = ''.join(f'<option value="{ci}">{html.escape(c["name"])}</option>' for ci, c in enumerate(CITIES))
+    # the selected city's forecast table first (owner), then the map (1/3) and the 24-hour charts (2/3)
+    full_html += ('<div class="detail-list"><div class="city-detail cq-detail" id="city_detail_' + str(len(CITIES)) + '" hidden></div>'
+                  + detail_sections + '</div>')
     full_html += '<div class="dashboard-layout">'
     full_html += ('<div class="map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
                   '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
@@ -1901,8 +1926,6 @@ def build_cities_page():
                   '<div class="cc-now"></div></div>'
                   '<div class="cc-charts"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
-    full_html += ('<div class="detail-list"><div class="city-detail cq-detail" id="city_detail_' + str(len(CITIES)) + '" hidden></div>'
-                  + detail_sections + '</div>')
     full_html += ('<script>' + CITY_JS.replace("__H24__", json.dumps([s.get("h24", []) for s in summaries]))
                   .replace("__SUN__", json.dumps(sun)).replace("__MOON__", json.dumps(moon))
                   .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES]))
@@ -2332,6 +2355,7 @@ def build_trails_page(aq):
     opts = ''.join(f'<option value="{mi}">{html.escape(m["name"])}</option>' for mi, m in enumerate(MOUNTAINS))
     # page_css after detail_css so the trail-specific layout wins over render_hike_forecast's defaults
     full_html = '<html><head><style>' + detail_css + page_css + '</style></head><body><div class="trails">'
+    full_html += '<div class="detail-list">' + details + '</div>'   # the selected volcano's table first (owner)
     full_html += ('<div class="dashboard-layout">'
                   '<div class="map-panel"><div class="map-wrap trail-map-wrap"><div id="trailmap"></div>' + ov_ctl +
                   '<div class="legend">Click a mountain for its next 24 hours</div></div></div>'
@@ -2348,7 +2372,7 @@ def build_trails_page(aq):
                   '<div class="cc-cams" id="mtn-cams" hidden>'
                   '<figure class="cam-main"><img class="cam-img" alt=""><div class="cam-msg" hidden></div></figure>'
                   '<div class="cam-cap"></div><div class="cam-thumbs" role="group" aria-label="Other cameras"></div></div></div></div>')
-    full_html += '<div class="detail-list">' + details + '</div></div>'
+    full_html += '</div>'
     full_html += '<script>' + AQ_JS.replace("__AQ__", json.dumps(aq, separators=(",", ":"))) + '</script>'
     full_html += '<script>' + TRAILS_JS.replace("__MT__", mt_json).replace("__DEF__", str(DEFAULT_MTN)) + '</script>'
     full_html += "<script>window.lazyMap('trails-overview',function(){\n" + map_js + "\n});</script>"
@@ -3584,7 +3608,7 @@ def build_dashboard() -> str:
     # ---- Merge CSS (shared base + page-specific) ----
     # the Mt Hood page's stylesheet uses generic names (.map-panel, table, th...) - scope it to
     # its own tab so it can't restyle the Cities / Trails pages
-    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4') + '\n' + scope_css(trail_live.TABLE_CSS, '#page0')
+    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4') + '\n' + scope_css(trail_live.TABLE_CSS, '#page0') + '\n' + LAYOUT_CSS
 
     # Shell CSS: left sidebar nav, page headers, section headers (loaded last, so it wins)
     tab_css = """
