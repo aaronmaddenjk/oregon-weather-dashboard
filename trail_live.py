@@ -117,6 +117,9 @@ TABLE_CSS = r"""
 .tl-tbl .wv { font-weight:700; }
 .tl-tbl .gust { font-size:10.5px; color:#8A8F9C; margin-left:3px; }
 .tl-tbl .vis { font-size:11px; }
+.tl-tbl td.dsum { cursor:pointer; }
+.tl-tbl td.dsum:hover { background:#FFF8F4; }
+.tl-tbl td.dsum.dsel { background:#FFF1E8; }
 .tl-tbl td[hidden] { display:none !important; }
 .tl-tbl td.dsum { cursor:pointer; }
 .tl-tbl td.dsum:hover { background:#FFF8F4; }
@@ -237,7 +240,9 @@ function nwsHourly(g,off){   // -> {elev, hourly:{'YYYY-MM-DDTHH:00': {temp_f,..
   var F={temperature:['temp_f',function(c){return c*9/5+32;},0],dewpoint:['dew_f',function(c){return c*9/5+32;},0],
     windSpeed:['wind',function(k){return k/1.609344;},0],windGust:['gust',function(k){return k/1.609344;},0],
     skyCover:['sky',function(v){return v;},0],probabilityOfPrecipitation:['pop',function(v){return v;},0],
-    quantitativePrecipitation:['qpf',function(mm){return mm/25.4;},1]};
+    quantitativePrecipitation:['qpf',function(mm){return mm/25.4;},1],
+    probabilityOfThunder:['th',function(v){return v;},0],windDirection:['dir',function(v){return v;},0],
+    snowLevel:['sl',function(m){return m*3.28084;},0]};
   var out={};
   Object.keys(F).forEach(function(f){var spec=F[f];((g[f]||{}).values||[]).forEach(function(v){
     if(v.value==null)return;var parts=v.validTime.split('/'),t0=Date.parse(parts[0]);
@@ -254,7 +259,7 @@ function windAt(fa,z,surface,factor){if(!fa.length)return surface;var expo=Math.
 
 async function run(pts,name,link,onStats){
   status('Reading the trail…');
-  pts=await fillElevation(pts);
+  pts=await fillElevation(pts);st.day=null;
   var s=trailStats(pts),P=[{key:'base',name:'Base',p:pts[s.lo]},{key:'peak',name:'Peak',p:pts[s.hi]}];
   if(onStats)onStats(pts,s);   // before the forecast fetches, so a failed forecast still keeps the trail
   status('Fetching the forecast for the base ('+ft(P[0].p.ele)+') and peak ('+ft(P[1].p.ele)+')…');
@@ -266,7 +271,7 @@ async function run(pts,name,link,onStats){
 // the forecast for a few points ({p:{lat,lon,ele}}, ele in m): each gets hours, now, h24
 async function forecast(P){
   var mid={lat:P.reduce(function(a,x){return a+x.p.lat;},0)/P.length,lon:P.reduce(function(a,x){return a+x.p.lon;},0)/P.length};
-  var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth'];
+  var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth','wind_direction_10m','uv_index'];
   var common={temperature_unit:'fahrenheit',wind_speed_unit:'mph',precipitation_unit:'inch',timezone:'auto'};
   var gfsVars=[];PL.forEach(function(p){['temperature','geopotential_height','relative_humidity','wind_speed'].forEach(function(v){gfsVars.push(v+'_'+p+'hPa');});});
   var col=function(k){return P.map(function(x){return x.p[k];}).join(',');};
@@ -275,8 +280,11 @@ async function forecast(P){
       hourly:hourly.join(','),past_days:15,forecast_days:11},common))),
     getJSON(OM+'?'+q(Object.assign({latitude:mid.lat,longitude:mid.lon,models:'gfs_global',forecast_days:8,
       hourly:['temperature_2m','relative_humidity_2m','wind_gusts_10m'].concat(gfsVars).join(',')},common)))]
-    .concat(P.map(function(x){return nwsPoint(x.p);})));
+    .concat(P.map(function(x){return nwsPoint(x.p);}))
+    // one spot (a searched town): its air quality too, for the Cities charts
+    .concat(P.length===1?[getJSON('https://air-quality-api.open-meteo.com/v1/air-quality?'+q({latitude:P[0].p.lat,longitude:P[0].p.lon,hourly:'us_aqi',timezone:'auto',forecast_days:7})).catch(function(){return null;})]:[]));
   var om=got[0],G=got[1];if(!Array.isArray(om))om=[om];var off=om[0].utc_offset_seconds,tz=om[0].timezone;
+  var AQ={},aq=P.length===1?got[2+P.length]:null;if(aq&&aq.hourly)aq.hourly.time.forEach(function(t,i){AQ[t]=aq.hourly.us_aqi[i];});
   var gi={};G.hourly.time.forEach(function(t,i){gi[t]=i;});
   var nowKey=new Date(Date.now()+off*1000).toISOString().slice(0,13)+':00';
   P.forEach(function(pt,k){
@@ -287,13 +295,18 @@ async function forecast(P){
       if(v.temp_f!=null){T=v.temp_f+shift;if(v.dew_f!=null)D=v.dew_f+shift;}
       var h={t:t,temp:T,dew:D,wind:v.wind!=null?v.wind:H.wind_speed_10m[i],gust:v.gust!=null?v.gust:H.wind_gusts_10m[i],
         sky:v.sky!=null?v.sky:H.cloud_cover[i],pop:v.pop!=null?v.pop:H.precipitation_probability[i],
-        p:v.qpf!=null?v.qpf:(H.precipitation[i]||0),vis:H.visibility[i]==null?null:H.visibility[i]/1609.34,depth:(H.snow_depth[i]||0)*39.37};
+        p:v.qpf!=null?v.qpf:(H.precipitation[i]||0),vis:H.visibility[i]==null?null:H.visibility[i]/1609.34,depth:(H.snow_depth[i]||0)*39.37,
+        dir:v.dir!=null?v.dir:H.wind_direction_10m[i],th:v.th!=null?v.th:null,sl:v.sl!=null?v.sl:null,uv:H.uv_index[i],aqi:AQ[t]!=null?AQ[t]:null};
       var j=gi[t];if(j!=null){var fa=freeAir(G.hourly,j);h.gust=Math.max(h.gust||0,windAt(fa,z,0,GF));h.wind=Math.max(h.wind||0,windAt(fa,z,0,1));}
       var r=newSnow(h.p,T,T!=null&&D!=null?rhFromDew(T,Math.min(D,T)):null);h.s=r[0];h.ty=h.p<0.005?'':r[1]>=0.8?'snow':r[1]>0.2?'mix':'rain';
       return h;});
     pt.now=Math.max(0,pt.hours.findIndex(function(h){return h.t>=nowKey;}));
-    pt.h24=pt.hours.slice(pt.now,pt.now+24).map(function(h){return{t:label(h.t),temp:Math.round(h.temp),wind:Math.round(h.wind||0),gust:Math.round(h.gust||0),
-      sky:Math.round(h.sky||0),p:+h.p.toFixed(3),s:+h.s.toFixed(2),ty:h.ty,vis:h.vis==null?null:+h.vis.toFixed(2),feels:feels(h.temp,h.wind,h.dew)};});
+    // every hour from now, the way the charts take them; the first 24 are the "next 24 hours"
+    pt.all=pt.hours.slice(pt.now).map(function(h){return{t:label(h.t),date:h.t.slice(0,10),temp:Math.round(h.temp),wind:Math.round(h.wind||0),gust:Math.round(h.gust||0),
+      sky:Math.round(h.sky||0),p:+h.p.toFixed(3),s:+h.s.toFixed(2),ty:h.ty,vis:h.vis==null?null:+h.vis.toFixed(2),feels:feels(h.temp,h.wind,h.dew),
+      dir:h.dir==null?null:Math.round(h.dir),pop:h.pop==null?null:Math.round(h.pop),th:h.th==null?null:Math.round(h.th),sl:h.sl==null?null:Math.round(h.sl/100)*100,
+      uv:h.uv==null?null:Math.round(h.uv),aqi:h.aqi==null?null:Math.round(h.aqi)};});
+    pt.h24=pt.all.slice(0,24);
   });
   return{tz:tz,off:off,nowKey:nowKey};
 }
@@ -324,11 +337,7 @@ function days(pt){   // the forecast hours from now, by local date: 7 days, abou
   // runs (past it only the raw GFS is left, which ran 30 degrees hot at Gold Beach; owner: cut it)
   var out=[],by={};pt.hours.slice(pt.now).forEach(function(h){var d=h.t.slice(0,10);if(!by[d]){by[d]=[];out.push(d);}by[d].push(h);});
   return out.slice(0,7).map(function(d){return{date:d,h:by[d]};});}
-// a day's hours in 3-hour blocks (12a, 3a, 6a, ... from now on): the table's drill-down
-function blocks(H){var out=[],by={};H.forEach(function(h){var k=Math.floor(+h.t.slice(11,13)/3);if(!by[k]){by[k]=[];out.push(k);}by[k].push(h);});
-  return out.map(function(k){return by[k];});}
-function hr3(t){var h=+t.slice(11,13);return((h%12)||12)+(h<12?'am':'pm');}
-function table(pt){
+function table(pt,uid){   // uid: whose charts a day click drives (wxDay in the charts library)
   var D=days(pt),lo=Infinity,hi=-Infinity;D.forEach(function(d){d.h.forEach(function(h){lo=Math.min(lo,h.temp);hi=Math.max(hi,h.temp);});});lo-=2;hi+=2;
   var R={time:'',snow:'',temp:'',wind:'',vis:'',chance:''};
   var mx=function(H,k){return Math.max.apply(null,H.map(function(h){return h[k]||0;}));};
@@ -336,7 +345,7 @@ function table(pt){
   var drop=function(mp){return'<svg class="pd pd'+(mp===0?0:mp<30?1:mp<60?2:3)+'"><use href="#wx-pdrop"/></svg> '+Math.round(mp)+'%';};
   var snowTxt=function(sn){return sn>=0.05?'<span class="snow-day">'+inch(sn)+'</span>':'<span class="snow-none">0</span>';};
   D.forEach(function(d,di){var H=d.h,dt=new Date(d.date+'T12:00:00Z'),wkd=dt.getUTCDay()===0||dt.getUTCDay()===6?' wkd':'';
-    var S=' class="dsum'+wkd+'" data-d="'+di+'" title="Click for 3-hourly detail"';
+    var S=' class="dsum'+wkd+'" data-d="'+di+'" onclick="wxDay(\''+uid+'\','+di+')" title="Show this day in the charts"';
     var tmax=Math.max.apply(null,H.map(function(h){return h.temp;})),tmin=Math.min.apply(null,H.map(function(h){return h.temp;}));
     var mw=mx(H,'wind'),mg=mx(H,'gust'),mv=minVis(H),sn=H.reduce(function(a,h){return a+h.s;},0),mp=mx(H,'pop');
     var dh='<div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div>';
@@ -345,22 +354,11 @@ function table(pt){
     R.temp+='<td'+S+'><div class="trange"><span class="th">'+Math.round(tmax)+'°</span><div class="tr-track"><i style="top:'+((hi-tmax)/(hi-lo)*100).toFixed(0)+'%;bottom:'+((tmin-lo)/(hi-lo)*100).toFixed(0)+'%;background:linear-gradient('+tempBg(tmax)+','+tempBg(tmin)+')"></i></div><span class="tl2">'+Math.round(tmin)+'°</span></div></td>';
     R.wind+='<td'+S+'><span class="wv" style="color:'+windCol(mw)+'">'+Math.round(mw)+'</span><span class="gust">g'+Math.round(mg)+'</span></td>';
     R.vis+='<td'+S+'><span class="vis" style="color:'+visCol(mv)+'">'+fmtVis(mv)+'</span></td>';
-    R.chance+='<td'+S+'>'+drop(mp)+'</td>';
-    // the same day in 3-hour blocks, hidden until the day is clicked
-    blocks(H).forEach(function(B,bi){var C=' class="ddet'+wkd+(bi?'':' d0')+'" data-d="'+di+'" hidden',t=B[0].temp,w=mx(B,'wind'),g=mx(B,'gust'),v=minVis(B);
-      R.time+='<td'+C+'>'+(bi?'<div class="dh">&nbsp;</div>':dh)+'<div class="d3t">'+hr3(B[0].t)+'</div><div class="ds-ci">'+icon(B)+'</div></td>';
-      R.snow+='<td'+C+'>'+snowTxt(B.reduce(function(a,h){return a+h.s;},0))+'</td>';
-      R.temp+='<td'+C+'><span class="tp3" style="background:'+tempBg(t)+'">'+Math.round(t)+'°</span></td>';
-      R.wind+='<td'+C+'><span class="wv" style="color:'+windCol(w)+'">'+Math.round(w)+'</span><span class="gust">g'+Math.round(g)+'</span></td>';
-      R.vis+='<td'+C+'><span class="vis" style="color:'+visCol(v)+'">'+fmtVis(v)+'</span></td>';
-      R.chance+='<td'+C+'>'+drop(mx(B,'pop'))+'</td>';});});
+    R.chance+='<td'+S+'>'+drop(mp)+'</td>';});
   var ri=function(n){return'<svg class="rl" aria-hidden="true"><use href="#ri-'+n+'"/></svg>';};
-  return'<table class="tl-tbl" onclick="wxTableDay(event)"><tr><th></th>'+R.time+'</tr><tr><th>'+ri('flake')+'New snow</th>'+R.snow+'</tr><tr><th>'+ri('temp')+'Temp</th>'+R.temp+'</tr>'
+  return'<table class="tl-tbl"><tr><th></th>'+R.time+'</tr><tr><th>'+ri('flake')+'New snow</th>'+R.snow+'</tr><tr><th>'+ri('temp')+'Temp</th>'+R.temp+'</tr>'
     +'<tr><th>'+ri('wind')+'Wind, gust</th>'+R.wind+'</tr><tr><th>'+ri('eye')+'Visibility</th>'+R.vis+'</tr><tr><th>'+ri('chance')+'Chance</th>'+R.chance+'</tr></table>'
-    +'<div class="tl-hint">Click a day for its 3-hourly detail</div>';}
-// a click on a day swaps it for its 3-hour blocks (and back)
-window.wxTableDay=function(e){var td=e.target.closest('td[data-d]');if(!td)return;var tb=td.closest('table'),d=td.dataset.d,open=td.classList.contains('dsum');
-  tb.querySelectorAll('td[data-d="'+d+'"]').forEach(function(c){c.hidden=c.classList.contains('dsum')?open:!open;});};
+    +'<div class="tl-hint">Click a day for its hours in the charts</div>';}
 function profile(){   // elevation vs distance, base and peak marked
   var p=st.pts,s=st.stats,W=Math.max(260,$('tl-profile').clientWidth||420),H=170,L=46,B=20,T=10,mi=s.km*0.621371;
   var zs=p.map(function(x){return x.ele*3.28084;}),z0=Math.min.apply(null,zs),z1=Math.max.apply(null,zs),pad=Math.max(50,(z1-z0)*0.08);z0-=pad;z1+=pad;
@@ -375,10 +373,15 @@ function profile(){   // elevation vs distance, base and peak marked
 function pick(i){
   st.sel=i;var pt=st.P[i];
   root.querySelectorAll('.tl-pick').forEach(function(g){g.innerHTML=st.P.map(function(x,j){return'<button class="'+(j===i?'active':'')+'" data-t="'+j+'">'+x.name+'<small>'+ft(x.p.ele)+'</small></button>';}).join('');});
-  $('tl-10').innerHTML=table(pt);
+  $('tl-10').innerHTML=table(pt,'trail');
   $('tl-cc-name').textContent=st.name||'Trail';$('tl-cc-wp').textContent=pt.name+' · '+ft(pt.p.ele);
-  st.charts.set(pt.h24);
+  trailCharts();
   root.querySelectorAll('.tl-pin').forEach(function(el,j){el.classList.toggle('active',j===i);});}
+// the charts: the next 24 hours, or the day clicked in the table (click it again for the next 24)
+function trailCharts(){var pt=st.P[st.sel];st.charts.set(WxCharts.day(pt.all,st.day));
+  root.querySelector('#tl-cc .cc-kicker').textContent=st.day==null?'Next 24 hours':WxCharts.dayName(pt.all,st.day);
+  $('tl-10').querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',st.day!=null&&c.dataset.d===String(st.day));});}
+(window.WxDayH=window.WxDayH||[]).push(function(uid,di){if(uid!=='trail'||!st.P)return false;st.day=st.day===di?null:di;trailCharts();return true;});
 function render(){
   var s=st.stats,P=st.P;status('');
   $('tl-load').hidden=true;$('tl-out').hidden=false;

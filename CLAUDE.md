@@ -111,9 +111,21 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   hi/lo, nights shaded (`sunUTC`, a JS port of sun_times), minus tides teal between curve and 0 ft,
   times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice). Cities + Volcanos
-  layout (owner): that forecast table on top, then map 1/3 + 24-hour charts 2/3 (`LAYOUT_CSS`). On the
-  narrow Cities map the pills place themselves (`place()` in the map JS): preferred side (east; WEST
-  ones west), else the other side / below / above, never off the map, over another pill or the controls.
+  "layout A" (owner, `LAYOUT_CSS`): left 2/3 = the selected place's table with the charts under it,
+  right 1/3 = the map, as tall as both (ResizeObserver -> map.resize). On the narrow Cities map the
+  pills place themselves (`place()` in the map JS): preferred side (east; WEST ones west), else the
+  other side / below / above, never off the map, over another pill or the controls.
+- Charts (WxCharts grid mode, owner): 2x3 - temperature, precipitation, chance + thunder (NWS
+  probabilityOfThunder, inner bar), wind + direction arrows (NWS windDirection), then cloud (+UV in
+  the summary/tooltip) + air quality on Cities, visibility + snow level (NWS snowLevel, dashed line at
+  the chosen elevation) on Volcanos. Humidity left out on purpose (owner: not an issue in the PNW).
+  Mt Hood + Trail Forecast keep the old single column. No more 3-hourly table expansion anywhere:
+  clicking a day in a table shows that day's hours in the charts (click again: next 24 h); the build
+  ships every hour as packed columns (`hour_cols` -> `WxCharts.hours`), `wxDay(uid, i)` dispatches.
+- Volcano snow depth (owner asked for it): `snowpack` method per waypoint - SNOTEL depths within 35 km
+  of the summit fitted against elevation, then hourly new snow / melt / settling; a "Snow depth" table
+  row (end of day), "~N″ seasonal snow" beside the elevation name, `sd` in the chart tooltip. Seasonal
+  snow only (glaciers and old snowfields not counted) - say so wherever it's shown.
 - Cities map shading switch also has "Air": the shared AQL layer (CAMS grid) drawn with
   `strong` (0.6 alpha everywhere), today's 3-hourly frame nearest now; pills show AQI.
 - Cloud rows: total cover is NWS sky, layers are ECMWF (HRRR today). `harmonize_clouds()` scales the

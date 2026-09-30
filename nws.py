@@ -10,7 +10,8 @@ summit, waypoint or map pixel.
 point(lat, lon) returns hourly values keyed like Open-Meteo's local hourly times
 ("2026-09-24T14:00", America/Los_Angeles), or None if the NWS is unavailable (the
 dashboard then falls back to its own model blend):
-  temp_f, dew_f, rh, wind_mph, gust_mph, sky, pop  - held across each NWS period
+  temp_f, dew_f, rh, wind_mph, gust_mph, sky, pop,
+  thunder (%), wdir (degrees from), snowlvl_ft     - held across each NWS period
   qpf_in                                           - spread evenly over its period's hours
 plus elev_m (the grid box's elevation) and office (e.g. "PQR").
 """
@@ -36,6 +37,9 @@ FIELDS = {
     "skyCover":                 ("sky",      lambda v: v,              "hold"),
     "probabilityOfPrecipitation": ("pop",    lambda v: v,              "hold"),
     "quantitativePrecipitation": ("qpf_in",  lambda mm: mm / 25.4,     "split"),
+    "probabilityOfThunder":     ("thunder",  lambda v: v,              "hold"),
+    "windDirection":            ("wdir",     lambda v: v,              "hold"),   # degrees, where it blows FROM
+    "snowLevel":                ("snowlvl_ft", lambda m: m * 3.28084,  "hold"),
 }
 
 
