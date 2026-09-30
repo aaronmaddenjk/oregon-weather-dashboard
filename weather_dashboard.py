@@ -1506,13 +1506,13 @@ window.WxCharts=function(panel,opt){
       var vs=d.map(function(h){return h.aqi;}).filter(function(v){return v!=null;}),mx=vs.length?Math.max.apply(null,vs):null,hi=mx==null||mx<=100?100:nice(mx);
       return chart('Air quality',mx==null?'No data':'Max '+mx+' · '+aqCat(mx),[],d,W,PH,{lo:0,hi:hi,ticks:[0,hi/2,hi],fmt:function(v){return v;},
         val:function(h){return h.aqi;},col:function(h){return aqCol(h.aqi);},empty:mx==null?'No air-quality forecast':''});},
-    sl:function(W,PH){   // snow level: the elevation where rain turns to snow; violet where it's at or below this spot
+    sl:function(W,PH){   // snow level: the elevation where rain turns to snow, one violet line (owner)
       var vs=d.map(function(h){return h.sl;}).filter(function(v){return v!=null;}),el=info.elev||0;
       if(!vs.length)return chart('Snow level','No forecast',[],d,W,PH,{lo:0,hi:10000,ticks:[0,5000,10000],fmt:function(v){return v/1000+'k';},val:function(){return null;},col:function(){return'#ccc';},empty:'No snow-level forecast for these hours'});
       var mn=Math.min.apply(null,vs.concat(el?[el]:[])),mx=Math.max.apply(null,vs.concat(el?[el]:[])),lo=Math.max(0,Math.floor((mn-1500)/2000)*2000),hi=Math.ceil((mx+1500)/2000)*2000;
       var tk=[lo,(lo+hi)/2,hi],low=Math.min.apply(null,vs);
-      return chart('Snow level','Lowest '+ft(low)+(el?(low<=el?' · snow here':' · above this spot'):''),[[PT.snow,'Snow here',1],['#A3ABB8','Rain here',1]],d,W,PH,
-        {lo:lo,hi:hi,ticks:tk,fmt:function(v){return(v/1000).toFixed(v%1000?1:0)+'k';},val:function(h){return h.sl;},col:function(h){return el&&h.sl<=el?PT.snow:'#A3ABB8';},
+      return chart('Snow level','Lowest '+ft(low)+(el?(low<=el?' · snow here':' · above this spot'):''),[],d,W,PH,
+        {lo:lo,hi:hi,ticks:tk,fmt:function(v){return(v/1000).toFixed(v%1000?1:0)+'k';},val:function(h){return h.sl;},col:function(){return PT.snow;},
          ref:el?{v:el,lab:'This spot '+ft(el)}:null,line:true});}
   };
   function draw(){
