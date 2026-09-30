@@ -110,7 +110,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   the hi/lo events; `tideBox`/`tideSVG` in CITY_JS draw the curve in the page: half-cosine between
   hi/lo, nights shaded (`sunUTC`, a JS port of sun_times), minus tides teal between curve and 0 ft,
   times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
-- Cities detail: only the selected city's 6-day forecast shows (owner's choice).
+- Cities detail: only the selected city's 6-day forecast shows (owner's choice). Cities + Volcanos
+  layout (owner): that forecast table on top, then map 1/3 + 24-hour charts 2/3 (`LAYOUT_CSS`). On the
+  narrow Cities map the pills place themselves (`place()` in the map JS): preferred side (east; WEST
+  ones west), else the other side / below / above, never off the map, over another pill or the controls.
 - Cities map shading switch also has "Air": the shared AQL layer (CAMS grid) drawn with
   `strong` (0.6 alpha everywhere), today's 3-hourly frame nearest now; pills show AQI.
 - Cloud rows: total cover is NWS sky, layers are ECMWF (HRRR today). `harmonize_clouds()` scales the
