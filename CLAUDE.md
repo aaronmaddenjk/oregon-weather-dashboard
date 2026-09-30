@@ -28,6 +28,9 @@ and asks for features in plain language. See README.md for data sources and dev 
   between 5 PM and 3 PM, or the 3 PM build can run out (publish with -NoBuild instead).
   A full fresh build is ~4,600 Open-Meteo calls (Map grid ~3,100) and ~19 min, so max ~2/day
   until the split refresh (hourly light build, grid every few hours) exists.
+- The task has WakeToRun (2026-09-29, owner asked) and publish.ps1 holds ES_SYSTEM_REQUIRED while it
+  runs. The laptop is Modern Standby; Windows only honours the wake when "Allow wake timers" = Enable
+  (owner sets it: plugged in only; on battery it stays off on purpose - a closed laptop in a bag).
 - The scheduled task's Python doesn't see the per-user site-packages (AppData\Roaming\Python), so
   packages must live in Python's own Lib\site-packages: `$env:PYTHONNOUSERSITE='1'; python -m pip
   install -r requirements.txt` (first scheduled run 2026-09-29 failed on `import dotenv`). This Claude
