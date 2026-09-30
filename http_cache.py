@@ -131,7 +131,11 @@ SLOW_SECONDS = 15   # log any single request slower than this
 def _get(url, params=None, **kw):
     kw.setdefault("timeout", DEFAULT_TIMEOUT)
     host = urlparse(url).netloc
-    for attempt in range(3):
+    # a slow server gets two quick retries; a lost connection (no DNS, network down while the PC
+    # wakes or Wi-Fi reconnects; 2026-09-29's scheduled build died that way) gets ~3.5 minutes
+    waits = {"timeout": [3, 6], "offline": [10, 30, 60, 120]}
+    tries = {"timeout": 0, "offline": 0}
+    while True:
         t0 = time.time()
         try:
             r = _real_get(url, params=params, **kw)
@@ -141,12 +145,15 @@ def _get(url, params=None, **kw):
                 print(f"  slow request: {dt:.0f}s {host}{urlparse(url).path}", flush=True)
             return r
         except (requests.Timeout, requests.ConnectionError) as e:
+            kind = "timeout" if isinstance(e, requests.Timeout) else "offline"
+            left = tries[kind] < len(waits[kind])
             print(f"  {type(e).__name__} after {time.time() - t0:.0f}s: {host}{urlparse(url).path}"
-                  + ("" if attempt == 2 else ", retrying"), flush=True)
-            if attempt == 2:
+                  + (f", retrying in {waits[kind][tries[kind]]}s" if left else ""), flush=True)
+            if not left:
                 raise
             _stats["retries"] += 1
-            time.sleep(3 * (attempt + 1))
+            time.sleep(waits[kind][tries[kind]])
+            tries[kind] += 1
 
 
 def _counting_get(url, params=None, **kw):
