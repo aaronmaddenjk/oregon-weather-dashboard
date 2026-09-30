@@ -14,7 +14,9 @@ $action = New-ScheduledTaskAction -Execute "powershell.exe" `
     -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Script`"" `
     -WorkingDirectory (Split-Path -Parent $PSScriptRoot)
 $triggers = $Times | ForEach-Object { New-ScheduledTaskTrigger -Daily -At $_ }
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries `
+# -WakeToRun: wake the PC from sleep for the run. Windows only honours it while "Allow wake timers" is
+# set to Enable in the power plan (this laptop's default: important timers only on AC, off on battery).
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -WakeToRun -AllowStartIfOnBatteries `
     -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 1) -MultipleInstances IgnoreNew
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 

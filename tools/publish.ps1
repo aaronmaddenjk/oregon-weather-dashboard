@@ -24,6 +24,12 @@ if ((Test-Path $Log) -and (Get-Item $Log).Length -gt 2MB) { Move-Item $Log "$Log
 function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Out-File $Log -Append -Encoding utf8 }
 
 Set-Location $Root
+# Keep Windows from putting the PC back to sleep mid-build (a scheduled run may have just woken it);
+# the request ends with this process.
+try {
+    Add-Type -Namespace Wx -Name Power -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'
+    [Wx.Power]::SetThreadExecutionState([uint32]"0x80000001") | Out-Null   # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+} catch { Log "(couldn't ask Windows to stay awake: $_)" }
 if (-not $NoBuild) {
     Log "=== build start"
     # The scheduled task doesn't see the per-user site-packages (AppData\Roaming\Python; it isn't on
