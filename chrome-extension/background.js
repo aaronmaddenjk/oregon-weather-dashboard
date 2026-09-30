@@ -1,20 +1,21 @@
-// Trail Forecast for AllTrails and onX
-// Click the button on an AllTrails trail page, or on one of your routes or tracks in the onX
-// Backcountry web map: the route is read (in your own, logged-in session) and handed to the
-// dashboard's Trail Forecast tab in the URL:
-//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline}
+// Trail Forecast for AllTrails, onX and Trailforks
+// Click the button on an AllTrails trail page, one of your routes or tracks in the onX Backcountry
+// web map, or a Trailforks trail or route: the route is read (in your own, logged-in session) and
+// handed to the dashboard's Trail Forecast tab in the URL:
+//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline, "a": "hike" | "mtb"}
 // Nothing is sent anywhere else; the dashboard computes the forecast in the browser.
 
 const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
 const SITES = [
   { re: /^https:\/\/(www\.)?alltrails\.com\//, func: extractRoute },
   { re: /^https:\/\/(webmap|backcountry)\.onxmaps\.com\//, func: extractOnx },
+  { re: /^https:\/\/(www\.)?trailforks\.com\//, func: extractTrailforks },
 ];
 
 chrome.action.onClicked.addListener(async (tab) => {
   const site = SITES.find((s) => s.re.test(tab.url || ""));
   if (!site) {
-    return badge(tab.id, "?", "Open a trail on alltrails.com, or a route/track in the onX web map, then click again");
+    return badge(tab.id, "?", "Open a trail on alltrails.com or trailforks.com, or a route/track in the onX web map, then click again");
   }
   badge(tab.id, "…", "Reading the trail…");
   try {
@@ -77,7 +78,9 @@ async function extractOnx() {
     if (!edge) return { error: "onX didn't return this trail" + (d.errors ? " (" + d.errors[0].message + ")" : "") };
     let g = edge.node.geometry;
     if (typeof g === "string") { try { g = JSON.parse(g); } catch (e) { g = null; } }
-    return fromGeoJSON(g, edge.node.name || "onX trail");
+    const out = fromGeoJSON(g, edge.node.name || "onX trail");
+    if (edge.node.__typename === "BikeRoute") out.a = "mtb";
+    return out;
   }
 
   if (kind === "route") {
@@ -119,6 +122,27 @@ async function extractOnx() {
     }
     return out;
   }
+}
+
+// Runs inside a Trailforks trail or route page (/trails/<slug>/ or /route/<slug>/). The page's map
+// script draws the trail from GeoJSON it carries inline: geoJSON.push({... properties: {'type':
+// 'trail' | 'route', 'name': ...}, geometry: {type: 'LineString', encodedpath: '<polyline>'}}) - the
+// same Google encoded polyline, precision 5, as AllTrails. Trailforks is a mountain-bike site; its
+// few hiking trails say "Hiking" in the page title.
+function extractTrailforks() {
+  if (!/^\/(trails|route)\/[^/]+\/?$/.test(location.pathname))
+    return { error: "open a trail or route page on Trailforks (trailforks.com/trails/... or /route/...)" };
+  const js = [...document.scripts].map((s) => s.textContent || "").find((t) => t.includes("encodedpath"));
+  if (!js) return { error: "Trailforks didn't include the route on this page" };
+  const unq = (v) => v.replace(/\\(.)/g, "$1");
+  // the page's own trail or route: the feature whose type is 'trail' / 'route', else the first line
+  const feats = [...js.matchAll(/'type':\s*'([a-z]+)'[\s\S]*?'name':\s*'((?:[^'\\]|\\.)*)'[\s\S]*?encodedpath:\s*'((?:[^'\\]|\\.)*)'/g)]
+    .map((m) => ({ type: m[1], name: unq(m[2]), p: unq(m[3]) }));
+  const f = feats.find((x) => x.type === "trail" || x.type === "route") || feats[0];
+  if (!f || f.p.length < 4) return { error: "Trailforks didn't include the route on this page" };
+  const title = document.title || "";
+  return { n: f.name || title.split(/ (Mountain Biking|Hiking)/)[0], u: location.origin + location.pathname,
+           p: f.p, a: /Hiking (Trail|Route)/i.test(title) ? "hike" : "mtb" };
 }
 
 // Runs inside the AllTrails page. AllTrails' map view embeds the route as an encoded polyline

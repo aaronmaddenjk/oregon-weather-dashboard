@@ -479,7 +479,7 @@ TRAILS_PANEL_HTML = """
       <option value="4000,99999">4,000\u2032+</option></select></label>
     <label>High point<select id="ex-hi"><option value="">Any</option><option value="4000">Above 4,000\u2032</option>
       <option value="6000">Above 6,000\u2032</option><option value="8000">Above 8,000\u2032</option></select></label>
-    <label>Land<select id="ex-src"><option value="">All</option><option value="mine">Your trails</option>
+    <label>Land<select id="ex-src"><option value="">All</option><option value="mine">Your trails</option><option value="mine-hike">Your hikes</option><option value="mine-mtb">Your MTB trails</option>
       <option value="fs">National Forest</option><option value="nps">National Park</option><option value="osp">Oregon State Park</option>
       <option value="wsp">WA State Park</option><option value="odf">Oregon State Forest</option><option value="local">City &amp; county</option>
       <option value="blm">BLM</option><option value="fws">Wildlife Refuge</option></select></label>
@@ -586,6 +586,8 @@ TRAILS_JS = r"""
 var AG={fs:'National Forest',nps:'National Park',blm:'BLM',wsp:'WA State Park',fws:'Wildlife Refuge',osp:'Oregon State Park',
   odf:'Oregon State Forest',local:'City & county',mine:'Your trail',other:'Other'};
 var USE={h:'Hiking',b:'Bikes',r:'Horses',m:'Motorized'};
+function agOf(t){return t.src==='mine'?(t.act==='mtb'?'Your MTB trail':'Your hike'):AG[t.src];}
+function siteOf(u){return window.WxSiteName?window.WxSiteName(u):/onxmaps\.com/.test(u)?'onX':/trailforks\.com/.test(u)?'Trailforks':'AllTrails';}
 var MINE_KEY='wx-mytrails',DATA=null;
 // average grade of a mile of climb: one orange ramp, light to dark (downhill/flat miles stay grey)
 var GR=[{max:8,k:'Easy',r:'<8%',c:'#FCD5AE'},{max:15,k:'Medium',r:'8–15%',c:'#F59A55'},
@@ -680,11 +682,12 @@ window.TrailsLayer=function(map,opt){
     parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
     var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
       diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,
-      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||''};   // [12]: your trail's source page
+      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||'',act:r[13]||''};   // [12]: your trail's source page, [13]: hike | mtb
     t.lc=(t.name+' '+t.num).toLowerCase();return t;}
-  function mineRows(){return readMine().map(function(m){return[m.name,'','mine',m.mi,'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||''];});}
+  function mineRows(){return readMine().map(function(m){var mtb=m.act==='mtb';   // act: hike | mtb (older entries: hike)
+    return[m.name,'','mine',m.mi,mtb?'b':'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||'',mtb?'mtb':'hike'];});}
   function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
-    properties:{i:t.i,lc:t.lc,src:t.src,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
+    properties:{i:t.i,lc:t.lc,src:t.src,act:t.act,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
       b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
   function build(d){var ix={};d.fields.forEach(function(f,k){ix[f]=k;});
     var rows=d.trails.concat(mineRows());T=rows.map(function(r,i){return trail(r,ix,i);});}
@@ -693,7 +696,7 @@ window.TrailsLayer=function(map,opt){
     var before=opt.beforeId,mine=['==',['get','src'],'mine'];   // zoom must be the top-level input
     var w=['interpolate',['linear'],['zoom'],5,['case',mine,0.9,0.5],9,['case',mine,2.1,1.3],14,['case',mine,4.8,3]];
     map.addLayer({id:'trl-line',type:'line',source:'trl',layout:{'line-join':'round','line-cap':'round',visibility:'none'},
-      paint:{'line-color':['case',mine,'#6B3FA8','#1F3A52'],'line-width':w,'line-opacity':0.85}},before);
+      paint:{'line-color':['case',['all',mine,['==',['get','act'],'mtb']],'#1E8A5A',mine,'#6B3FA8','#1F3A52'],'line-width':w,'line-opacity':0.85}},before);   // your MTB trails green, your hikes purple
     map.addLayer({id:'trl-hover',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
       paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
     map.addLayer({id:'trl-sel-case',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
@@ -718,14 +721,15 @@ window.TrailsLayer=function(map,opt){
     if(l){l=l.split(',');c.len=[+l[0],+l[1]];}if(g){g=g.split(',');c.gain=[+g[0],+g[1]];}if(h)c.hi=+h;
     P.querySelectorAll('.ex-chips [aria-pressed=true]').forEach(function(b){c.uses.push(b.dataset.use);});return c;}
   function match(t,c){
-    if(c.q&&t.lc.indexOf(c.q)<0)return false;if(c.src&&t.src!==c.src)return false;
+    if(c.q&&t.lc.indexOf(c.q)<0)return false;
+    if(c.src&&(c.src.indexOf('mine-')===0?(t.src!=='mine'||t.act!==c.src.slice(5)):t.src!==c.src))return false;
     if(c.len&&(t.mi<c.len[0]||t.mi>=c.len[1]))return false;
     if(c.gain&&(t.gain==null||t.gain<c.gain[0]||t.gain>=c.gain[1]))return false;
     if(c.hi&&(t.hi==null||t.hi<c.hi))return false;
     for(var i=0;i<c.uses.length;i++){var u=c.uses[i];if(u==='nm'){if(t.uses.indexOf('m')>=0)return false;}else if(t.uses.indexOf(u)<0)return false;}
     return true;}
   function mapFilter(c){var f=['all'];
-    if(c.q)f.push(['in',c.q,['get','lc']]);if(c.src)f.push(['==',['get','src'],c.src]);
+    if(c.q)f.push(['in',c.q,['get','lc']]);if(c.src)f.push(c.src.indexOf('mine-')===0?['all',['==',['get','src'],'mine'],['==',['get','act'],c.src.slice(5)]]:['==',['get','src'],c.src]);
     if(c.len)f.push(['>=',['get','mi'],c.len[0]],['<',['get','mi'],c.len[1]]);
     if(c.gain)f.push(['>=',['get','gain'],c.gain[0]],['<',['get','gain'],c.gain[1]]);
     if(c.hi)f.push(['>=',['get','hi'],c.hi]);
@@ -741,7 +745,7 @@ window.TrailsLayer=function(map,opt){
     $('ex-count').innerHTML='<b>'+all.toLocaleString('en-US')+'</b> match';
     $('ex-inview').innerHTML='<b>'+rows.length.toLocaleString('en-US')+'</b> in view';
     var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"><div class="n">'+esc(t.name)+
-      (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+AG[t.src]+'</div></li>';}).join('');
+      (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+agOf(t)+'</div></li>';}).join('');
     if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
     if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
     $('ex-list').innerHTML=html;}
@@ -756,12 +760,12 @@ window.TrailsLayer=function(map,opt){
     var uses=t.uses.split('').filter(function(u){return USE[u];}).map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
     if(t.diff)uses+='<span>'+esc(t.diff)+'</span>';
     var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');
-    card.innerHTML='<button class="ex-x" type="button" aria-label="Close">×</button><h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+AG[t.src]+'</div>'+
+    card.innerHTML='<button class="ex-x" type="button" aria-label="Close">×</button><h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+agOf(t)+'</div>'+
       '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
       '<div>High<b>'+fmt(t.hi)+'\u2032</b></div><div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
       '<div class="ex-prof"></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
       '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
-      (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+(/onxmaps\.com/.test(t.link)?'onX':'AllTrails')+' \u2197</a>':'')+
+      (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+siteOf(t.link)+' \u2197</a>':'')+
         '<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
     card.hidden=false;
     chart(card.querySelector('.ex-prof'),t);

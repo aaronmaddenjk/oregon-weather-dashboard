@@ -95,6 +95,11 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   (recorded tracks) → `/v1/markups/tracks?limit=500` then `/markups/lines` (geo_json [lon,lat,ele],
   re-encoded). Auth: Bearer access_token from localStorage `oidc.user:*` + headers
   `onx-application-id: backcountry`, `onx-application-platform: web` (without them lists come back empty).
+  Trailforks (extension 1.4): /trails/<slug>/ and /route/<slug>/ pages carry the line inline in the map
+  script - `geoJSON.push({... properties:{'type':'trail'|'route','name':...}, geometry:{type:'LineString',
+  encodedpath:'<polyline p5>'}})` (JS single-quoted, backslash-escaped). Activity: `"a"` in #trail
+  (Trailforks + onX BikeRoute = mtb, else hike) -> saved as `act` in trails.json; the Trails layer draws
+  your MTB trails green / hikes purple, "Your hikes" / "Your MTB trails" land filters, MTB = "Bikes OK".
 
 - Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /
   rain next 24 h / gusts now; the selected one just gets an orange ring, no pop-open details or dot -
