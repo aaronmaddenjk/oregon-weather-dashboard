@@ -199,6 +199,11 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   "My trails" list of everything forecasted.
 - 3-hourly drill-down in the Trail Forecast 7-day table; KML import; recent-trails list;
   OpenStreetMap / Waymarked Trails links + trail search; verify gusts against ridge stations.
+- GitHub Actions re-tested 2026-10-02 (tools/openmeteo_probe.py, 360 build-like requests): ~30% of
+  Open-Meteo requests time out from GitHub runners even paced at 480 calls/min (0 x 429, just dropped
+  connections), on two different runner IPs. Actions + Open-Meteo is not viable; a free Actions build
+  would need the Open-Meteo parts replaced (e.g. NOAA GRIB for the Map grid). Google's free e2-micro
+  needs a ~$3.65/mo IPv4 (owner: must be free).
 - Move scheduled builds off the PC to an Oracle Cloud Always Free VM (own IP, so Open-Meteo
   doesn't throttle it; owner's preferred host, over Google's e2-micro whose external IP may
   cost ~$3.65/mo). Owner creates the account; then: Python, repo clone, .env, gh auth, cron
