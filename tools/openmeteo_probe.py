@@ -44,8 +44,18 @@ for _ in range(40):    # elevation
 random.shuffle(jobs)
 
 
+import threading
+PACE = 8.0   # Open-Meteo calls per second (480/min), under the free tier's 600/min, like the build's pacing
+_lock, _next = threading.Lock(), [time.time()]
+
+
 def run(job):
     kind, url, params, calls = job
+    with _lock:   # wait for this request's share of the per-minute budget
+        wait = _next[0] - time.time()
+        _next[0] = max(_next[0], time.time()) + calls / PACE
+    if wait > 0:
+        time.sleep(wait)
     t0 = time.time()
     try:
         r = requests.get(url, params=params, headers=UA, timeout=(10, 60))
