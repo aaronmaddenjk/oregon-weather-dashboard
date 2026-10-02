@@ -5,9 +5,10 @@
 # Scheduled by cron (crontab -l): 5 AM and 3 PM Pacific.   Run by hand: tools/publish.sh
 # Publish what's already built: tools/publish.sh --no-build          Log: logs/publish.log
 #
-# Before building it takes the latest code from main (git reset --hard origin/main: files the build
-# rewrites, like verification/*.json, are not kept here; .env, .cache/, docs/ and logs/ are ignored by
-# git and stay). Pushing uses the server's deploy key for this repo (~/.ssh/gh_deploy).
+# Before building it takes the latest code from main (git reset --hard origin/main; .env, .cache/, docs/
+# and logs/ are ignored by git and stay); after a build it commits verification/ back to main, so the
+# server is the one place that data is written. Pushing uses the server's deploy key for this repo
+# (~/.ssh/gh_deploy).
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REMOTE="git@github.com:aaronmaddenjk/oregon-weather-dashboard.git"
@@ -29,6 +30,15 @@ if [ "${1:-}" != "--no-build" ]; then
     if ! .venv/bin/python weather_dashboard.py >> "$LOG" 2>&1; then
         log "=== build FAILED; site not updated"
         exit 1
+    fi
+    # verification/ builds up over time (nws_log.json keeps 150 days of logged NWS forecasts for the
+    # Accuracy tab): commit what this build wrote back to main, or the next reset would throw it away
+    if [ -n "$(git status --porcelain verification)" ]; then
+        { git add verification \
+          && git -c user.name=aaronmaddenjk -c user.email=242111455+aaronmaddenjk@users.noreply.github.com \
+                 commit -q -m "Verification data from the $(date '+%Y-%m-%d %H:%M') build" \
+          && git fetch -q origin main && git rebase -q origin/main \
+          && git push -q "$REMOTE" HEAD:main; } >> "$LOG" 2>&1 || log "(couldn't save the verification data to GitHub)"
     fi
 fi
 

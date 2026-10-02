@@ -16,6 +16,20 @@ and asks for features in plain language. See README.md for data sources and dev 
 - Preview for the owner: `tools/to_artifact.py docs/index.html <out>` then publish with the
   Artifact tool to https://claude.ai/artifact/HVFm7WR4ze6fgQddH77yrx (same URL each time).
   Maps/cameras/live fetches don't run in the preview (its CSP blocks outside hosts).
+- SCHEDULED BUILDS RUN ON THE ORACLE SERVER since 2026-10-02 (owner wanted free + hands-off; the
+  laptop's Modern Standby ignores wake timers and GitHub Actions can't reach Open-Meteo, see below).
+  Oracle Cloud Always Free, region Phoenix AD-1, Oracle Linux 9 (aarch64, 1 OCPU, 6 GB), public IP
+  129.146.176.33, user `opc`, SSH key on the PC `~/.ssh/oracle_wx` (ssh -i ~/.ssh/oracle_wx
+  opc@129.146.176.33). Project in ~/dash (git clone of main, Python 3.12 in .venv, .env, .cache/terrain
+  + .cache/explorer copied over), cron (crontab -l) runs `tools/publish.sh` at 5 AM + 3 PM
+  America/Los_Angeles; log ~/dash/logs/publish.log. publish.sh resets to origin/main, builds (~12 min),
+  commits verification/ back to main (nws_log.json builds up 150 days), force-pushes docs/ to gh-pages.
+  GitHub access = a repo deploy key (read-write, "Oracle server (weather-dashboard)"), private half
+  only on the server. Its Open-Meteo quota is its own (the PC's is free for dev + live use).
+  So on the PC: don't commit verification/*.json from dev builds (`git checkout -- verification`), and
+  `git pull --rebase` before pushing (the server pushes verification commits to main).
+  Sending scripts to the server from PowerShell: write a file, scp it, strip BOM/CR with sed, run with
+  bash (inline quoting breaks). The PC task "Oregon Weather Dashboard" is DISABLED (fallback only).
 - Live site: https://aaronmaddenjk.github.io/oregon-weather-dashboard/ (GitHub Pages, served from
   the `gh-pages` branch). Repo: github.com/aaronmaddenjk/oregon-weather-dashboard (public; code on
   `main`). Built on THIS PC, not in Actions: Open-Meteo throttles GitHub's shared runner IPs to
