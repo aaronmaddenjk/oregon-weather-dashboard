@@ -3940,13 +3940,22 @@ def build_dashboard() -> str:
     .lyr-pt .lyr-bar{margin:3px 0;}
     .lyr-go{margin-left:auto;border:none;padding:3px 10px;border-radius:6px;background:#111;color:#fff;font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
     .lyr-go:focus-visible{outline:2px solid #FE5000;outline-offset:2px;}
+    .tab-btn .ns{display:none;}
     @media (max-width:760px){
       .shell{flex-direction:column;}
-      .side-nav{flex:none;height:auto;flex-direction:row;align-items:center;gap:4px;padding:8px 12px;
-        border-right:none;border-bottom:1px solid #E3E5EA;overflow-x:auto;}
+      .side-nav{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;flex-direction:row;align-items:stretch;gap:0;
+        padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px));border-right:none;border-top:1px solid #E3E5EA;
+        background:rgba(250,250,251,.97);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
       .brand,.updated{display:none;}
-      .tab-btn{width:auto;white-space:nowrap;}
-      .tab-btn.active::before{left:10px;right:10px;top:auto;bottom:-8px;width:auto;height:3px;border-radius:3px 3px 0 0;}
+      .tab-btn{flex:1 1 0;min-width:0;width:auto;flex-direction:column;justify-content:center;gap:3px;padding:7px 2px 6px;
+        border-radius:10px;font-size:10.5px;font-weight:600;text-align:center;white-space:nowrap;}
+      .tab-btn .nv{width:22px;height:22px;}
+      .tab-btn .nl{display:none;}
+      .tab-btn .ns{display:block;}
+      .tab-btn:hover{background:none;}
+      .tab-btn.active{background:none;box-shadow:none;color:#FE5000;}
+      .tab-btn.active::before{left:30%;right:30%;top:-3px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px;}
+      .main{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
       .page-section{padding:18px 16px;}
     }
     @media (prefers-reduced-motion:reduce){.tab-btn,.tab-btn .nv,.ch-chev,.ch-name{transition:none;}}
@@ -3974,7 +3983,7 @@ def build_dashboard() -> str:
     combined = f"""<!DOCTYPE html>
     <html><head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Oregon Weather Forecast — {now_str}</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
@@ -3988,12 +3997,12 @@ def build_dashboard() -> str:
     <div class="shell">
     <nav class="side-nav" aria-label="Forecast sections">
       <div class="brand">Oregon Weather<small>Daily forecast</small></div>
-      <button class="tab-btn active" onclick="showTab(0)"><svg class="nv" aria-hidden="true"><use href="#ri-city"/></svg>Cities</button>
-      <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg>Volcanos</button>
-      <button class="tab-btn" onclick="showTab(2)"><svg class="nv" aria-hidden="true"><use href="#ri-map"/></svg>Map</button>
-      <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg>Mt Hood</button>
-      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg>Trail Forecast</button>
-      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg>Accuracy</button>
+      <button class="tab-btn active" onclick="showTab(0)"><svg class="nv" aria-hidden="true"><use href="#ri-city"/></svg><span class="nl">Cities</span><span class="ns">Cities</span></button>
+      <button class="tab-btn" onclick="showTab(1)"><svg class="nv" aria-hidden="true"><use href="#ri-peak"/></svg><span class="nl">Volcanos</span><span class="ns">Volcanos</span></button>
+      <button class="tab-btn" onclick="showTab(2)"><svg class="nv" aria-hidden="true"><use href="#ri-map"/></svg><span class="nl">Map</span><span class="ns">Map</span></button>
+      <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg><span class="nl">Mt Hood</span><span class="ns">Mt Hood</span></button>
+      <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg><span class="nl">Trail Forecast</span><span class="ns">Trails</span></button>
+      <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg><span class="nl">Accuracy</span><span class="ns">Accuracy</span></button>
       <div class="updated"><b>Updated</b>{updated_str}</div>
     </nav>
     <main class="main">
@@ -4036,6 +4045,7 @@ def build_dashboard() -> str:
     window.runLazy=function(k){{LAZY.done[k]=true;var q=LAZY.q[k]||[];LAZY.q[k]=[];
       q.forEach(function(f){{try{{f();}}catch(e){{console.error(e);}}}});}};
     function showTab(idx) {{
+      var was=document.getElementById('page'+idx);if(was&&was.style.display==='none')window.scrollTo(0,0);
       for(var i=0;i<document.querySelectorAll('.page-section').length;i++) {{
         var p=document.getElementById('page'+i);
         p.style.display=i===idx?'block':'none';
@@ -4100,7 +4110,8 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden)chec
 var st=document.createElement('style');
 st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#111;color:#fff;font:13px/1.3 "Helvetica Neue",Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}'
   +'.wx-newer button{border:0;border-radius:6px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer;background:#FE5000;color:#fff}'
-  +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}';
+  +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}'
+  +'@media (max-width:760px){.wx-newer{right:12px;left:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));justify-content:space-between}}';   // above the tab bar
 document.head.appendChild(st);
 })();
 """
