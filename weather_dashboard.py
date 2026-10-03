@@ -3957,6 +3957,17 @@ def build_dashboard() -> str:
       .tab-btn.active::before{left:30%;right:30%;top:-3px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px;}
       .main{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
       .page-section{padding:18px 16px;}
+      /* maps: a bit over half the screen, so the page around them stays reachable */
+      .lay-a .city-mapbox,.lay-a #citymap,.lay-a #trailmap{min-height:56vh;}
+      #page3 #hoodmap,#page4 #tlmap{height:56vh;}
+      .rmap-wrap{height:62vh;min-height:360px;}
+      .lyr-ctl>div:first-child{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none;}
+      .lyr-ctl>div:first-child::-webkit-scrollbar{display:none;}
+      .lyr-ctl>div:first-child button{flex:none;}
+      .lyr-ctl .lyr-time{width:100%;box-sizing:border-box;}
+      .lyr-ctl .lyr-time input[type=range]{flex:1;min-width:60px;}
+      .lyr-leg{width:200px;bottom:30px;}
+      .rmap-wrap .mapboxgl-ctrl-top-right,.trail-map-wrap .mapboxgl-ctrl-top-right{display:none;}
     }
     @media (prefers-reduced-motion:reduce){.tab-btn,.tab-btn .nv,.ch-chev,.ch-name{transition:none;}}
     .wxi{display:inline-flex;align-items:center;gap:1px;vertical-align:middle;}
@@ -3987,6 +3998,15 @@ def build_dashboard() -> str:
     <title>Oregon Weather Forecast — {now_str}</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <script>
+    // on a touch screen every map takes two fingers to pan / zoom, so a swipe down the page scrolls
+    // the page instead of getting stuck in a map (Mapbox shows a hint on a one-finger drag)
+    if(window.mapboxgl&&window.matchMedia&&matchMedia('(pointer:coarse)').matches){{
+      var _M=mapboxgl.Map;
+      mapboxgl.Map=function(o){{return new _M(Object.assign({{cooperativeGestures:true}},o));}};
+      mapboxgl.Map.prototype=_M.prototype;
+    }}
+    </script>
     <style>
     {merged_css}
     {tab_css}
