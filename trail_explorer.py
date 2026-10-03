@@ -551,7 +551,7 @@ TRAILS_CSS = r"""
 .ex-prof { position:relative; margin:2px 0 10px; }
 .ex-prof-t { font-size:11px; font-weight:700; color:#111; margin-bottom:2px; }
 .ex-prof-t span { font-weight:400; color:#8A8F9C; }
-.ex-prof svg { display:block; width:100%; height:auto; overflow:visible; touch-action:none; }
+.ex-prof svg { display:block; width:100%; height:auto; overflow:visible; touch-action:pan-y; }
 .ex-prof svg text { font-family:inherit; font-size:9.5px; font-weight:700; fill:#3F4450; font-variant-numeric:tabular-nums; }
 .ex-prof svg text.ax { font-weight:400; fill:#8A8F9C; }
 .ex-ptip { position:absolute; top:14px; right:0; background:rgba(17,17,17,.86); color:#fff; border-radius:6px; padding:3px 7px; font-size:11px; font-variant-numeric:tabular-nums; pointer-events:none; }
@@ -823,7 +823,12 @@ window.TrailsLayer=function(map,opt){
       var p=pointAt(t.parts[0],xs[i]);if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'Point',coordinates:p});}
     function off(){line.setAttribute('visibility','hidden');dot.setAttribute('visibility','hidden');tipEl.hidden=true;
       if(map.getSource('trl-pt'))map.getSource('trl-pt').setData({type:'FeatureCollection',features:[]});}
-    sv.addEventListener('pointermove',at);sv.addEventListener('pointerleave',off);}
+    // touch: tap or drag along the profile; it stays after the finger lifts (a tap elsewhere clears it)
+    sv.addEventListener('pointermove',at);sv.addEventListener('pointerdown',at);
+    sv.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse')off();});
+    window._exProfOff=off;   // one page-wide listener for all the profiles drawn over time
+    if(!window._exProfDoc){window._exProfDoc=1;document.addEventListener('pointerdown',function(e){
+      if(window._exProfOff&&!(e.target.closest&&e.target.closest('.ex-prof svg')))window._exProfOff();});}}
   // your trails saved before profiles existed: measure once (a few Mapbox terrain tiles), store, draw
   async function backfill(t,card){var box=card.querySelector('.ex-prof'),W=window.WxTrail;if(!W||!W.profile)return;
     box.innerHTML='<div class="ex-prof-t">Elevation profile <span>measuring…</span></div>';

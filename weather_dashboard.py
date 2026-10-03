@@ -1578,10 +1578,16 @@ window.WxCharts=function(panel,opt){
       +(h.sd!=null?'<br>Seasonal snow on the ground ~'+Math.round(h.sd)+'″':'')
       +(cum[i]>=0.005?'<br><i style="background:'+TOT+';height:2px"></i>So far '+inch(cum[i])+'″ water'+(cumS[i]>=0.05?' · '+cumS[i].toFixed(1)+'″ snow':''):'');
     tip.hidden=false;
-    var pr=panel.getBoundingClientRect(),x=ev.clientX-pr.left,y=ev.clientY-pr.top,tw=tip.offsetWidth;
-    tip.style.left=(x+14+tw>pr.width?x-14-tw:x+14)+'px';tip.style.top=Math.max(4,y-40)+'px';
+    var pr=panel.getBoundingClientRect(),x=ev.clientX-pr.left,y=ev.clientY-pr.top,tw=tip.offsetWidth,th=tip.offsetHeight;
+    tip.style.left=Math.max(4,Math.min(pr.width-tw-4,x+14+tw>pr.width?x-14-tw:x+14))+'px';
+    // a finger covers what's under it: on touch the tip goes above the finger (below if there's no room)
+    tip.style.top=(ev.pointerType==='mouse'?Math.max(4,y-40):(ev.clientY-th-28>=8?y-th-28:y+28))+'px';   // (above the panel is fine, off screen isn't)
   }
-  box.addEventListener('pointermove',hover);box.addEventListener('pointerdown',hover);box.addEventListener('pointerleave',hide);
+  // mouse: hover, gone on leaving. Touch: tap (or drag sideways) to read an hour - it stays after the
+  // finger lifts, and a tap anywhere outside the charts puts it away; up/down swipes still scroll the page
+  box.addEventListener('pointermove',hover);box.addEventListener('pointerdown',hover);
+  box.addEventListener('pointerleave',function(ev){if(ev.pointerType==='mouse')hide();});
+  document.addEventListener('pointerdown',function(ev){if(!box.contains(ev.target))hide();});
   if(window.ResizeObserver)new ResizeObserver(draw).observe(box);else window.addEventListener('resize',draw);
   return{set:function(hours,inf){d=hours||[];info=inf||{};var c=0,cs=0;cum=d.map(function(h){c+=h.ty?h.p:0;return c;});cumS=d.map(function(h){cs+=h.s;return cs;});hide();draw();}};
 };
@@ -1849,7 +1855,8 @@ LAYOUT_CSS = """
 .cc-extra:empty { display:none; }
 .cc-extra .tide-box { box-shadow:none; background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; margin:14px 0 0; }
 .cc-charts.cc-grid.one { grid-template-columns:minmax(0,1fr); }
-.cc-charts.cc-grid[hidden] { display:none; }   /* (the grid's display would beat [hidden]: Volcanos' camera view) */
+.cc-charts.cc-grid[hidden] { display:none; }
+.cc-chart svg { touch-action:pan-y; }   /* a sideways drag scrubs the hours; up/down still scrolls the page */   /* (the grid's display would beat [hidden]: Volcanos' camera view) */
 #page0 .city-search { right:10px; width:auto; }
 #page0 .city-wash { top:46px; }
 @media (max-width:1000px) { .lay-a { grid-template-columns:minmax(0,1fr); } .lay-a .city-mapbox, .lay-a #citymap, .lay-a #trailmap { min-height:460px; } }
