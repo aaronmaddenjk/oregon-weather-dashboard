@@ -1106,6 +1106,22 @@ def aqi_html(val):
     num = f"<b>{val:.0f}</b>" if val > 100 else f"{val:.0f}"
     return f'<span title="AQI {val:.0f} · {name}"><span class="aqd" style="background:{col}"></span>{num}</span>'
 
+def _base_ft(label, elev_m):
+    """The table's Base text ("2,200′", "15k′", "Fog") as a number for the cloud chart (ft MSL / 100),
+    so chart and table always agree; Clear / Few / Scattered / Cloudy have no base: None."""
+    if not label:
+        return None
+    if label == "Fog":
+        return round((elev_m or 0) * 3.28084 / 100)
+    t = label.replace("′", "").replace(",", "")
+    if t in ("15k", "28k"):   # the table's stand-ins for "mid cloud only" / "high cloud only", not a measured base
+        return None
+    try:
+        return round(float(t[:-1]) * 10) if t.endswith("k") else round(float(t) / 100)
+    except ValueError:
+        return None
+
+
 def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
     """Every forecast hour from now on for one spot, packed as columns for the page (the day-click
     charts): temp, feels, wind, gust, dir (degrees from), sky, p (in x1000), s (snow in x100),
@@ -1118,7 +1134,8 @@ def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
     ai = {t: i for i, t in enumerate(aq.get("time", []))}
     start = now.replace(minute=0, second=0, microsecond=0).strftime("%Y-%m-%dT%H:00")
     ix = [i for i, t in enumerate(T) if t >= start]
-    keys = ("temp", "feels", "wind", "gust", "dir", "sky", "p", "s", "pop", "th", "aqi", "uv", "vis", "sl")
+    keys = ("temp", "feels", "wind", "gust", "dir", "sky", "p", "s", "pop", "th", "aqi", "uv", "vis", "sl",
+            "cl", "cm", "ch", "cb")   # cloud layers (%, harmonized to the NWS sky) and cloud base (ft MSL / 100)
     c = {k: [] for k in keys}
     c["t0"] = T[ix[0]] if ix else start
     ty = ""
@@ -1151,6 +1168,10 @@ def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
         vm = (h.get("visibility") or [None] * len(T))[i]
         c["vis"].append(None if vm is None else round(min(vm / 1609.34, 10) * 10))
         c["sl"].append(r(v.get("snowlvl_ft"), 0.01))
+        cl, cm, ch = (h.get(k, [None] * len(T))[i] for k in CLOUD_LAYERS)
+        c["cl"].append(r(cl)); c["cm"].append(r(cm)); c["ch"].append(r(ch))
+        c["cb"].append(_base_ft(cloud_base_display((h.get("cloud_base") or [None] * len(T))[i], cl, cm, ch,
+                                                   h["cloud_cover"][i] or 0, tf, df, vm, (elev_m or 0) * 3.28084), elev_m))
         if depth is not None:
             depth = max(0.0, (depth + s_h) * settle - max(0.0, (tf or 32) - 32) * melt)
             sd.append(round(depth * 10))
@@ -1487,6 +1508,35 @@ function chart(title,sum,keys,d,W,PH,o){
   return'<div class="cc-chart"><div class="cc-ct">'+title+k+'<span class="cc-sum">'+sum+'</span></div>'
     +'<svg viewBox="0 0 '+W+' '+H+'" height="'+H+'" data-w="'+W+'" role="img" aria-label="'+title+'">'+s+'</svg></div>';
 }
+// Cloud cross-section (owner): altitude up the side in three equal bands - low (surface-6,500 ft),
+// mid (6,500-20,000), high (20,000+), each band its own linear scale, labelled at its edges - each
+// hour's layers shaded by their cover (darker = more), and the cloud base as a line. Same hour
+// columns, hover band and svg data-w as chart(), so the shared hover works on it.
+var CLOUD_EDGES=[0,6500,20000,40000],CLOUD_C='#6B7684',BASE_C='#1F3A52';
+function cloudChart(d,W,PH,sky){
+  var BH=Math.round(PH*1.3),pw=W-L-4,bw=pw/d.length,y0=PT_+BH,band=BH/3;
+  var Y=function(f){if(f<=0)return y0;for(var k=0;k<3;k++)if(f<=CLOUD_EDGES[k+1])return y0-band*(k+(f-CLOUD_EDGES[k])/(CLOUD_EDGES[k+1]-CLOUD_EDGES[k]));return PT_;};
+  var s='<rect class="cc-band" x="0" y="'+(PT_-6)+'" width="'+bw+'" height="'+(BH+6)+'" rx="3" fill="#F1F2F5" visibility="hidden"/>';
+  [0,6500,20000].forEach(function(f,k){var y=Y(f).toFixed(1);
+    s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+y+'" y2="'+y+'" stroke="'+(k?'#F0F1F4':'#DDE0E6')+'"/><text x="'+(L-6)+'" y="'+(+y+3.5)+'" text-anchor="end">'+(f?(f/1000)+'k':'0')+'</text>';});
+  d.forEach(function(h,i){var x=L+bw*i+0.5,w=Math.max(1,bw-1);
+    [h.cl,h.cm,h.ch].forEach(function(v,k){if(v==null||v<=5)return;
+      s+='<rect x="'+x.toFixed(1)+'" y="'+(y0-band*(k+1)).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+band.toFixed(1)+'" fill="'+CLOUD_C+'" fill-opacity="'+(0.1+0.72*v/100).toFixed(2)+'"/>';});
+    if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
+  // band names at the top of each band, haloed so they read over cloud shading and clear of the base line
+  ['Low','Mid','High'].forEach(function(n,k){s+='<text x="'+(L+4)+'" y="'+(y0-band*(k+1)+11).toFixed(1)+'" style="font-size:9.5px;fill:#7D8592;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round">'+n+'</text>';});
+  // the base: a line through the hours that have one (breaks where there's none), cased so it reads over the shading
+  var seg=[],segs=[];d.forEach(function(h,i){if(h.cb!=null)seg.push([L+bw*i+bw/2,Y(h.cb)]);else if(seg.length){segs.push(seg);seg=[];}});if(seg.length)segs.push(seg);
+  segs.forEach(function(g){var dp='M'+g.map(function(q){return q[0].toFixed(1)+','+q[1].toFixed(1);}).join('L');
+    s+=g.length>1?'<path d="'+dp+'" fill="none" stroke="#fff" stroke-width="4" stroke-opacity=".8" stroke-linejoin="round"/><path d="'+dp+'" fill="none" stroke="'+BASE_C+'" stroke-width="2" stroke-linejoin="round"/>'
+      :'<circle cx="'+g[0][0].toFixed(1)+'" cy="'+g[0][1].toFixed(1)+'" r="2.5" fill="'+BASE_C+'" stroke="#fff" stroke-width="1"/>';});
+  var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
+  var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
+  var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
+  var k=[[CLOUD_C,'Cloud (darker = more)'],[BASE_C,'Base',1]].map(function(c){return'<span class="cc-key"><i style="background:'+c[0]+(c[2]?';width:9px;height:2px;border-radius:1px':';opacity:.7')+'"></i>'+c[1]+'</span>';}).join('');
+  return'<div class="cc-chart"><div class="cc-ct">Clouds'+k+'<span class="cc-sum">'+sum+'</span></div>'
+    +'<svg viewBox="0 0 '+W+' '+(y0+B)+'" height="'+(y0+B)+'" data-w="'+W+'" role="img" aria-label="Clouds by altitude">'+s+'</svg></div>';
+}
 // WxCharts(panel, opt): the chart panel. opt.grid = the charts, two per row, e.g.
 // ['temp','precip','pop','wind','cloud','aqi'] (Cities) or [...,'vis','sl'] (Volcanos); without it the
 // original single column: wind, temperature, cloud cover (visibility with opt.vis), precipitation.
@@ -1517,6 +1567,7 @@ window.WxCharts=function(panel,opt){
         val:function(h){return h.vis==null?10:Math.min(10,h.vis);},col:function(h){var v=h.vis==null?10:h.vis;return v<1?'#D11A24':v<3?'#C9760A':'#A3ABB8';}});},
     cloud:function(W,PH){
       var avg=Math.round(d.reduce(function(a,h){return a+h.sky;},0)/d.length),uvs=d.map(function(h){return h.uv||0;}),uvx=Math.max.apply(null,uvs);
+      if(d.some(function(h){return h.cl!=null;}))return cloudChart(d,W,PH,avg);
       return chart('Cloud cover','Avg '+avg+'%'+(uvx>=3?' · UV '+uvx:''),[],d,W,PH,{lo:0,hi:100,ticks:[0,50,100],fmt:function(v){return v+'%';},
         val:function(h){return h.sky;},col:function(){return'#A3ABB8';}});},
     precip:function(W,PH){   // precipitation per hour coloured by what falls, plus the running liquid total
@@ -1574,6 +1625,7 @@ window.WxCharts=function(panel,opt){
       +'<br>Wind '+h.wind+' mph'+(h.dir!=null?' from the '+compass(h.dir):'')+', gusts '+h.gust+'<br>'+pl
       +(h.pop!=null&&has('pop')?'<br><i style="background:'+POP+'"></i>'+h.pop+'% chance'+(h.th?' · <i style="background:'+THUN+'"></i>thunder '+h.th+'%':''):'')
       +(h.aqi!=null&&has('aqi')?'<br><i style="background:'+aqCol(h.aqi)+'"></i>AQI '+h.aqi+' · '+aqCat(h.aqi):'')
+      +(h.cl!=null&&has('cloud')?'<br>Clouds: low '+h.cl+'% \u00b7 mid '+(h.cm||0)+'% \u00b7 high '+(h.ch||0)+'%'+(h.cb!=null?' \u00b7 base '+ft(h.cb):''):'')
       +(h.sl!=null&&has('sl')?'<br>Snow level '+ft(h.sl):'')
       +(h.sd!=null?'<br>Seasonal snow on the ground ~'+Math.round(h.sd)+'″':'')
       +(cum[i]>=0.005?'<br><i style="background:'+TOT+';height:2px"></i>So far '+inch(cum[i])+'″ water'+(cumS[i]>=0.05?' · '+cumS[i].toFixed(1)+'″ snow':''):'');
@@ -1601,7 +1653,8 @@ window.WxCharts.hours=function(c){
     out.push({t:WD[dt.getUTCDay()]+' '+((h%12)||12)+(h<12?'AM':'PM'),date:dt.toISOString().slice(0,10),temp:c.temp[k],feels:c.feels[k],
       wind:c.wind[k]||0,gust:c.gust[k]||0,dir:c.dir[k],sky:c.sky[k]||0,p:(c.p[k]||0)/1000,s:(c.s[k]||0)/100,ty:TY[c.ty.charAt(k)]||'',
       pop:c.pop[k],th:c.th[k],aqi:c.aqi[k],uv:c.uv[k],vis:c.vis[k]==null?null:c.vis[k]/10,sl:c.sl[k]==null?null:c.sl[k]*100,
-      sd:c.sd&&c.sd[k]!=null?c.sd[k]/10:null});
+      sd:c.sd&&c.sd[k]!=null?c.sd[k]/10:null,cl:c.cl?c.cl[k]:null,cm:c.cm?c.cm[k]:null,ch:c.ch?c.ch[k]:null,
+      cb:c.cb&&c.cb[k]!=null?c.cb[k]*100:null});
   }
   return out;
 };

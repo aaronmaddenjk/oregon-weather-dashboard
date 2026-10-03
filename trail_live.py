@@ -271,7 +271,7 @@ async function run(pts,name,link,onStats){
 // the forecast for a few points ({p:{lat,lon,ele}}, ele in m): each gets hours, now, h24
 async function forecast(P){
   var mid={lat:P.reduce(function(a,x){return a+x.p.lat;},0)/P.length,lon:P.reduce(function(a,x){return a+x.p.lon;},0)/P.length};
-  var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth','wind_direction_10m','uv_index'];
+  var hourly=['temperature_2m','dew_point_2m','precipitation','precipitation_probability','cloud_cover','visibility','wind_speed_10m','wind_gusts_10m','snow_depth','wind_direction_10m','uv_index','cloud_cover_low','cloud_cover_mid','cloud_cover_high'];
   var common={temperature_unit:'fahrenheit',wind_speed_unit:'mph',precipitation_unit:'inch',timezone:'auto'};
   var gfsVars=[];PL.forEach(function(p){['temperature','geopotential_height','relative_humidity','wind_speed'].forEach(function(v){gfsVars.push(v+'_'+p+'hPa');});});
   var col=function(k){return P.map(function(x){return x.p[k];}).join(',');};
@@ -296,6 +296,7 @@ async function forecast(P){
       var h={t:t,temp:T,dew:D,wind:v.wind!=null?v.wind:H.wind_speed_10m[i],gust:v.gust!=null?v.gust:H.wind_gusts_10m[i],
         sky:v.sky!=null?v.sky:H.cloud_cover[i],pop:v.pop!=null?v.pop:H.precipitation_probability[i],
         p:v.qpf!=null?v.qpf:(H.precipitation[i]||0),vis:H.visibility[i]==null?null:H.visibility[i]/1609.34,depth:(H.snow_depth[i]||0)*39.37,
+        cl:H.cloud_cover_low[i],cm:H.cloud_cover_mid[i],ch:H.cloud_cover_high[i],
         dir:v.dir!=null?v.dir:H.wind_direction_10m[i],th:v.th!=null?v.th:null,sl:v.sl!=null?v.sl:null,uv:H.uv_index[i],aqi:AQ[t]!=null?AQ[t]:null};
       var j=gi[t];if(j!=null){var fa=freeAir(G.hourly,j);h.gust=Math.max(h.gust||0,windAt(fa,z,0,GF));h.wind=Math.max(h.wind||0,windAt(fa,z,0,1));}
       var r=newSnow(h.p,T,T!=null&&D!=null?rhFromDew(T,Math.min(D,T)):null);h.s=r[0];h.ty=h.p<0.005?'':r[1]>=0.8?'snow':r[1]>0.2?'mix':'rain';
@@ -305,7 +306,10 @@ async function forecast(P){
     pt.all=pt.hours.slice(pt.now).map(function(h){return{t:label(h.t),date:h.t.slice(0,10),temp:Math.round(h.temp),wind:Math.round(h.wind||0),gust:Math.round(h.gust||0),
       sky:Math.round(h.sky||0),p:+h.p.toFixed(3),s:+h.s.toFixed(2),ty:h.ty,vis:h.vis==null?null:+h.vis.toFixed(2),feels:feels(h.temp,h.wind,h.dew),
       dir:h.dir==null?null:Math.round(h.dir),pop:h.pop==null?null:Math.round(h.pop),th:h.th==null?null:Math.round(h.th),sl:h.sl==null?null:Math.round(h.sl/100)*100,
-      uv:h.uv==null?null:Math.round(h.uv),aqi:h.aqi==null?null:Math.round(h.aqi)};});
+      uv:h.uv==null?null:Math.round(h.uv),aqi:h.aqi==null?null:Math.round(h.aqi),
+      cl:h.cl==null?null:Math.round(h.cl),cm:h.cm==null?null:Math.round(h.cm),ch:h.ch==null?null:Math.round(h.ch),
+      // a base under low cloud only: the lifting condensation level, ~1,000 ft per 4.4 F of dew-point spread
+      cb:h.cl!=null&&h.cl>15&&h.temp!=null&&h.dew!=null?Math.round((z*3.28084+Math.max(0,h.temp-h.dew)/4.4*1000)/100)*100:null};});
     pt.h24=pt.all.slice(0,24);
   });
   return{tz:tz,off:off,nowKey:nowKey};
