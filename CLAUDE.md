@@ -21,9 +21,15 @@ and asks for features in plain language. See README.md for data sources and dev 
   Oracle Cloud Always Free, region Phoenix AD-1, Oracle Linux 9 (aarch64, 1 OCPU, 6 GB), public IP
   129.146.176.33, user `opc`, SSH key on the PC `~/.ssh/oracle_wx` (ssh -i ~/.ssh/oracle_wx
   opc@129.146.176.33). Project in ~/dash (git clone of main, Python 3.12 in .venv, .env, .cache/terrain
-  + .cache/explorer copied over), cron (crontab -l) runs `tools/publish.sh` at 5 AM + 3 PM
-  America/Los_Angeles; log ~/dash/logs/publish.log. publish.sh resets to origin/main, builds (~12 min),
-  commits verification/ back to main (nws_log.json builds up 150 days), force-pushes docs/ to gh-pages.
+  + .cache/explorer copied over), cron (crontab -l) runs `tools/publish.sh` HOURLY (:10, since
+  2026-10-03); log ~/dash/logs/publish.log. publish.sh resets to origin/main, picks per-source cache
+  lifetimes from the hour (http_cache.ttl_class: live = NWS/smoke/fires/cams every build; points =
+  Open-Meteo spots at 2/8/14/20 h; aqgrid at 4/16 h; grid = Map grid + daily = SNOTEL/past runs/
+  verification (WX_VERIFY=1) at 4 h; ~7,900 Open-Meteo calls/day), builds (hourly ~4 min, refresh
+  hours longer, a full one ~12 min), commits verification/ back to main (nws_log.json builds up 150
+  days), force-pushes docs/ to gh-pages. Every build writes docs/version.json; open tabs check it every
+  5 min (RELOAD_JS: reload if hidden, else a "Newer forecast" notice). A change to publish.sh itself
+  takes effect the run after the one that pulls it (bash keeps reading the old file).
   GitHub access = a repo deploy key (read-write, "Oracle server (weather-dashboard)"), private half
   only on the server. Its Open-Meteo quota is its own (the PC's is free for dev + live use).
   So on the PC: don't commit verification/*.json from dev builds (`git checkout -- verification`), and
