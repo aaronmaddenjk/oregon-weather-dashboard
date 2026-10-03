@@ -3993,6 +3993,20 @@ def build_dashboard() -> str:
       .tl-tbl td{min-width:58px !important;padding:6px 5px !important;}
       .acc-tbl th,.acc-tbl td{padding:7px 9px;font-size:12px;}
       .acc-tbl tr>:first-child{position:sticky;left:0;z-index:1;background:#fff;max-width:112px;white-space:normal;text-align:left;}
+      /* headers: a place's name row keeps its collapse arrow on the right, elevation + coordinates below */
+      .city-detail-header{gap:2px 8px;}
+      .city-detail-header .ch-chev{order:4;margin-left:auto;}
+      .city-detail-header .ch-meta{order:5;flex-basis:100%;margin-left:0;}
+      .city-detail-header .cq-clear{order:4;}
+      /* the elevation chips (Volcanos) in one row you swipe, like the map's layer buttons */
+      .wp-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+      .wp-chips::-webkit-scrollbar{display:none;}
+      .wp-chip{flex:none;}
+      /* sunrise / sunset / daylight / moon in two lines instead of three */
+      .city-sun{gap:4px 12px;font-size:12px;}
+      .city-sun svg{width:15px;height:15px;}
+      .page-head h1{font-size:22px;}
+      .page-head p{font-size:12.5px;}
     }
     @media (prefers-reduced-motion:reduce){.tab-btn,.tab-btn .nv,.ch-chev,.ch-name{transition:none;}}
     .wxi{display:inline-flex;align-items:center;gap:1px;vertical-align:middle;}

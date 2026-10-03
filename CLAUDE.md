@@ -176,6 +176,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   `tides.stations()` (embedded at build), stations east of the town (up-river) penalised; fetched
   live from CO-OPS (CORS ok).
 
+## Phones (one responsive page, owner, 2026-10-03; everything under `@media (max-width:760px)` in tab_css)
+Bottom tab bar (icon over a short label, safe-area aware; showTab scrolls to the top); maps ~56% of the
+screen (Map tab 62%), `cooperativeGestures` on touch screens (a wrapper around mapboxgl.Map in the head),
+the Map tab's layer buttons in one swipe row, no zoom buttons; charts: tap / drag sideways to read, the
+tip stays after lifting, sits above the finger, `touch-action:pan-y`; tables: narrow wrapping sticky row
+labels, high over low, Accuracy first column sticky; cameras size to content (`.cc-cams` flex:1 0 auto).
+Test at the "mobile" preset (375x812) with DOM measurements; the pane often stops drawing screenshots.
+
 ## Shared JS components (global scripts, defined once in the shell)
 `WxCharts(panel,{vis})` 24-hour charts · `WxCams(root)` camera view · `TerrainLayers` (Mt Hood
 elevation-colored layers) · `RegionLayers(opt)` = the Map tab's full layer engine, also used by
