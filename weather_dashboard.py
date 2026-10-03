@@ -1849,6 +1849,7 @@ LAYOUT_CSS = """
 .cc-extra:empty { display:none; }
 .cc-extra .tide-box { box-shadow:none; background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; margin:14px 0 0; }
 .cc-charts.cc-grid.one { grid-template-columns:minmax(0,1fr); }
+.cc-charts.cc-grid[hidden] { display:none; }   /* (the grid's display would beat [hidden]: Volcanos' camera view) */
 #page0 .city-search { right:10px; width:auto; }
 #page0 .city-wash { top:46px; }
 @media (max-width:1000px) { .lay-a { grid-template-columns:minmax(0,1fr); } .lay-a .city-mapbox, .lay-a #citymap, .lay-a #trailmap { min-height:460px; } }
@@ -2497,7 +2498,9 @@ def build_trails_page(aq):
         ".cc-view button.active { background:#fff; color:#111; box-shadow:0 0 0 1px #E3E5EA, 0 1px 2px rgba(20,24,35,.06); }\n"
         ".cc-view button:focus-visible { outline:2px solid #FE5000; outline-offset:2px; }\n"
         ".cc-view button span { margin-left:5px; font-size:11px; color:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
-        ".cc-cams { flex:1 1 0; min-height:0; display:flex; flex-direction:column; gap:8px; padding-top:10px; }\n"
+        # as tall as the photo + caption + thumbnails: a 0 flex-basis collapsed it to nothing wherever the
+        # panel has no fixed height (phones, and the Volcanos tab's stacked layout)
+        ".cc-cams { flex:1 0 auto; display:flex; flex-direction:column; gap:8px; padding-top:10px; }\n"
         ".cc-cams[hidden], .cc-charts[hidden], .cc-tiers[hidden] { display:none; }\n"
         ".cam-main { position:relative; margin:0; border-radius:8px; overflow:hidden; background:#10131A; aspect-ratio:3/2; flex:none; }\n"
         ".cam-main img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }\n"
