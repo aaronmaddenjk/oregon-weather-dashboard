@@ -528,8 +528,9 @@ function snowDays(){   // frame files the current snow window needs
   return [st.d,smode==='24h'?Math.max(0,st.d-1):(TL[0]?TL[0].d:0)];}
 
 // ---- the time slider: one timeline per layer/mode, rebuilt when either changes ----
-// hourly: every 3-hourly frame from now on; daily: one step per day; radar: HRRR's
-// simulated radar hourly for its 18 h, then the model's own 3-hourly precipitation.
+// hourly: every 3-hourly frame from now on; daily: one step per day; radar: the observed NEXRAD
+// radar for the last 50 min (5-min steps, ending now), then HRRR's simulated radar hourly for its
+// 18 h, then the model's own 3-hourly precipitation.
 var TL=[],ti=0,mode='hourly',total=false,HR=null;
 var WHEN=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',weekday:'short',day:'numeric',hour:'numeric'});
 function when(t,withHour){   // "Thu 24, 2 PM" (Pacific time)
@@ -541,7 +542,8 @@ function buildTL(){
     if(SMOKE)SMOKE.times.forEach(function(t,k){if(t>=now-90*60000)out.push({kind:'smoke',k:k,t:t});});
     return out;}
   if(st.l==='radar'){
-    if(HR)for(var k=0;k<=18;k++){var t=HR.init+k*3600000;if(t>=now-45*60000)out.push({kind:'hrrr',min:k*60,t:t});}
+    obsFresh();for(var o=50;o>=0;o-=5)out.push({kind:'obs',off:o,t:now-o*60000});
+    if(HR)for(var k=0;k<=18;k++){var t=HR.init+k*3600000;if(t>now)out.push({kind:'hrrr',min:k*60,t:t});}
     var last=out.length?out[out.length-1].t:now-2*3600000;
     for(var d=0;d<D;d++)for(var f=0;f<NF;f++)if(R.frame_ts[d][f]>last)out.push({kind:'model',d:d,h:f,t:R.frame_ts[d][f]});
   }else if(mode==='daily'){
@@ -646,6 +648,26 @@ function hrrrShow(frame){   // frame: the timeline entry to show, or null to hid
   map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)!=='hr')return;var m=+l.id.slice(2);
     map.setLayoutProperty(l.id,'visibility',want>=0&&Math.abs(m-want)<=60?'visible':'none');
     map.setPaintProperty(l.id,'raster-opacity',m===want?0.82:0);});}
+// ---- observed radar ----
+// NEXRAD base-reflectivity composite (N0Q) from the Iowa Environmental Mesonet: now and every 5 min
+// back to 50 min ago. Live tiles, so it needs no build; a new 5-min slot starts fresh layers.
+var OBS_B=null;
+function obsFresh(){var b=Math.floor(Date.now()/300000);if(b===OBS_B||!map)return;OBS_B=b;
+  map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)==='nx'){map.removeLayer(l.id);map.removeSource(l.id);}});}
+function obsEnsure(off){
+  var id='nx'+off;if(off<0||off>50||map.getLayer(id))return;
+  map.addSource(id,{type:'raster',tileSize:256,attribution:'Radar: NOAA NEXRAD via Iowa Environmental Mesonet',
+    tiles:['https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913'+(off?'-m'+String(off).padStart(2,'0')+'m':'')+'/{z}/{x}/{y}.png?b='+OBS_B]});
+  map.addLayer({id:id,type:'raster',source:id,paint:{'raster-opacity':0,'raster-fade-duration':0}},sym);}
+function obsShow(frame){
+  if(!map)return;
+  var want=frame&&frame.kind==='obs'?frame.off:-1;
+  if(want>=0){obsEnsure(want);obsEnsure(want-5);obsEnsure(want+5);}   // neighbours preload for smooth playback
+  map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)!=='nx')return;var m=+l.id.slice(2);
+    map.setLayoutProperty(l.id,'visibility',want>=0&&Math.abs(m-want)<=5?'visible':'none');
+    map.setPaintProperty(l.id,'raster-opacity',m===want?0.8:0);});}
+// NEXRAD reflectivity (dBZ) in the N0Q tiles' colours, for the legend
+var DBZ=[[5,'#04E9E7'],[15,'#019FF4'],[25,'#02FD02'],[35,'#FDF802'],[45,'#FD9500'],[55,'#FD0000'],[65,'#F800FD']];
 // Beyond 18 h: the model's own 3-hourly precipitation drawn radar-style, in the same
 // rain / mix / snow colours as HRRR's, decided by each pixel's elevation-adjusted temperature.
 var RAIN=[[0.004,[214,239,208]],[0.02,[160,217,155]],[0.05,[115,196,118]],[0.1,[64,170,93]],[0.2,[34,138,68]],[0.35,[245,215,80]],[0.5,[240,130,50]],[1,[205,40,40]]],
@@ -735,6 +757,12 @@ async function render(){
 function legend(){
   if(st.l==='none'){leg.hidden=true;return;}
   var f=TL[ti],day=st.d==='total'?'Next 7 days':(f?when(f.t,st.h!==null||st.l==='radar'):'');
+  if(st.l==='radar'&&f&&f.kind==='obs'){
+    leg.innerHTML='<b>Live radar</b> · '+(f.off?f.off+' min ago':'now')
+      +'<div class="lyr-bar" style="background:linear-gradient(90deg,'+DBZ.map(function(d){return d[1];}).join(',')+')"></div>'
+      +'<div class="lyr-ticks"><span>Light</span><span>Moderate</span><span>Heavy</span></div>'
+      +'<div class="lyr-note">Observed: NOAA NEXRAD radar composite, every 5 minutes. Slide right for the forecast.</div>';
+    leg.hidden=false;return;}
   if(st.l==='radar'){
     var grad=function(S){return 'linear-gradient(90deg,'+S.map(function(s){return 'rgb('+s[1].join(',')+')';}).join(',')+')';};
     var hrrr=f&&f.kind==='hrrr';
@@ -788,8 +816,8 @@ function apply(){
     km.querySelectorAll('[data-kmode]').forEach(function(b){b.classList.toggle('active',b.dataset.kmode===kmode);});}
   ctl.querySelector('.lyr-time').hidden=st.l==='none';
   var s=Q('.lyr-time input[type=range]');s.disabled=totalOn;s.value=ti;
-  Q('.lyr-rtime').textContent=totalOn?'Next 7 days':f?when(f.t,mode==='hourly'||radar)+(f.kind==='hrrr'?' · HRRR':''):'';
-  hrrrShow(st.l==='radar'?f:null);
+  Q('.lyr-rtime').textContent=totalOn?'Next 7 days':f&&f.kind==='obs'?(f.off?'Live radar, '+f.off+' min ago':'Live radar, now'):f?when(f.t,mode==='hourly'||radar)+(f.kind==='hrrr'?' · HRRR':''):'';
+  hrrrShow(st.l==='radar'?f:null);obsShow(st.l==='radar'?f:null);
   drawClouds();
   drawSmoke();
   tip.hidden=true;   // its text belongs to the previous layer/time until the mouse moves
@@ -816,7 +844,7 @@ function fireTip(e){
 function hover(e){
   if(trl&&trl.hover(e))return;   // a trail under the pointer takes the tip
   if(fireTip(e))return;
-  if(st.l==='none'||(st.l==='radar'&&TL[ti]&&TL[ti].kind==='hrrr')){tip.hidden=true;return;}
+  if(st.l==='none'||(st.l==='radar'&&TL[ti]&&(TL[ti].kind==='hrrr'||TL[ti].kind==='obs'))){tip.hidden=true;return;}
   if(st.l==='radar'){   // model precipitation frames: rate and type at this spot
     var ze=elevAt(e.lngLat);if(ze===null||!cur){tip.hidden=true;return;}
     var rr=valueAt(e.lngLat.lng,e.lngLat.lat,0,framePrecip);rr=rr===null?0:rr/3;
