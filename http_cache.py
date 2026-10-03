@@ -66,17 +66,37 @@ def forget(url, params=None):
         pass
 
 
+def ttl_class(url, params=None):
+    """Which cache lifetime a request gets (the server's hourly schedule sets each one, tools/publish.sh):
+      live   - NWS, smoke, fires, cameras... (no quota; refetched every hourly build)
+      points - Open-Meteo for one or a few spots (cities, volcano waypoints, Mt Hood): every 6 h
+      grid   - Open-Meteo for 10+ locations at once (the Map grid): once a day
+      aqgrid - the air-quality grid (CAMS updates twice a day): every 12 h
+      daily  - past model runs and SNOTEL (verification, snow depths): once a day"""
+    host = urlparse(url).netloc
+    if host.startswith("previous-runs-api.") or host == "wcc.sc.egov.usda.gov":
+        return "daily"
+    if host.endswith("open-meteo.com"):
+        if str((params or {}).get("latitude", "")).count(",") >= 9:
+            return "aqgrid" if host.startswith("air-quality") else "grid"
+        return "points"
+    return "live"
+
+
 def install(ttl_hours=None):
     if os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("WX_CACHE") == "0":
         requests.get = _counting_get
         return False
+    # one lifetime for everything (WX_CACHE_TTL_HOURS, default 3), unless WX_TTL_<CLASS>_HOURS sets a class's
     ttl = 3600 * float(ttl_hours if ttl_hours is not None else os.environ.get("WX_CACHE_TTL_HOURS", 3))
+    ttls = {c: 3600 * float(os.environ[f"WX_TTL_{c.upper()}_HOURS"]) for c in ("live", "points", "grid", "aqgrid", "daily")
+            if os.environ.get(f"WX_TTL_{c.upper()}_HOURS")}
     os.makedirs(CACHE_DIR, exist_ok=True)
 
     def cached_get(url, params=None, **kw):
         path = _key_path(url, params)
         try:
-            if time.time() - os.path.getmtime(path) < ttl:
+            if time.time() - os.path.getmtime(path) < ttls.get(ttl_class(url, params), ttl):
                 with open(path, encoding="utf-8") as f:
                     c = json.load(f)
                 _stats["cache hits"] += 1

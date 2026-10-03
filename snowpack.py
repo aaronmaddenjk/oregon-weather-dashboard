@@ -42,9 +42,14 @@ def observed_depths(lat, lon):
     except Exception as exc:
         print(f"  WARNING: SNOTEL snow depths unavailable ({exc}) - starting from bare ground")
         return []
+    if not isinstance(data, list):   # an error message instead of the stations' data
+        print(f"  WARNING: SNOTEL answered without data ({str(data)[:120]}) - starting from bare ground")
+        return []
     by = {s["stationTriplet"]: s for s in near}
     out = []
     for rec in data:
+        if not isinstance(rec, dict):
+            continue
         vals = [v["value"] for el in rec.get("data", []) for v in el.get("values", []) if v.get("value") is not None]
         s = by.get(rec.get("stationTriplet"))
         if vals and s:

@@ -4043,8 +4043,36 @@ def build_dashboard() -> str:
                               .replace("__FIRES__", json.dumps(fire_data, separators=(",", ":")))
                               .replace("__SMOKE__", json.dumps(smoke_data, separators=(",", ":")))) + '</script>\n'
 
+    combined += '<script>' + RELOAD_JS.replace("__BUILD__", str(BUILD_ID)) + '</script>\n'
     combined += '</body></html>'
     return combined
+
+
+# Each build's id (its time); the build also writes it to docs/version.json. An open dashboard checks
+# that file every 5 minutes: a newer build reloads a tab in the background, and shows a small notice
+# in a tab you're looking at (so a reload never pulls the page out from under you).
+BUILD_ID = int(time.time())
+RELOAD_JS = r"""
+(function(){
+var BUILD=__BUILD__,note=null;
+function check(){
+  fetch('version.json?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(v){
+    if(!v||!(v.build>BUILD))return;
+    if(document.hidden){location.reload();return;}
+    if(note)return;
+    note=document.createElement('div');note.className='wx-newer';
+    note.innerHTML='Newer forecast available <button type="button">Reload</button><button type="button" aria-label="Dismiss">\u00d7</button>';
+    var b=note.querySelectorAll('button');b[0].onclick=function(){location.reload();};b[1].onclick=function(){note.remove();};
+    document.body.appendChild(note);}).catch(function(){});}
+setInterval(check,5*60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});
+var st=document.createElement('style');
+st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#111;color:#fff;font:13px/1.3 "Helvetica Neue",Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}'
+  +'.wx-newer button{border:0;border-radius:6px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer;background:#FE5000;color:#fff}'
+  +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}';
+document.head.appendChild(st);
+})();
+"""
 
 
 _T0 = time.time()
@@ -4069,6 +4097,8 @@ def main():
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(html_out)
+    with open(os.path.join(os.path.dirname(OUTPUT_PATH), "version.json"), "w", encoding="utf-8") as f:
+        json.dump({"build": BUILD_ID}, f)   # what open dashboards check to know a newer build is out
     print(f"Wrote {OUTPUT_PATH} ({len(html_out) / 1024:.0f} KB)")
     print(f"API usage: {http_cache.summary()}")
 

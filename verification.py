@@ -298,6 +298,14 @@ def run(mountains):
     """Verify, re-calibrate snow_model, and return the report (None if it couldn't run;
     the last good calibration, if any, is still applied)."""
     os.makedirs(DIR, exist_ok=True)
+    if os.environ.get("WX_VERIFY") == "0":   # the server's hourly builds: verify once a day, reuse it between
+        try:
+            with open(os.path.join(DIR, "report.json"), encoding="utf-8") as f:
+                report = json.load(f)
+        except (OSError, ValueError):
+            report = None
+        snow_model.load_calibration()
+        return report
     try:
         stations = pick_stations(mountains)
         end = (datetime.now(timezone.utc) - timedelta(hours=8)).date() - timedelta(days=1)  # last complete PST day

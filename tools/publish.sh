@@ -2,7 +2,7 @@
 # Build the dashboard and publish docs/ to GitHub Pages (the gh-pages branch): the Linux version of
 # tools/publish.ps1, for the Oracle Cloud server (Oracle Linux 9, ~/dash, Python 3.12 in .venv).
 #
-# Scheduled by cron (crontab -l): 5 AM and 3 PM Pacific.   Run by hand: tools/publish.sh
+# Scheduled by cron (crontab -l): every hour, Pacific time.   Run by hand: tools/publish.sh
 # Publish what's already built: tools/publish.sh --no-build          Log: logs/publish.log
 #
 # Before building it takes the latest code from main (git reset --hard origin/main; .env, .cache/, docs/
@@ -24,9 +24,26 @@ cd "$ROOT"
 if [ "${1:-}" != "--no-build" ]; then
     { git fetch -q origin main && git reset -q --hard origin/main; } >> "$LOG" 2>&1 \
         || log "(couldn't update the code from GitHub; building what's here)"
-    log "=== build start ($(git log --oneline -1 | cut -c1-60))"
-    # fresh data for a scheduled build, but keep the responses so a rerun soon after reuses them
-    export WX_CACHE_TTL_HOURS=0.5 PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
+    # Hourly builds, each source refreshed as often as it changes and the free Open-Meteo quota allows
+    # (~10,000 calls a day; a full build is ~4,600, most of it the Map grid). http_cache.ttl_class:
+    #   live   NWS, smoke, fires, cameras        every build (no quota)
+    #   points Open-Meteo for cities/volcanoes   2, 8, 14, 20 h   (~930 calls; the model runs are 6-hourly)
+    #   aqgrid air-quality grid                  4, 16 h          (~420; CAMS runs twice a day)
+    #   grid   the Map grid                      4 h              (~3,200)
+    #   daily  past runs, SNOTEL + verification  4 h              (~170)
+    # About 7,900 calls a day. A refresh hour makes its class fresh; between them each class keeps its
+    # cache a little past the next refresh, so a failed refresh is retried at the next hourly build.
+    H=$((10#$(date +%H)))
+    pick() { case " $2 " in *" $H "*) echo 0.5 ;; *) echo "$1" ;; esac; }
+    export WX_TTL_LIVE_HOURS=0.25
+    export WX_TTL_POINTS_HOURS=$(pick 6.5 "2 8 14 20")
+    export WX_TTL_AQGRID_HOURS=$(pick 12.5 "4 16")
+    export WX_TTL_GRID_HOURS=$(pick 24.5 "4")
+    export WX_TTL_DAILY_HOURS=$(pick 24.5 "4")
+    export WX_VERIFY=$([ "$H" = 4 ] && echo 1 || echo 0)   # the Accuracy tab's NWS log: once a day
+    export PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
+    find .cache -maxdepth 1 -name '*.json' -mtime +2 -delete 2>/dev/null   # old responses (tiles/trails stay)
+    log "=== build start ($(git log --oneline -1 | cut -c1-50); points ${WX_TTL_POINTS_HOURS}h grid ${WX_TTL_GRID_HOURS}h aq ${WX_TTL_AQGRID_HOURS}h verify ${WX_VERIFY})"
     if ! .venv/bin/python weather_dashboard.py >> "$LOG" 2>&1; then
         log "=== build FAILED; site not updated"
         exit 1
