@@ -158,7 +158,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   line looked bad and the line is gone): a blue sky panel, white clouds (whiter/more opaque with more
   cover, slightly grey when overcast), each layer from its band top down to the base when the base is
   in that band (an hour without a base borrows its neighbour's), one SVG filter = fractal-noise
-  displacement + blur so the hour blocks merge into ragged soft clouds. SVG ids per chart (`cloudChart.n`). hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
+  displacement + blur so the hour blocks merge into ragged soft clouds. SVG ids per chart (`cloudChart.n`).
+  Volcanos (in place of Visibility) and Mt Hood (in place of Visibility; HOOD next24 carries cl/cm/ch/cb)
+  use it too, with the forecast point's elevation (`set(..., {elev})`) as a dotted "This spot" line.
+  Visibility now lives in the tooltip (shown when under 10 mi). hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
   15k/28k "mid/high only" stand-ins are not bases; Fog = ground). Searched towns: Open-Meteo layers, base =
   LCL under low cloud.
   Mt Hood + Trail Forecast keep the old single column. No more 3-hourly table expansion anywhere:

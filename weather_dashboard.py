@@ -1514,7 +1514,7 @@ function chart(title,sum,keys,d,W,PH,o){
 // columns, hover band and svg data-w as chart(), so the shared hover works on it.
 var CLOUD_EDGES=[0,6500,20000,40000],CLOUD_C='#6B7684',BASE_C='#1F3A52';
 cloudChart.n=0;
-function cloudChart(d,W,PH,sky){
+function cloudChart(d,W,PH,sky,elev){
   var BH=Math.round(PH*1.3),pw=W-L-4,bw=pw/d.length,y0=PT_+BH,band=BH/3;
   var Y=function(f){if(f<=0)return y0;for(var k=0;k<3;k++)if(f<=CLOUD_EDGES[k+1])return y0-band*(k+(f-CLOUD_EDGES[k])/(CLOUD_EDGES[k+1]-CLOUD_EDGES[k]));return PT_;};
   // Windy-style (owner): a blue sky panel with white clouds in it. Each hour's layer fills its band (the
@@ -1544,6 +1544,10 @@ function cloudChart(d,W,PH,sky){
   d.forEach(function(h,i){if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
   // band names at the top of each band, white on the sky with a faint navy halo so they hold over cloud
   ['Low','Mid','High'].forEach(function(n,k){s+='<text x="'+(L+4)+'" y="'+(y0-band*(k+1)+11).toFixed(1)+'" style="font-size:9.5px;font-weight:600;fill:#fff;paint-order:stroke;stroke:#2E5A85;stroke-opacity:.45;stroke-width:2px;stroke-linejoin:round">'+n+'</text>';});
+  // the forecast point (Volcanos / Mt Hood): a dotted line at its elevation, so you see whether it's in the cloud
+  if(elev){var ye=Y(elev).toFixed(1);
+    s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+ye+'" y2="'+ye+'" stroke="#13304D" stroke-width="1.3" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>'
+      +'<text x="'+(W-7)+'" y="'+(+ye-3.5)+'" text-anchor="end" style="font-size:9px;font-weight:600;fill:#13304D;paint-order:stroke;stroke:#fff;stroke-opacity:.75;stroke-width:2.5px;stroke-linejoin:round">This spot '+ft(elev)+'</text>';}
   var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
   var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
   var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
@@ -1581,7 +1585,7 @@ window.WxCharts=function(panel,opt){
         val:function(h){return h.vis==null?10:Math.min(10,h.vis);},col:function(h){var v=h.vis==null?10:h.vis;return v<1?'#D11A24':v<3?'#C9760A':'#A3ABB8';}});},
     cloud:function(W,PH){
       var avg=Math.round(d.reduce(function(a,h){return a+h.sky;},0)/d.length),uvs=d.map(function(h){return h.uv||0;}),uvx=Math.max.apply(null,uvs);
-      if(d.some(function(h){return h.cl!=null;}))return cloudChart(d,W,PH,avg);
+      if(d.some(function(h){return h.cl!=null;}))return cloudChart(d,W,PH,avg,info.elev);
       return chart('Cloud cover','Avg '+avg+'%'+(uvx>=3?' · UV '+uvx:''),[],d,W,PH,{lo:0,hi:100,ticks:[0,50,100],fmt:function(v){return v+'%';},
         val:function(h){return h.sky;},col:function(){return'#A3ABB8';}});},
     precip:function(W,PH){   // precipitation per hour coloured by what falls, plus the running liquid total
@@ -1634,12 +1638,12 @@ window.WxCharts=function(panel,opt){
     box.querySelectorAll('.cc-chart svg').forEach(function(s){var b=(+s.dataset.w-L-4)/d.length;
       s.querySelectorAll('.cc-band').forEach(function(x){x.setAttribute('x',L+b*i);x.setAttribute('width',b);x.setAttribute('visibility','visible');});});
     var h=d[i],pl=h.ty?'<i style="background:'+PT[h.ty]+'"></i>'+PTN[h.ty]+' '+inch(h.p)+'″'+(h.s>=0.05?' ('+h.s.toFixed(1)+'″ snow)':''):'No precipitation';
-    var sky=(opt.vis||has('vis'))&&h.vis!=null?'visibility '+(h.vis>=10?'10+':h.vis<1?h.vis.toFixed(1):Math.round(h.vis))+' mi':'cloud '+h.sky+'%'+(h.uv?' · UV '+h.uv:'');
+    var sky='cloud '+h.sky+'%'+(h.uv?' · UV '+h.uv:'')+(h.vis!=null&&h.vis<10?' · visibility '+(h.vis<1?h.vis.toFixed(1):Math.round(h.vis))+' mi':'');
     tip.innerHTML='<b>'+when(h.t)+'</b><br>'+h.temp+'°F'+(h.feels!=null&&Math.abs(h.feels-h.temp)>=1?' (feels '+h.feels+'°)':'')+' · '+sky
       +'<br>Wind '+h.wind+' mph'+(h.dir!=null?' from the '+compass(h.dir):'')+', gusts '+h.gust+'<br>'+pl
       +(h.pop!=null&&has('pop')?'<br><i style="background:'+POP+'"></i>'+h.pop+'% chance'+(h.th?' · <i style="background:'+THUN+'"></i>thunder '+h.th+'%':''):'')
       +(h.aqi!=null&&has('aqi')?'<br><i style="background:'+aqCol(h.aqi)+'"></i>AQI '+h.aqi+' · '+aqCat(h.aqi):'')
-      +(h.cl!=null&&has('cloud')?'<br>Clouds: low '+h.cl+'% \u00b7 mid '+(h.cm||0)+'% \u00b7 high '+(h.ch||0)+'%'+(h.cb!=null?' \u00b7 base '+ft(h.cb):''):'')
+      +(h.cl!=null?'<br>Clouds: low '+h.cl+'% \u00b7 mid '+(h.cm||0)+'% \u00b7 high '+(h.ch||0)+'%'+(h.cb!=null?' \u00b7 base '+ft(h.cb):''):'')
       +(h.sl!=null&&has('sl')?'<br>Snow level '+ft(h.sl):'')
       +(h.sd!=null?'<br>Seasonal snow on the ground ~'+Math.round(h.sd)+'″':'')
       +(cum[i]>=0.005?'<br><i style="background:'+TOT+';height:2px"></i>So far '+inch(cum[i])+'″ water'+(cumS[i]>=0.05?' · '+cumS[i].toFixed(1)+'″ snow':''):'');
@@ -2367,7 +2371,7 @@ def mtn_icon(uid, w=28, cls="mtn-ic"):
 TRAILS_JS = r"""
 var MT=__MT__, UIDS=MT.map(function(m){return m.uid;}), sel=-1, tier=0, daySel=null;
 MT.forEach(function(m){m.points.forEach(function(p){p.hours=WxCharts.hours(p.hrs);delete p.hrs;});});
-var charts=WxCharts(document.getElementById('mtn-cc'),{grid:['temp','vis','wind','pop','sl','precip']}), tiers=document.getElementById('mtn-tiers');
+var charts=WxCharts(document.getElementById('mtn-cc'),{grid:['temp','cloud','wind','pop','sl','precip']}), tiers=document.getElementById('mtn-tiers');
 // the charts: the next 24 hours, or the day clicked in the table (again: back to the next 24), at the chosen elevation
 function drawCharts(){var p=MT[sel].points[tier];charts.set(WxCharts.day(p.hours,daySel),{elev:p.elev_ft});
   document.getElementById('mtn-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(p.hours,daySel);
@@ -2929,10 +2933,10 @@ def layer_depth(layers, elev_m, dt):
 
 
 # Mt Hood page, top-right panel: the next 24 hours at Top of Blue / Top of Cascade (with
-# visibility in place of cloud cover), and Meadows' cameras.
+# the cloud cross-section with the tier's elevation dotted), and Meadows' cameras.
 HOOD_JS = r"""
 var HP=__HP__, HCAMS=__HCAMS__, sel=0, view='fc', cam=0;
-var charts=WxCharts(document.getElementById('hood-cc'),{vis:true}), tiers=document.getElementById('hood-tiers');
+var charts=WxCharts(document.getElementById('hood-cc')), tiers=document.getElementById('hood-tiers');
 var camsEl=document.getElementById('hood-cams'), camsView=WxCams(camsEl);
 function draw(){
   tiers.innerHTML=HP.map(function(p,j){return'<button class="'+(j===sel?'active':'')+'" data-t="'+j+'">'+p.name+'<small>'+p.elev_ft.toLocaleString('en-US')+'\u2032</small></button>';}).join('');
@@ -2940,7 +2944,7 @@ function draw(){
   document.querySelectorAll('#page3 .ski-marker').forEach(function(el,j){el.classList.toggle('active',j===sel);});
   document.querySelectorAll('#page3 [data-p]').forEach(function(el){el.hidden=+el.dataset.p!==sel;});
   document.querySelectorAll('#page3 .hood-pick [data-t]').forEach(function(b){b.classList.toggle('active',+b.dataset.t===sel);});
-  charts.set(HP[sel].h24);
+  charts.set(HP[sel].h24,{elev:HP[sel].elev_ft});
 }
 function setView(v){
   var n=HCAMS.length;if(v==='cams'&&!n)v='fc';view=v;
@@ -3186,7 +3190,13 @@ def build_ski_page():
                                "feels": round(feels_like(t_h, h["wind_speed_10m"][i], d_h) or t_h or 0),
                                "wind": round(h["wind_speed_10m"][i] or 0), "gust": round(h["wind_gusts_10m"][i] or 0),
                                "sky": round(h["cloud_cover"][i] or 0), "p": round(p_h, 3), "s": round(s_h, 2), "ty": ty,
-                               "vis": None if vm is None else round(vm, 2)})
+                               "vis": None if vm is None else round(vm, 2),
+                               "cl": round(h["cloud_cover_low"][i] or 0), "cm": round(h["cloud_cover_mid"][i] or 0),
+                               "ch": round(h["cloud_cover_high"][i] or 0)})
+                bft = _base_ft(cloud_base_display(h["cloud_base"][i], h["cloud_cover_low"][i], h["cloud_cover_mid"][i],
+                                                  h["cloud_cover_high"][i], h["cloud_cover"][i], t_h, d_h,
+                                                  h.get("visibility", [None] * n)[i], elev_ft), pe)
+                next24[-1]["cb"] = None if bft is None else bft * 100
             if day_num != 1 and (dt.hour - 2) % 3 != 0:
                 continue
             vis_m = h.get("visibility", [None] * n)[i]
