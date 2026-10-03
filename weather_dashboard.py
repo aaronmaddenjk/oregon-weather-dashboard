@@ -3975,6 +3975,24 @@ def build_dashboard() -> str:
       .lyr-ctl .lyr-time input[type=range]{flex:1;min-width:60px;}
       .lyr-leg{width:200px;bottom:30px;}
       .rmap-wrap .mapboxgl-ctrl-top-right,.trail-map-wrap .mapboxgl-ctrl-top-right{display:none;}
+      /* tables: they scroll sideways in their own box; narrower row labels (they wrap, and stay pinned
+         on the left) and tighter day columns, so ~4 days show at once instead of 3 */
+      .scroll-wrap{padding:6px 4px;}
+      .scroll-wrap table{border-spacing:2px 0;}
+      .scroll-wrap th{min-width:60px;max-width:72px;white-space:normal;font-size:11px;line-height:1.2;padding:3px 6px 3px 0;}
+      .scroll-wrap th.cch{min-width:60px;font-size:9px;}
+      .scroll-wrap th .rl{width:1.05em;height:1.05em;margin-right:2px;}
+      .scroll-wrap td{min-width:40px;padding:3px 3px;}
+      .scroll-wrap td.dsum{min-width:64px;}
+      .scroll-wrap .tp{font-size:12px;padding:2px 4px;}
+      .scroll-wrap td.dsum .tp{display:block;width:max-content;margin:1px auto;}   /* high over low: a narrower day */
+      .scroll-wrap .tt,#page3 .ski-tbl .tt{display:block;width:max-content;margin:2px auto 0;}   /* TODAY under the date */
+      .scroll-wrap .dl{white-space:normal;}
+      #page3 .ski-tbl th{min-width:64px;max-width:76px;white-space:normal;font-size:11px;line-height:1.2;padding:6px 6px 6px 0;}
+      .tl-tbl th{min-width:64px !important;max-width:76px;white-space:normal;font-size:11px !important;line-height:1.2;}
+      .tl-tbl td{min-width:58px !important;padding:6px 5px !important;}
+      .acc-tbl th,.acc-tbl td{padding:7px 9px;font-size:12px;}
+      .acc-tbl tr>:first-child{position:sticky;left:0;z-index:1;background:#fff;max-width:112px;white-space:normal;text-align:left;}
     }
     @media (prefers-reduced-motion:reduce){.tab-btn,.tab-btn .nv,.ch-chev,.ch-name{transition:none;}}
     .wxi{display:inline-flex;align-items:center;gap:1px;vertical-align:middle;}
