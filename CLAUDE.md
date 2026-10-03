@@ -154,7 +154,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   the chosen elevation) on Volcanos. Humidity left out on purpose (owner: not an issue in the PNW).
   The Cities "Clouds" chart is a cross-section (owner, `cloudChart`): altitude in three equal bands
   (low 0-6.5k / mid 6.5-20k / high 20k+ ft, each linear), each hour's layers shaded by cover, the base
-  as a line. hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
+  as a line. Clouds are drawn "cloudy" (owner): each layer runs from its band top down to the base
+  when the base is in that band (an hour without a base borrows its neighbour's), with a rounded body,
+  a puff on top (alternating sizes), opaque fills shaded by cover (`cloudShade`; opaque so overlapping
+  puffs don't darken), and a light blur. SVG ids are per chart (`cloudChart.n`). hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
   15k/28k "mid/high only" stand-ins are not bases; Fog = ground). Searched towns: Open-Meteo layers, base =
   LCL under low cloud.
   Mt Hood + Trail Forecast keep the old single column. No more 3-hourly table expansion anywhere:
