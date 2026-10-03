@@ -1513,16 +1513,34 @@ function chart(title,sum,keys,d,W,PH,o){
 // hour's layers shaded by their cover (darker = more), and the cloud base as a line. Same hour
 // columns, hover band and svg data-w as chart(), so the shared hover works on it.
 var CLOUD_EDGES=[0,6500,20000,40000],CLOUD_C='#6B7684',BASE_C='#1F3A52';
+cloudChart.n=0;
+function cloudShade(v){var a=[0xE6,0xEA,0xEF],b=[0x6E,0x79,0x87],t=Math.min(1,Math.max(0,(v-5)/90));
+  return'#'+a.map(function(c,j){return('0'+Math.round(c+(b[j]-c)*t).toString(16)).slice(-2);}).join('');}
 function cloudChart(d,W,PH,sky){
   var BH=Math.round(PH*1.3),pw=W-L-4,bw=pw/d.length,y0=PT_+BH,band=BH/3;
   var Y=function(f){if(f<=0)return y0;for(var k=0;k<3;k++)if(f<=CLOUD_EDGES[k+1])return y0-band*(k+(f-CLOUD_EDGES[k])/(CLOUD_EDGES[k+1]-CLOUD_EDGES[k]));return PT_;};
   var s='<rect class="cc-band" x="0" y="'+(PT_-6)+'" width="'+bw+'" height="'+(BH+6)+'" rx="3" fill="#F1F2F5" visibility="hidden"/>';
   [0,6500,20000].forEach(function(f,k){var y=Y(f).toFixed(1);
     s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+y+'" y2="'+y+'" stroke="'+(k?'#F0F1F4':'#DDE0E6')+'"/><text x="'+(L-6)+'" y="'+(+y+3.5)+'" text-anchor="end">'+(f?(f/1000)+'k':'0')+'</text>';});
-  d.forEach(function(h,i){var x=L+bw*i+0.5,w=Math.max(1,bw-1);
+  // clouds: each hour's layer from its band's top down to the cloud base when the base sits inside that
+  // band (so the underside follows the base line), rounded, lighter on top and darker underneath, and
+  // lightly softened so neighbouring hours merge into one cloud mass; each hour gets a puff on top
+  // (alternating sizes) so the top edge billows. Ids are per chart: several cloud charts share a page.
+  var cl='',u='c'+(++cloudChart.n);
+  d.forEach(function(h,i){var x=L+bw*i-0.4,w=bw+0.8,cx=L+bw*i+bw/2;
+    // an hour without a base of its own (cloud just forming / clearing) borrows its neighbour's
+    var cb=h.cb!=null?h.cb:(d[i-1]&&d[i-1].cb!=null?d[i-1].cb:(d[i+1]&&d[i+1].cb!=null?d[i+1].cb:null));
     [h.cl,h.cm,h.ch].forEach(function(v,k){if(v==null||v<=5)return;
-      s+='<rect x="'+x.toFixed(1)+'" y="'+(y0-band*(k+1)).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+band.toFixed(1)+'" fill="'+CLOUD_C+'" fill-opacity="'+(0.1+0.72*v/100).toFixed(2)+'"/>';});
-    if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
+      var lo=CLOUD_EDGES[k],hi=CLOUD_EDGES[k+1],yt=Y(hi),yb=Y(cb!=null&&cb>lo&&cb<hi?cb:lo);
+      if(yb-yt<2)return;
+      // opaque, shaded by cover (pale = thin, slate = overcast), so overlapping puffs don't darken
+      var c=cloudShade(v),r=Math.min((yb-yt)/2,bw*((i+k)%2?0.62:0.85)),top=yt+r;
+      cl+='<rect x="'+x.toFixed(1)+'" y="'+top.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+Math.max(0,yb-top).toFixed(1)+'" rx="'+Math.min(3.5,w/2).toFixed(1)+'" fill="'+c+'"/>'
+        +'<circle cx="'+cx.toFixed(1)+'" cy="'+(top+0.6).toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+c+'"/>';});});
+  s+='<defs><filter id="f'+u+'" x="-5%" y="-10%" width="110%" height="120%"><feGaussianBlur stdDeviation="0.6"/></filter>'
+    +'<clipPath id="k'+u+'"><rect x="'+L+'" y="'+PT_+'" width="'+pw+'" height="'+BH+'"/></clipPath></defs>'
+    +'<g clip-path="url(#k'+u+')"><g filter="url(#f'+u+')">'+cl+'</g></g>';
+  d.forEach(function(h,i){if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
   // band names at the top of each band, haloed so they read over cloud shading and clear of the base line
   ['Low','Mid','High'].forEach(function(n,k){s+='<text x="'+(L+4)+'" y="'+(y0-band*(k+1)+11).toFixed(1)+'" style="font-size:9.5px;fill:#7D8592;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round">'+n+'</text>';});
   // the base: a line through the hours that have one (breaks where there's none), cased so it reads over the shading
@@ -1533,7 +1551,7 @@ function cloudChart(d,W,PH,sky){
   var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
   var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
   var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
-  var k=[[CLOUD_C,'Cloud (darker = more)'],[BASE_C,'Base',1]].map(function(c){return'<span class="cc-key"><i style="background:'+c[0]+(c[2]?';width:9px;height:2px;border-radius:1px':';opacity:.7')+'"></i>'+c[1]+'</span>';}).join('');
+  var k=[['linear-gradient(90deg,#E6EAEF,#6E7987)','Cloud (darker = more)'],[BASE_C,'Base',1]].map(function(c){return'<span class="cc-key"><i style="background:'+c[0]+(c[2]?';width:9px;height:2px;border-radius:1px':';opacity:.7')+'"></i>'+c[1]+'</span>';}).join('');
   return'<div class="cc-chart"><div class="cc-ct">Clouds'+k+'<span class="cc-sum">'+sum+'</span></div>'
     +'<svg viewBox="0 0 '+W+' '+(y0+B)+'" height="'+(y0+B)+'" data-w="'+W+'" role="img" aria-label="Clouds by altitude">'+s+'</svg></div>';
 }
