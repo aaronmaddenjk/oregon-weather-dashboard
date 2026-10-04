@@ -1,9 +1,9 @@
 {
  "calibration": {
-  "updated": "2026-10-03T12:01+00:00",
+  "updated": "2026-10-04T11:10+00:00",
   "window": [
-   "2026-08-19",
-   "2026-10-02"
+   "2026-08-20",
+   "2026-10-03"
   ],
   "wet_station_days": 268,
   "trust": 0.9,
@@ -19,7 +19,7 @@
  },
  "models": {
   "ncep_nbm_conus": {
-   "days": 1032,
+   "days": 1024,
    "fc_total": 111.67,
    "obs_total": 100.5,
    "bias_pct": 11,
@@ -28,7 +28,7 @@
    "far": 0.2
   },
   "ecmwf_ifs": {
-   "days": 1032,
+   "days": 1024,
    "fc_total": 92.71,
    "obs_total": 100.5,
    "bias_pct": -8,
@@ -37,7 +37,7 @@
    "far": 0.19
   },
   "gem_hrdps_continental": {
-   "days": 1032,
+   "days": 1024,
    "fc_total": 102.03,
    "obs_total": 100.5,
    "bias_pct": 2,
@@ -46,7 +46,7 @@
    "far": 0.2
   },
   "ncep_hrrr_conus": {
-   "days": 1032,
+   "days": 1024,
    "fc_total": 107.24,
    "obs_total": 100.5,
    "bias_pct": 7,
@@ -55,8 +55,8 @@
    "far": 0.15
   },
   "icon_seamless": {
-   "days": 1032,
-   "fc_total": 90.75,
+   "days": 1024,
+   "fc_total": 90.74,
    "obs_total": 100.5,
    "bias_pct": -10,
    "mae_wet": 0.18,
@@ -64,7 +64,7 @@
    "far": 0.25
   },
   "gfs_global": {
-   "days": 1032,
+   "days": 1024,
    "fc_total": 81.97,
    "obs_total": 100.5,
    "bias_pct": -18,
@@ -74,7 +74,7 @@
   }
  },
  "blend": {
-  "days": 1032,
+  "days": 1024,
   "fc_total": 100.44,
   "obs_total": 100.5,
   "bias_pct": 0,
@@ -84,7 +84,7 @@
  },
  "vs_nws": {
   "nws": {
-   "days": 167,
+   "days": 182,
    "fc_total": 23.06,
    "obs_total": 33.2,
    "bias_pct": -31,
@@ -93,7 +93,7 @@
    "far": 0.09
   },
   "blend": {
-   "days": 167,
+   "days": 182,
    "fc_total": 30.79,
    "obs_total": 33.2,
    "bias_pct": -7,
