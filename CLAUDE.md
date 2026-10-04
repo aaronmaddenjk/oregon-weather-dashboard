@@ -161,7 +161,13 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   displacement + blur so the hour blocks merge into ragged soft clouds. SVG ids per chart (`cloudChart.n`).
   Volcanos (in place of Visibility) and Mt Hood (in place of Visibility; HOOD next24 carries cl/cm/ch/cb)
   use it too, with the forecast point's elevation (`set(..., {elev})`) as a dotted "This spot" line.
-  Visibility now lives in the tooltip (shown when under 10 mi). hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
+  Visibility now lives in the tooltip (shown when under 10 mi).
+  Rain potential (owner): clouds grey toward slate with the chance of precipitation (pop; no pop = any
+  precip), and hours with >= 0.01" get rain streaks (teal) / snow dots (violet) / mix (both) falling from
+  the lowest cloud's bottom to the ground, scattered by a fixed hash, denser with more precip, drawn over
+  the clouds. Type = the forecast point's (no rain-to-snow switch with height). Legend adds Rain/Snow
+  only when present. To preview with fake data while the forecast is dry: a temp page in docs/ that
+  evals the WxCharts script from /index.html, rendered by headless Edge (--screenshot / --dump-dom). hour_cols ships cl/cm/ch (%) and cb = the table's Base text as a number (`_base_ft`; the
   15k/28k "mid/high only" stand-ins are not bases; Fog = ground). Searched towns: Open-Meteo layers, base =
   LCL under low cloud.
   Mt Hood + Trail Forecast keep the old single column. No more 3-hourly table expansion anywhere:
