@@ -1533,30 +1533,31 @@ function cloudChart(d,W,PH,sky,elev){
     s+='<text x="'+(L-6)+'" y="'+(+y+3.5)+'" text-anchor="end">'+(f?(f/1000)+'k':'0')+'</text>';});
   var bot=[];
   d.forEach(function(h,i){var x=L+bw*i,w=bw;
-    // rain potential: the chance (or, without one, any precipitation) greys the cloud toward a rain-cloud slate
-    var rp=h.pop!=null?h.pop/100:(h.ty?0.7:0),rg=Math.max(0,Math.min(1,(rp-0.15)/0.7));
     // an hour without a base of its own (cloud just forming / clearing) borrows its neighbour's
     var cb=h.cb!=null?h.cb:(d[i-1]&&d[i-1].cb!=null?d[i-1].cb:(d[i+1]&&d[i+1].cb!=null?d[i+1].cb:null));
     [h.cl,h.cm,h.ch].forEach(function(v,k){if(v==null||v<=5)return;
       var lo=CLOUD_EDGES[k],hi=CLOUD_EDGES[k+1],yt=Y(hi)+ins,yb=cb!=null&&cb>lo&&cb<hi?Y(cb):Y(lo)-(k?ins:0);
       if(yb-yt<2)return;
       if(bot[i]==null)bot[i]=yb;   // layers go low -> high, so the first one drawn is the lowest
-      var t=Math.min(1,(v-5)/90),g=255-46*t*t,c=[g,g+4,g+9].map(function(q,j){q=Math.min(255,q);return Math.round(q+([128,138,152][j]-q)*rg*0.85);});
-      cl+='<rect x="'+x.toFixed(1)+'" y="'+yt.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(yb-yt).toFixed(1)+'" fill="rgb('+c.join(',')+')" fill-opacity="'+Math.min(1,0.45+0.55*Math.sqrt(t)+0.3*rg).toFixed(2)+'"/>';});});
-  // precipitation falling out of the lowest cloud to the ground: rain streaks (teal), snow dots (violet),
-  // mix alternating, in the precipitation colours; denser with more per hour. Only real amounts
-  // (>= 0.01" in the hour) so drizzle doesn't clutter. Coloured by the type at the forecast point.
+      var t=Math.min(1,(v-5)/90),g=Math.round(255-46*t*t);   // one gradient: whiter / more opaque with more cover
+      cl+='<rect x="'+x.toFixed(1)+'" y="'+yt.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(yb-yt).toFixed(1)+'" fill="rgb('+g+','+Math.min(255,g+4)+','+Math.min(255,g+9)+')" fill-opacity="'+(0.45+0.55*Math.sqrt(t)).toFixed(2)+'"/>';});});
+  // precipitation falling out of the lowest cloud to the ground (owner): the CHANCE sets how many drops -
+  // from 20% a sparse sprinkle, at 90%+ a dense curtain. Rain streaks (teal), snow dots (violet), mix both.
+  // Type = the hour's forecast type at the point; with a chance but no amount, from the temperature.
+  // Hours without a chance (Mt Hood's panel) use the amount: any >= 0.01" counts as likely.
   var pr='',kinds={};
-  d.forEach(function(h,i){if(!h.ty||!(h.p>=0.01))return;
+  d.forEach(function(h,i){
+    var ch=h.pop!=null?h.pop:(h.ty&&h.p>=0.01?70:0);if(ch<20)return;
+    var ty=h.ty||(h.temp<=33?'snow':h.temp<=36?'mix':'rain');
     var top=bot[i]!=null?bot[i]:Y(6500);if(top>y0-band*0.35)top=y0-band*0.6;   // fog / ground cloud: start inside it
-    var n=Math.max(1,Math.min(3,Math.round(h.p/0.04)+1)),c=PT[h.ty];kinds[h.ty]=1;
+    var f=Math.min(1,(ch-20)/70),n=f<0.35?1:f<0.7?2:3,gap=12-7*f,c=PT[ty];kinds[ty]=1;
     // scattered by a fixed hash (same picture every draw), not a grid, so it reads as rain, not hatching
     var rnd=function(a,b,c){var v=Math.sin(a*12.9898+b*78.233+c*37.719)*43758.5453;return v-Math.floor(v);};
-    for(var j=0;j<n;j++)for(var r=0,y=top+1+rnd(i,j,0)*6;y<y0-1;r++,y+=5+rnd(i,j,r)*4){
+    for(var j=0;j<n;j++)for(var r=0,y=top+1+rnd(i,j,0)*gap;y<y0-1;r++,y+=gap*(0.7+0.6*rnd(i,j,r))){
         var x0=L+bw*i+bw*(j+0.2+0.6*rnd(i,j,r+50))/n;
-        var snow=h.ty==='snow'||(h.ty==='mix'&&rnd(i,j,r+99)<0.5);
-        pr+=snow?'<circle cx="'+x0.toFixed(1)+'" cy="'+(y+1.5).toFixed(1)+'" r="0.95" fill="'+(h.ty==='mix'?PT.snow:c)+'"/>'
-          :'<line x1="'+(x0+0.8).toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x0-0.4).toFixed(1)+'" y2="'+Math.min(y0-1,y+3.6).toFixed(1)+'" stroke="'+(h.ty==='mix'?PT.rain:c)+'" stroke-width="1" stroke-linecap="round"/>';}});
+        var snow=ty==='snow'||(ty==='mix'&&rnd(i,j,r+99)<0.5);
+        pr+=snow?'<circle cx="'+x0.toFixed(1)+'" cy="'+(y+1.5).toFixed(1)+'" r="0.95" fill="'+PT.snow+'"/>'
+          :'<line x1="'+(x0+0.8).toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x0-0.4).toFixed(1)+'" y2="'+Math.min(y0-1,y+3.6).toFixed(1)+'" stroke="'+PT.rain+'" stroke-width="1" stroke-linecap="round"/>';}});
   s+='<g clip-path="url(#k'+u+')"><g filter="url(#f'+u+')">'+cl+'</g><g opacity=".85">'+pr+'</g></g>'
     +'<rect class="cc-band" x="0" y="'+PT_+'" width="'+bw+'" height="'+BH+'" fill="#fff" fill-opacity=".22" visibility="hidden"/>';
   d.forEach(function(h,i){if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
@@ -1569,8 +1570,9 @@ function cloudChart(d,W,PH,sky,elev){
   var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
   var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
   var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
-  var k='<span class="cc-key"><i style="background:linear-gradient(90deg,#5E98CF,#fff);width:14px"></i>Cloud (whiter = more, grey = rain likely)</span>'
-    +['rain','snow'].filter(function(t){return kinds[t]||kinds.mix;}).map(function(t){return'<span class="cc-key"><i style="background:'+PT[t]+(t==='rain'?';width:2px;height:8px':';width:4px;height:4px;border-radius:50%')+'"></i>'+PTN[t]+'</span>';}).join('');
+  var k='<span class="cc-key"><i style="background:linear-gradient(90deg,#5E98CF,#fff);width:14px"></i>Cloud (whiter = more)</span>'
+    +['rain','snow'].filter(function(t){return kinds[t]||kinds.mix;}).map(function(t){return'<span class="cc-key"><i style="background:'+PT[t]+(t==='rain'?';width:2px;height:8px':';width:4px;height:4px;border-radius:50%')+'"></i>'+PTN[t]+'</span>';}).join('')
+    +(Object.keys(kinds).length?'<span class="cc-key">more drops = likelier</span>':'');
   return'<div class="cc-chart"><div class="cc-ct">Clouds'+k+'<span class="cc-sum">'+sum+'</span></div>'
     +'<svg viewBox="0 0 '+W+' '+(y0+B)+'" height="'+(y0+B)+'" data-w="'+W+'" role="img" aria-label="Clouds by altitude">'+s+'</svg></div>';
 }
