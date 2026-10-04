@@ -162,7 +162,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Volcanos (in place of Visibility) and Mt Hood (in place of Visibility; HOOD next24 carries cl/cm/ch/cb)
   use it too, with the forecast point's elevation (`set(..., {elev})`) as a dotted "This spot" line.
   Visibility now lives in the tooltip (shown when under 10 mi).
-  Rain potential (owner): clouds stay one white gradient (no greying - tried, owner preferred drops);
+  Cloud colour (owner, final): one grey scale on the blue sky - pale grey = thin, dark slate = overcast
+  (`[226,230,235]` -> `[112,122,136]`); rain chance is NOT in the cloud colour (tried, owner preferred drops).
+  Rain potential (owner):
   the CHANCE of precipitation sets the drops: from 20% a sparse sprinkle to a dense curtain at 90%+
   (1-3 columns per hour, tighter rows), rain streaks (teal) / snow dots (violet) / mix (both) falling
   from the lowest cloud's bottom to the ground, scattered by a fixed hash, drawn over the clouds.

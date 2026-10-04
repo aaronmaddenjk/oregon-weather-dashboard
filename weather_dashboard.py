@@ -1539,8 +1539,9 @@ function cloudChart(d,W,PH,sky,elev){
       var lo=CLOUD_EDGES[k],hi=CLOUD_EDGES[k+1],yt=Y(hi)+ins,yb=cb!=null&&cb>lo&&cb<hi?Y(cb):Y(lo)-(k?ins:0);
       if(yb-yt<2)return;
       if(bot[i]==null)bot[i]=yb;   // layers go low -> high, so the first one drawn is the lowest
-      var t=Math.min(1,(v-5)/90),g=Math.round(255-46*t*t);   // one gradient: whiter / more opaque with more cover
-      cl+='<rect x="'+x.toFixed(1)+'" y="'+yt.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(yb-yt).toFixed(1)+'" fill="rgb('+g+','+Math.min(255,g+4)+','+Math.min(255,g+9)+')" fill-opacity="'+(0.45+0.55*Math.sqrt(t)).toFixed(2)+'"/>';});});
+      // one grey scale (owner): thin cloud pale grey, overcast dark slate grey, on the blue sky
+      var t=Math.min(1,(v-5)/90),c=[[226,230,235],[112,122,136]],m=c[0].map(function(a,j){return Math.round(a+(c[1][j]-a)*t);});
+      cl+='<rect x="'+x.toFixed(1)+'" y="'+yt.toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+(yb-yt).toFixed(1)+'" fill="rgb('+m.join(',')+')" fill-opacity="'+(0.6+0.4*Math.sqrt(t)).toFixed(2)+'"/>';});});
   // precipitation falling out of the lowest cloud to the ground (owner): the CHANCE sets how many drops -
   // from 20% a sparse sprinkle, at 90%+ a dense curtain. Rain streaks (teal), snow dots (violet), mix both.
   // Type = the hour's forecast type at the point; with a chance but no amount, from the temperature.
@@ -1570,7 +1571,7 @@ function cloudChart(d,W,PH,sky,elev){
   var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
   var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
   var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
-  var k='<span class="cc-key"><i style="background:linear-gradient(90deg,#5E98CF,#fff);width:14px"></i>Cloud (whiter = more)</span>'
+  var k='<span class="cc-key"><i style="background:linear-gradient(90deg,#E2E6EB,#707A88);width:14px"></i>Cloud (darker = more)</span>'
     +['rain','snow'].filter(function(t){return kinds[t]||kinds.mix;}).map(function(t){return'<span class="cc-key"><i style="background:'+PT[t]+(t==='rain'?';width:2px;height:8px':';width:4px;height:4px;border-radius:50%')+'"></i>'+PTN[t]+'</span>';}).join('')
     +(Object.keys(kinds).length?'<span class="cc-key">more drops = likelier</span>':'');
   return'<div class="cc-chart"><div class="cc-ct">Clouds'+k+'<span class="cc-sum">'+sum+'</span></div>'
