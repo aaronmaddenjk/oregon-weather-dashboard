@@ -77,7 +77,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   `fires.py` (NIFC perimeters), `webcams.py` (USGS AshCam + NPS cams), `trail_live.py`
   (Trail Forecast tab: in-browser engine), `trail_explorer.py` (the Map tab's Trails layer: data
   build + `TrailsLayer` JS + side panel), `http_cache.py`.
-- Trails data (~8.3k trails): USGS National Digital Trails (carto.nationalmap.gov transportation
+- MAP TAB TRAILS = ONLY YOUR TRAILS (owner, 2026-10-04): the public set below is no longer built or loaded
+  (the `trail_explorer.build()` call is removed; `loadData()` returns an empty base, `mineRows()` fills it).
+  The panel's "Show" picker: Your hikes (default) / Your MTB trails / All your trails; use chips removed.
+  The Map tab opens with the Trails layer on (RegionLayers clicks its own Trails button after load when
+  `opt.trailPanel` is set). The build code for the public set stays in trail_explorer.py if ever wanted back.
+- (Former) Trails data (~8.3k trails): USGS National Digital Trails (carto.nationalmap.gov transportation
   MapServer/37: USFS/NPS/BLM/FWS/WA State Parks) + Oregon Parks & Rec (OPRD_Rec_Trails_Hosted_view)
   + Oregon Dept of Forestry (Recreation_Inventory_Public_View/13, has difficulty) + Oregon Metro RLIS
   Trails (open, unpaved, not state/federal). Not covered yet: Saddle Mountain SNA, non-Metro city

@@ -479,15 +479,8 @@ TRAILS_PANEL_HTML = """
       <option value="4000,99999">4,000\u2032+</option></select></label>
     <label>High point<select id="ex-hi"><option value="">Any</option><option value="4000">Above 4,000\u2032</option>
       <option value="6000">Above 6,000\u2032</option><option value="8000">Above 8,000\u2032</option></select></label>
-    <label>Land<select id="ex-src"><option value="">All</option><option value="mine">Your trails</option><option value="mine-hike">Your hikes</option><option value="mine-mtb">Your MTB trails</option>
-      <option value="fs">National Forest</option><option value="nps">National Park</option><option value="osp">Oregon State Park</option>
-      <option value="wsp">WA State Park</option><option value="odf">Oregon State Forest</option><option value="local">City &amp; county</option>
-      <option value="blm">BLM</option><option value="fws">Wildlife Refuge</option></select></label>
-  </div>
-  <div class="ex-chips">
-    <button type="button" data-use="b" aria-pressed="false">Bikes OK</button>
-    <button type="button" data-use="r" aria-pressed="false">Horses OK</button>
-    <button type="button" data-use="nm" aria-pressed="true">No motorized</button>
+    <label>Show<select id="ex-src"><option value="mine-hike" selected>Your hikes</option><option value="mine-mtb">Your MTB trails</option>
+      <option value="mine">All your trails</option></select></label>
   </div>
   <div class="ex-mine-row"><label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
     + Add your GPX</label>
@@ -497,9 +490,8 @@ TRAILS_PANEL_HTML = """
   <div class="ex-listhead"><span id="ex-inview"></span><label>Sort<select id="ex-sort"><option value="name">Name</option>
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
   <ol class="ex-list" id="ex-list"></ol>
-  <p class="ex-foot">Trails: USGS National Digital Trails (Forest Service, Park Service, BLM, Fish &amp; Wildlife, WA State
-    Parks), Oregon Parks and Recreation, Oregon Dept. of Forestry and Oregon Metro, joined into whole trails. Gain and
-    high point from Mapbox terrain, climbing from the low end. Your trails are kept on GitHub, so every device sees them.</p>
+  <p class="ex-foot">Your trails: saved from AllTrails, onX and Trailforks with the Chrome extension, or added as GPX.
+    Gain and high point from Mapbox terrain, climbing from the low end. Kept on GitHub, so every device sees them.</p>
 </aside>
 """
 
@@ -677,8 +669,9 @@ window.WxMine=(function(){
 function allTrails(bb){   // AllTrails' explore map on this area (its search box doesn't take a URL query)
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
-// ?v= changes every build, so a browser never reuses an older trails.json it has cached
-function loadData(){if(!DATA)DATA=fetch('explorer/trails.json?v=__TRAILS_VER__').then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});return DATA;}
+// Only your trails are drawn (owner, 2026-10-04): the public trail set (explorer/trails.json, USGS / OPRD /
+// ODF / Metro) is no longer built or loaded; the base is empty and mineRows() fills it.
+function loadData(){if(!DATA)DATA=Promise.resolve({fields:['name','num','src','mi','uses','gain','hi','lo','line','branches','diff','prof'],trails:[]});return DATA;}
 
 window.TrailsLayer=function(map,opt){
   var P=opt.panel||null,tip=opt.tip,T=[],on=false,ready=null,sel=-1,hov=-1;
@@ -755,7 +748,7 @@ window.TrailsLayer=function(map,opt){
     var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"'+(t.src==='mine'?' style="--mc:'+mineCol(t)+'"':'')+'><div class="n">'+esc(t.name)+
       (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+agOf(t)+'</div></li>';}).join('');
     if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
-    if(!rows.length)html='<li class="more">No trails here match. Zoom out or loosen the filters.</li>';
+    if(!rows.length)html='<li class="more">'+(all?'None of them in view. Zoom out to find them.':'None saved yet. Save one from AllTrails, onX or Trailforks with the extension, or add a GPX.')+'</li>';
     $('ex-list').innerHTML=html;}
   function deselect(){if(sel<0)return;sel=-1;
     ['trl-sel','trl-sel-case'].forEach(function(l){if(map.getLayer(l))map.setFilter(l,['==',['get','i'],-1]);});

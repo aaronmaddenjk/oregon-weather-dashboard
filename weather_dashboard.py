@@ -900,6 +900,8 @@ function hover(e){
     retime();apply();
     hrrrInit().then(function(){if(st.l==='radar'){retime();apply();}});   // HRRR run time, for the radar timeline
     if(opt.onLoad)opt.onLoad(map);
+    // the Map tab (the one with the trail panel) opens with your trails on - hikes first (owner)
+    if(opt.trailPanel&&!trlOn){var tb=ctl.querySelector('[data-trails]');if(tb)tb.click();}
   });
   map.on('moveend',render);
   map.on('mousemove',hover);
@@ -3877,9 +3879,8 @@ def build_dashboard() -> str:
         with open(path, "w", encoding="utf-8") as f:
             f.write(body)
 
-    stage("Building the trails layer")
-    n_explorer = trail_explorer.build(os.path.dirname(OUTPUT_PATH), MAPBOX_TOKEN)
-    print(f"  {n_explorer:,} trails", flush=True)
+    # (the public trail set - trail_explorer.build() -> docs/explorer/trails.json - is no longer built:
+    # the Map tab shows only your own trails, owner 2026-10-04)
 
     stage("Generating Oregon cities")
     cities_full_html = build_cities_page()
@@ -3897,7 +3898,7 @@ def build_dashboard() -> str:
     fire_btn = (f'<button class="lyr-fire" data-fires aria-pressed="false" title="{n_fires} active wildfires">'
                 '<svg viewBox="0 0 12 14" width="11" height="13" aria-hidden="true"><path d="M6 .5C6.5 3 9 4.5 9.8 7.3A4 4 0 0 1 2.2 9.5C1.6 7.5 2.8 6 3.6 5c.2 1.3.8 2 1.6 2.3C4.8 5 5.2 2.6 6 .5Z" fill="#E4572E"/></svg>Fires</button>'
                 if fire_data else "")
-    trails_btn = ('<button class="lyr-fire lyr-trl" data-trails aria-pressed="false" title="Hiking trails">'
+    trails_btn = ('<button class="lyr-fire lyr-trl" data-trails aria-pressed="false" title="Your trails">'
                   '<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path d="M3 19c3-1 4-5 7-6s4 3 7 1 3-7 4-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 3"/></svg>Trails</button>')
     # the Map tab's layer controls; the Trail Forecast map uses the same ones
     region_ctl = (
@@ -4172,7 +4173,7 @@ def build_dashboard() -> str:
       <header class="page-head"><h1>Volcanos</h1><p>{len(MOUNTAINS)} peaks from Mt. Baker to Crater Lake, the Olympics to the Wallowas \u00B7 pick a mountain, then summit, mid or base</p></header>
       {trails_body}</div>
     <div class="page-section" id="page2" style="display:none" data-init="initRegionMap">
-      <header class="page-head"><h1>Map</h1><p>Oregon and Washington \u00B7 temperature, new snow and wind gusts at every elevation, plus air quality \u00B7 turn on Trails to explore {n_explorer:,} trails and send one to Trail Forecast \u00B7 drag, zoom and tilt, hover for values</p></header>
+      <header class="page-head"><h1>Map</h1><p>Oregon and Washington \u00B7 temperature, new snow and wind gusts at every elevation, plus air quality \u00B7 your saved hikes and MTB trails (Trails), any of them one click from Trail Forecast \u00B7 drag, zoom and tilt, hover for values</p></header>
       <div class="rmap-row">
       <div class="rmap-wrap">
         <div id="regionmap"></div>
