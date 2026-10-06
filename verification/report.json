@@ -1,26 +1,26 @@
 {
  "calibration": {
-  "updated": "2026-10-05T11:10+00:00",
+  "updated": "2026-10-06T11:10+00:00",
   "window": [
-   "2026-08-21",
-   "2026-10-04"
+   "2026-08-22",
+   "2026-10-05"
   ],
   "wet_station_days": 272,
   "trust": 0.9,
   "weights": {
-   "ncep_nbm_conus": 0.324,
-   "ecmwf_ifs": 0.266,
+   "ncep_nbm_conus": 0.325,
+   "ecmwf_ifs": 0.265,
    "gem_hrdps_continental": 0.138,
-   "ncep_hrrr_conus": 0.083,
+   "ncep_hrrr_conus": 0.082,
    "icon_seamless": 0.093,
    "gfs_global": 0.096
   },
-  "qpf_scale": 1.007
+  "qpf_scale": 1.008
  },
  "models": {
   "ncep_nbm_conus": {
-   "days": 1016,
-   "fc_total": 111.67,
+   "days": 1007,
+   "fc_total": 111.61,
    "obs_total": 100.9,
    "bias_pct": 11,
    "mae_wet": 0.153,
@@ -28,44 +28,44 @@
    "far": 0.2
   },
   "ecmwf_ifs": {
-   "days": 1016,
-   "fc_total": 92.7,
+   "days": 1007,
+   "fc_total": 92.6,
    "obs_total": 100.9,
    "bias_pct": -8,
-   "mae_wet": 0.156,
+   "mae_wet": 0.157,
    "pod": 0.59,
    "far": 0.19
   },
   "gem_hrdps_continental": {
-   "days": 1016,
-   "fc_total": 102.03,
+   "days": 1007,
+   "fc_total": 101.87,
    "obs_total": 100.9,
    "bias_pct": 1,
-   "mae_wet": 0.183,
+   "mae_wet": 0.184,
    "pod": 0.49,
    "far": 0.2
   },
   "ncep_hrrr_conus": {
-   "days": 1016,
-   "fc_total": 107.24,
+   "days": 1007,
+   "fc_total": 107.08,
    "obs_total": 100.9,
    "bias_pct": 6,
-   "mae_wet": 0.206,
+   "mae_wet": 0.208,
    "pod": 0.52,
    "far": 0.15
   },
   "icon_seamless": {
-   "days": 1016,
-   "fc_total": 90.72,
+   "days": 1007,
+   "fc_total": 90.59,
    "obs_total": 100.9,
    "bias_pct": -10,
-   "mae_wet": 0.18,
+   "mae_wet": 0.181,
    "pod": 0.51,
    "far": 0.25
   },
   "gfs_global": {
-   "days": 1016,
-   "fc_total": 81.97,
+   "days": 1007,
+   "fc_total": 81.9,
    "obs_total": 100.9,
    "bias_pct": -19,
    "mae_wet": 0.175,
@@ -74,17 +74,17 @@
   }
  },
  "blend": {
-  "days": 1016,
-  "fc_total": 100.83,
+  "days": 1007,
+  "fc_total": 100.84,
   "obs_total": 100.9,
   "bias_pct": 0,
   "mae_wet": 0.135,
   "pod": 0.6,
-  "far": 0.19
+  "far": 0.18
  },
  "vs_nws": {
   "nws": {
-   "days": 197,
+   "days": 211,
    "fc_total": 23.06,
    "obs_total": 33.6,
    "bias_pct": -31,
@@ -93,8 +93,8 @@
    "far": 0.09
   },
   "blend": {
-   "days": 197,
-   "fc_total": 30.91,
+   "days": 211,
+   "fc_total": 30.95,
    "obs_total": 33.6,
    "bias_pct": -8,
    "mae_wet": 0.162,
@@ -121,7 +121,7 @@
    "mountain": "Mt. Baker",
    "km": 8.7,
    "obs_precip": 9.0,
-   "fc_precip": 7.42,
+   "fc_precip": 7.43,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -134,7 +134,7 @@
    "mountain": "Mt. Baker",
    "km": 9.9,
    "obs_precip": 9.2,
-   "fc_precip": 8.42,
+   "fc_precip": 8.43,
    "obs_snow": 0.0,
    "fc_snow": 0.1
   },
@@ -251,7 +251,7 @@
    "mountain": "Mt. St. Helens",
    "km": 5.2,
    "obs_precip": 7.5,
-   "fc_precip": 7.29,
+   "fc_precip": 7.3,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -264,7 +264,7 @@
    "mountain": "Table Mountain",
    "km": 15.7,
    "obs_precip": 4.5,
-   "fc_precip": 4.52,
+   "fc_precip": 4.53,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -342,7 +342,7 @@
    "mountain": "Mt. Jefferson",
    "km": 16.4,
    "obs_precip": 3.7,
-   "fc_precip": 3.03,
+   "fc_precip": 3.02,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -355,7 +355,7 @@
    "mountain": "South Sister",
    "km": 11.2,
    "obs_precip": 3.2,
-   "fc_precip": 3.18,
+   "fc_precip": 3.17,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -407,7 +407,7 @@
    "mountain": "Crater Lake",
    "km": 13.5,
    "obs_precip": 3.5,
-   "fc_precip": 3.54,
+   "fc_precip": 3.52,
    "obs_snow": 0.0,
    "fc_snow": 1.5
   },
