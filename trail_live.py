@@ -473,6 +473,20 @@ if(location.hash.indexOf('#trail=')===0){
   history.replaceState(null,'',location.pathname+location.search);   // a reload shouldn't re-import it
   window.addEventListener('load',function(){if(window.showTab)showTab(TRAIL_TAB);});
 }
+// the Chrome extension's "save" (#save={same fields as #trail=}): measure the trail and keep it in your
+// trails without showing anything (the shell creates no maps in this mode). The result goes back in the
+// hash, #saved={"ok","name","cloud","error"}, where the extension reads it and closes this background tab.
+if(location.hash.indexOf('#save=')===0){
+  var sv=null;try{sv=JSON.parse(decodeURIComponent(location.hash.slice(6)));}catch(e){}
+  history.replaceState(null,'',location.pathname+location.search);
+  window.addEventListener('load',async function(){var out;
+    try{if(!sv||!sv.p)throw new Error('no route came through');
+      var nm=sv.n||nameFromLink(sv.u)||'Your trail',pts=await fillElevation(decodePolyline(sv.p)),s=trailStats(pts);
+      var r=await keepTrail(sv.p,nm,sv.u||'',pts,s,sv.a||'hike',sv.d||'');
+      out={ok:!!(r.local||r.cloud),name:nm,cloud:!!r.cloud,error:r.error||(r.local||r.cloud?'':'this browser wouldn’t store it')};}
+    catch(e){out={ok:false,error:(e&&e.message)||String(e)};}
+    location.replace(location.pathname+location.search+'#saved='+encodeURIComponent(JSON.stringify(out)));});
+}
 var restored=false;
 // the GPX reader and elevation method, shared with the Map tab's Trails panel ("Add your GPX")
 window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats,profile:profileFt};

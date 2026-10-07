@@ -1,14 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Trail Forecast for AllTrails, onX and Trailforks",
-  "version": "1.5",
-  "description": "On an AllTrails trail page, a Trailforks trail or route, or a route or track in the onX Backcountry web map, click to forecast it in your Oregon Weather dashboard and save it to your trails.",
+  "version": "1.6",
+  "description": "On an AllTrails trail page, a Trailforks trail or route, or a route or track in the onX Backcountry web map, click to save it to your trails in your Oregon Weather dashboard (right-click: save and open its forecast).",
   "action": {
-    "default_title": "Forecast this trail and save it to your trails",
+    "default_title": "Save this trail to your trails (right-click: save and open the forecast)",
     "default_icon": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" }
+  },
+  "commands": {
+    "_execute_action": { "suggested_key": { "default": "Alt+Shift+S" }, "description": "Save this trail to your trails" }
   },
   "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
   "background": { "service_worker": "background.js" },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": [
+    "https://www.alltrails.com/*", "https://alltrails.com/*",
+    "https://www.trailforks.com/*", "https://trailforks.com/*","https://webmap.onxmaps.com/*", "https://backcountry.onxmaps.com/*",
+    "https://aaronmaddenjk.github.io/*", "http://localhost/*",
+    "https://raw.githubusercontent.com/*"
+  ],
   "options_page": "options.html"
 }

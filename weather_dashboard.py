@@ -4324,6 +4324,10 @@ def build_dashboard() -> str:
       mapboxgl.Map=function(o){{return new _M(Object.assign({{cooperativeGestures:true}},o));}};
       mapboxgl.Map.prototype=_M.prototype;
     }}
+    // the Chrome extension's "save" (#save=...): a background tab that only measures and keeps one trail
+    // (trail_live.py) and is closed by the extension - no maps are created, so no Mapbox map loads
+    window.WX_SAVE_ONLY=location.hash.indexOf('#save=')===0;
+    if(window.WX_SAVE_ONLY&&window.mapboxgl){{mapboxgl.Map=function(){{throw new Error('save-only page: no maps');}};}}
     </script>
     <style>
     {merged_css}

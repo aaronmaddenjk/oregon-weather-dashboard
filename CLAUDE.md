@@ -130,6 +130,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   purple = access / fire road; `DIF` in TRAILS_JS), your hikes raspberry `#B0457E` (not purple any more).
   MTB trails also show descent (`loss`, ft, summed drops of the 0.1-mi profile; older entries computed
   from `prof`); Lower Hide and Seek 626' vs Trailforks' 635'.
+  Extension 1.6 (owner, 2026-10-06): click / Alt+Shift+S = SAVE ONLY (no forecast tab): a background tab
+  `<dashboard>#save={same fields}` measures + keeps the trail (`#save=` block in trail_live.py; the shell sets
+  `WX_SAVE_ONLY` and makes `mapboxgl.Map` throw, so no map loads), answers `#saved={ok,name,cloud,error}`, and
+  the extension closes it. Saves queue one at a time; ✓ badge on trails already saved (local list + trails.json
+  raw); right-click the button = "Save and open the forecast"; option to close the trail tab after saving.
+  Owner's line (AllTrails terms): one trail per click on a page the owner opened - never auto-open trails,
+  walk lists, scrape counts or bulk-extract. Area checklist for working through OR/WA by hand:
+  https://claude.ai/artifact/BtNVH1SZMU65LanjuxfiCC (57 sections, separate from the dashboard on purpose).
 
 - Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /
   rain next 24 h / gusts now; the selected one just gets an orange ring, no pop-open details or dot -

@@ -1,38 +1,146 @@
 // Trail Forecast for AllTrails, onX and Trailforks
-// Click the button on an AllTrails trail page, one of your routes or tracks in the onX Backcountry
-// web map, or a Trailforks trail or route: the route is read (in your own, logged-in session) and
-// handed to the dashboard's Trail Forecast tab in the URL:
-//   <dashboard>#trail={"n": name, "u": link back, "p": encoded polyline, "a": "hike" | "mtb",
-//                      "d": Trailforks difficulty: green | blue | black | dblack | access}
-// Nothing is sent anywhere else; the dashboard computes the forecast in the browser.
+// On an AllTrails trail page, one of your routes or tracks in the onX Backcountry web map, or a
+// Trailforks trail or route, the route is read from the page you're on (in your own, logged-in session):
+//   {"n": name, "u": link back, "p": encoded polyline, "a": "hike" | "mtb",
+//    "d": Trailforks difficulty: green | blue | black | dblack | access}
+// Click the button (or Alt+Shift+S): SAVE it to your trails and stay on the page. A background tab of
+// the dashboard (<dashboard>#save=...) measures it (Mapbox terrain: gain, profile), keeps it (GitHub when
+// that browser is connected), answers in its address (#saved=...) and is closed. Saves run one at a time,
+// so trails opened in several tabs can be saved in a row. One trail per click on a page you opened:
+// nothing here walks lists or opens trails by itself (owner's rule: stay within AllTrails' terms).
+// Right-click the button: "Save and open the forecast" (<dashboard>#trail=..., the Trail Forecast tab).
+// Nothing is sent anywhere but the dashboard.
 
 const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
+const TRAILS_RAW = "https://raw.githubusercontent.com/aaronmaddenjk/oregon-weather-dashboard/trails/trails.json";
 const SITES = [
   { re: /^https:\/\/(www\.)?alltrails\.com\//, func: extractRoute },
   { re: /^https:\/\/(webmap|backcountry)\.onxmaps\.com\//, func: extractOnx },
   { re: /^https:\/\/(www\.)?trailforks\.com\//, func: extractTrailforks },
 ];
+const TITLE = "Save this trail to your trails (right-click: save and open the forecast)";
 
-chrome.action.onClicked.addListener(async (tab) => {
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({ id: "forecast", title: "Save and open the forecast", contexts: ["action"] });
+});
+chrome.contextMenus.onClicked.addListener((info, tab) => { if (info.menuItemId === "forecast") forecast(tab); });
+chrome.action.onClicked.addListener((tab) => save(tab));
+
+async function readRoute(tab) {
   const site = SITES.find((s) => s.re.test(tab.url || ""));
-  if (!site) {
-    return badge(tab.id, "?", "Open a trail on alltrails.com or trailforks.com, or a route/track in the onX web map, then click again");
-  }
+  if (!site) throw new Error("open a trail on alltrails.com or trailforks.com, or a route/track in the onX web map");
+  const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: site.func });
+  if (!result || result.error) throw new Error((result && result.error) || "No route found on this page");
+  return result;
+}
+async function dashboard() {
+  const { dashboardUrl } = await chrome.storage.sync.get({ dashboardUrl: DEFAULT_URL });
+  return dashboardUrl.replace(/#.*$/, "");
+}
+
+// right-click: the old behaviour, the forecast in a new tab (which also saves the trail)
+async function forecast(tab) {
   badge(tab.id, "…", "Reading the trail…");
   try {
-    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: site.func });
-    if (!result || result.error) throw new Error((result && result.error) || "No route found on this page");
-    const { dashboardUrl } = await chrome.storage.sync.get({ dashboardUrl: DEFAULT_URL });
-    const url = dashboardUrl.replace(/#.*$/, "") + "#trail=" + encodeURIComponent(JSON.stringify(result));
-    await chrome.tabs.create({ url, index: tab.index + 1 });
-    badge(tab.id, "", "Forecast this trail and save it to your trails");
+    const route = await readRoute(tab);
+    await chrome.tabs.create({ url: (await dashboard()) + "#trail=" + encodeURIComponent(JSON.stringify(route)), index: tab.index + 1 });
+    await markSaved(route.u);
+    badge(tab.id, "✓", "In your trails · " + TITLE, "#2F7A45");
   } catch (e) {
     badge(tab.id, "!", "Couldn't read this trail: " + e.message);
   }
+}
+
+// ---------- save: one at a time, in a background dashboard tab ----------
+const queue = [];
+let busy = false;
+async function save(tab) {
+  badge(tab.id, "…", "Reading the trail…");
+  let route;
+  try { route = await readRoute(tab); }
+  catch (e) { return badge(tab.id, "!", "Couldn't read this trail: " + e.message); }
+  queue.push({ tab, route });
+  badge(tab.id, "…", busy ? "Waiting to save (" + queue.length + " in line)…" : "Saving…");
+  if (!busy) next();
+}
+async function next() {
+  const job = queue.shift();
+  if (!job) { busy = false; return; }
+  busy = true;
+  badge(job.tab.id, "…", "Saving…");
+  let res;
+  try { res = await saveInBackground(job.route); } catch (e) { res = { ok: false, error: e.message }; }
+  if (res.ok) {
+    await markSaved(job.route.u);
+    badge(job.tab.id, "✓", "Saved “" + res.name + "” to your trails"
+      + (res.cloud ? "" : " in the dashboard's browser only" + (res.error ? " (GitHub: " + res.error + ")" : " (connect GitHub in Map → Trails)")), "#2F7A45");
+    const { closeAfterSave } = await chrome.storage.sync.get({ closeAfterSave: false });
+    if (closeAfterSave) chrome.tabs.remove(job.tab.id).catch(() => {});
+  } else {
+    badge(job.tab.id, "!", "Couldn't save this trail: " + res.error);
+  }
+  next();
+}
+// -> the dashboard's answer {ok, name, cloud, error}
+async function saveInBackground(route) {
+  const url = (await dashboard()) + "#save=" + encodeURIComponent(JSON.stringify(route));
+  const t = await chrome.tabs.create({ url, active: false });
+  return new Promise((resolve) => {
+    const done = (r) => {
+      clearTimeout(timer);
+      chrome.tabs.onUpdated.removeListener(watch);
+      chrome.tabs.onRemoved.removeListener(gone);
+      chrome.tabs.remove(t.id).catch(() => {});
+      resolve(r);
+    };
+    const watch = (id, info) => {
+      if (id !== t.id || !info.url) return;
+      const m = /#saved=(.*)$/.exec(info.url);
+      if (!m) return;
+      try { done(JSON.parse(decodeURIComponent(m[1]))); } catch (e) { done({ ok: false, error: "the dashboard's answer didn't make sense" }); }
+    };
+    const gone = (id) => { if (id === t.id) done({ ok: false, error: "the dashboard tab was closed before it finished" }); };
+    chrome.tabs.onUpdated.addListener(watch);
+    chrome.tabs.onRemoved.addListener(gone);
+    const timer = setTimeout(() => done({ ok: false, error: "the dashboard took over 90 seconds" }), 90000);
+  });
+}
+
+// ---------- ✓ on trails already in your trails ----------
+// Links saved from this browser, plus your trails.json on GitHub (every device's saves), refreshed
+// at most every 10 minutes.
+function linkKey(u) {
+  try { const x = new URL(u); return x.hostname.replace(/^www\./, "") + x.pathname.replace(/^\/explore\//, "/").replace(/\/$/, ""); }
+  catch (e) { return ""; }
+}
+async function savedLinks() {
+  const { saved = {}, cloudAt = 0 } = await chrome.storage.local.get(["saved", "cloudAt"]);
+  if (Date.now() - cloudAt > 10 * 60 * 1000) {
+    try {
+      const r = await fetch(TRAILS_RAW + "?t=" + Date.now());
+      if (r.ok) {
+        (await r.json()).forEach((m) => { const k = linkKey(m.link || ""); if (k) saved[k] = saved[k] || 1; });
+        await chrome.storage.local.set({ saved, cloudAt: Date.now() });
+      }
+    } catch (e) { /* offline: this browser's list only */ }
+  }
+  return saved;
+}
+async function markSaved(u) {
+  const k = linkKey(u || "");
+  if (!k) return;
+  const { saved = {} } = await chrome.storage.local.get("saved");
+  saved[k] = Date.now();
+  await chrome.storage.local.set({ saved });
+}
+chrome.tabs.onUpdated.addListener(async (id, info, tab) => {
+  if (info.status !== "complete" || !SITES.some((s) => s.re.test(tab.url || ""))) return;
+  const k = linkKey(tab.url);
+  if (k && (await savedLinks())[k]) badge(id, "✓", "Already in your trails · " + TITLE, "#2F7A45");
 });
 
-function badge(tabId, text, title) {
-  chrome.action.setBadgeBackgroundColor({ tabId, color: "#FE5000" });
+function badge(tabId, text, title, color) {
+  chrome.action.setBadgeBackgroundColor({ tabId, color: color || "#FE5000" });
   chrome.action.setBadgeText({ tabId, text });
   if (title) chrome.action.setTitle({ tabId, title });
 }
