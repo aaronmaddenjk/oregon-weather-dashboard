@@ -157,6 +157,11 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   30/45 mph, sustained wind under it). Cloud layers, base and AQI were dropped from the table (they're in
   the charts). Volcanos keep the old table. Careful editing CITY_JS from PowerShell: a Get-Content /
   Set-Content round trip re-encodes ° ′ ″ · — (mojibake); write edit scripts with the Write tool.
+  Daily icons there = weather art like the volcano pins (owner): Python writes `<div class="cy-art"
+  data-wx='{sky,r,s,pop,g}'>` (sky = 8 am-5 pm cloud cover), `cyArt()` / `cyArtFill()` in CITY_JS draw it
+  (sun behind, clouds in front, animated rain/snow columns = more with a higher chance, wind streaks at
+  gusts >= 30) plus a name: Sunny / Mostly sunny / Partly / Mostly cloudy / Cloudy / Showers / Rain /
+  Snow / Rain & snow (+ ", windy"). Wet = >= 0.01" and chance >= 30%; Rain (not Showers) at 70%+ or 0.15"+.
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice). Cities + Volcanos
   "layout A" (owner, `LAYOUT_CSS`): left 2/3 = the selected place's table with the charts under it,
   right 1/3 = the map, as tall as both (ResizeObserver -> map.resize). On the narrow Cities map the

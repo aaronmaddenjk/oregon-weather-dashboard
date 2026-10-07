@@ -1198,6 +1198,12 @@ CY_CSS = r"""
 .cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
 .cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
 .cy-tbl .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
+.cy-art { display:flex; flex-direction:column; align-items:center; min-height:64px; margin:3px 0 2px; }
+.cy-art svg { width:60px; height:48px; overflow:visible; }
+.cy-lab { font-size:10.5px; font-weight:600; color:#5A5F6B; white-space:nowrap; margin-top:1px; }
+.cy-art .wx-fall { animation:wxfall 1.3s linear infinite; }
+.cy-art .wx-blow { stroke-dasharray:14 14; animation:wxblow 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion:reduce) { .cy-art * { animation:none !important; } }
 .cy-plot { position:relative; height:96px; margin:20px auto 20px; width:44px; }
 .cy-plot::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:10px; margin-left:-5px; border-radius:5px; background:#EEF0F3; }
 .cy-rng { position:absolute; left:50%; width:10px; margin-left:-5px; border-radius:5px; min-height:6px; }
@@ -1250,6 +1256,18 @@ def cy_gust(g, w):
     return f'<span class="cy-g" style="color:{gust_color(g)}">{g:.0f}</span><span class="cy-u">mph</span><div class="cy-w">wind {w:.0f}</div>'
 
 
+def _ent_hour(s):
+    """'2pm' -> 14 (the table entries' time label)."""
+    m = re.match(r"(\d+)(am|pm)", s or "")
+    return int(m.group(1)) % 12 + (12 if m.group(2) == "pm" else 0) if m else 12
+
+
+def cy_art(d):
+    """A placeholder the page draws the day's weather art into (cyArt in CITY_JS)."""
+    wx = json.dumps({"sky": round(d["sky"]), "r": round(d["rt"], 2), "s": round(d["st"], 1), "pop": round(d["mp"] or 0), "g": round(d["mg"] or 0)})
+    return f"<div class=\"cy-art\" role=\"img\" data-wx='{wx}'></div>"
+
+
 def city_rows(cd, uid):
     t_lo = min(d["lo"] for d in cd) - 3
     t_hi = max(d["hi"] for d in cd) + 3
@@ -1259,7 +1277,7 @@ def city_rows(cd, uid):
         wk = " wkd" if dd.weekday() >= 5 else ""
         td = f'<td class="d{di} dsum{wk}" data-d="{di}" onclick="wxDay(\'{uid}\',{di})" title="Show this day in the charts">'
         tt = ' <span class="tt">TODAY</span>' if di == 0 else ""
-        R["time"] += td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div><div class="ds-ci">{d["ci"]}</div>{pred_badge(d["pred"])}</td>'
+        R["time"] += td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>{cy_art(d)}{pred_badge(d["pred"])}</td>'
         R["temp"] += td + cy_temp(d["hi"], d["lo"], t_lo, t_hi) + "</td>"
         R["pop"] += td + cy_pop(d["mp"]) + "</td>"
         R["amt"] += td + cy_amt(d["rt"], d["st"]) + "</td>"
@@ -1368,7 +1386,8 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             mp=max(e["precip"] for e in ents);rt=sum(e["precip_in"] for e in ents);st=sum(e["snow_in"] for e in ents)
             aqis=[e["aqi"] for e in ents if e["aqi"] is not None];maq=max(aqis) if aqis else None
             ci=condition_icon(ents)
-            cd.append({"dk":ents[0]["date_key"],"hi":hi2,"lo":lo2,"mw":mw,"mg":mg,"mp":mp,"rt":rt,"st":st,"ci":ci,"pred":pred.get(ents[0]["date_key"])})
+            dsk=[e["clouds"] or 0 for e in ents if 8<=_ent_hour(e["time"])<=17] or [e["clouds"] or 0 for e in ents]
+            cd.append({"dk":ents[0]["date_key"],"hi":hi2,"lo":lo2,"mw":mw,"mg":mg,"mp":mp,"rt":rt,"st":st,"ci":ci,"pred":pred.get(ents[0]["date_key"]),"sky":sum(dsk)/len(dsk)})
             tt=' <span class="tt">TODAY</span>' if di==0 else ""
             S,D=f'd{di} dsum',f'd{di} ddet';oc=f'onclick="wxDay(\'{uid}\',{di})"'
             R["time"]+=f'<td class="{S}" colspan="{nc}" {oc}><div class="dl">{dk}{tt}</div><div class="ds-ci">{ci}</div>{pred_badge(pred.get(ents[0]["date_key"]))}</td>'
@@ -1951,6 +1970,45 @@ function evOf(rows){return rows.map(function(r){return{t:Date.parse(r[0]+':00Z')
 var TIDE_HTML={};Object.keys(TIDES).forEach(function(i){TIDE_HTML[i]=tideBox(evOf(TIDES[i].ev),TIDES[i].st,LL[i][0],LL[i][1],OFF,'c'+i);});
 function showTide(){var x=document.getElementById('cc-extra');if(x)x.innerHTML=TIDE_HTML[ccSel]||'';}
 
+// ---------- the daily weather art in the Cities table (owner: like the volcano pins): the day's sky drawn
+// as a little scene - sun behind, clouds in front (more and greyer as the day clouds over), rain / snow
+// falling (more columns with a higher chance), wind streaks when gusts reach 30 mph - and its name under it.
+// d: sky = daytime cloud cover %, r = liquid in, s = snow in, pop = highest chance %, g = highest gust ----------
+var CYC='M-4.5 2H4.5A2 2 0 0 0 4 -1.8A2.6 2.6 0 0 0 -0.5 -2.6A2.3 2.3 0 0 0 -4.3 -0.6A1.5 1.5 0 0 0 -4.5 2Z';
+function cyCloud(x,y,sc,c){return'<path d="'+CYC+'" transform="translate('+x+' '+y+') scale('+sc+')" fill="'+c+'" stroke="#2E3440" stroke-width="'+(0.5/sc).toFixed(2)+'" stroke-linejoin="round"/>';}
+function cySun(x,y,r){var o='';for(var k=0;k<8;k++){var a=k*Math.PI/4;o+='<line x1="'+(x+Math.cos(a)*(r+0.9)).toFixed(2)+'" y1="'+(y+Math.sin(a)*(r+0.9)).toFixed(2)+'" x2="'+(x+Math.cos(a)*(r+2.3)).toFixed(2)+'" y2="'+(y+Math.sin(a)*(r+2.3)).toFixed(2)+'"/>';}
+  return'<g stroke="#F2A516" stroke-width=".9" stroke-linecap="round">'+o+'</g><circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#FFC83D" stroke="#E0931A" stroke-width=".55"/>';}
+function cyFall(kind,cols,x0,x1,y0){var o='',n=0;
+  for(var c=0;c<cols;c++)for(var row=0;row<3;row++){var x=x0+(x1-x0)*(cols>1?c/(cols-1):0.5)+(row%2?1.1:0),y=y0+row*4.2+(c%2?1.6:0),k=kind==='mix'?(n%2?'snow':'rain'):kind,
+    st='style="animation-delay:'+((n*0.37)%1.3).toFixed(2)+'s"';n++;
+    o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r=".95" fill="#fff" stroke="#5A4FCF" stroke-width=".5"/>'
+      :'<line class="wx-fall" '+st+' x1="'+x.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x-0.8).toFixed(1)+'" y2="'+(y+2.5).toFixed(1)+'" stroke="#0E9AAE" stroke-width=".85" stroke-linecap="round"/>';}
+  return o;}
+function cyWind(){return'<g fill="none" stroke="#368994" stroke-width=".8" stroke-linecap="round">'
+  +'<path class="wx-blow" d="M1 21H11Q13.4 21 13.4 19.2Q13.4 17.9 12.1 17.9"/><path class="wx-blow" style="animation-delay:.4s" d="M-1 24.5H15"/>'
+  +'<path class="wx-blow" style="animation-delay:.8s" d="M2 28H9Q11.2 28 11.2 29.6Q11.2 30.6 10.2 30.6"/></g>';}
+function cyArt(d){
+  var W='#F4F6F9',G='#C9D0DA',D='#A9B2BF',o='',name;
+  var ty=d.s>=0.05&&d.r>0?(d.s/(d.r*10)>=0.8?'snow':d.s/(d.r*10)>0.2?'mix':'rain'):'rain';
+  var wet=d.r>=0.01&&d.pop>=30,cols=d.pop>=75?5:d.pop>=50?4:3;
+  if(wet&&(d.pop>=70||d.r>=0.15)){   // a wet day: storm clouds, falling all across
+    o=cyCloud(14,9,1.55,D)+cyCloud(24,10.5,1.25,G)+cyFall(ty,cols,9,29,15);
+    name={rain:'Rain',snow:'Snow',mix:'Rain & snow'}[ty];}
+  else if(wet){   // showers: the sun still gets through
+    o=cySun(13,8,3.6)+cyCloud(22,11,1.5,G)+cyFall(ty,Math.min(cols,3),17,27,16);
+    name={rain:'Showers',snow:'Snow showers',mix:'Rain & snow showers'}[ty];}
+  else if(d.sky<20){o=cySun(20,13,5.2);name='Sunny';}
+  else if(d.sky<40){o=cySun(17,11,4.6)+cyCloud(26,17,1.15,W);name='Mostly sunny';}
+  else if(d.sky<65){o=cySun(15,10,4.2)+cyCloud(23,15.5,1.6,W);name='Partly cloudy';}
+  else if(d.sky<85){o=cySun(13,8.5,3.4)+cyCloud(17,15,1.5,W)+cyCloud(26,13,1.3,W);name='Mostly cloudy';}
+  else{o=cyCloud(14,12,1.6,G)+cyCloud(25,14,1.45,W);name='Cloudy';}
+  if(d.g>=30){o+=cyWind();name+=', windy';}
+  return'<svg viewBox="0 0 40 32" aria-hidden="true">'+o+'</svg><div class="cy-lab">'+name+'</div>';}
+function cyArtFill(root){(root||document).querySelectorAll('.cy-art[data-wx]').forEach(function(el){
+  try{var d=JSON.parse(el.dataset.wx);el.innerHTML=cyArt(d);el.setAttribute('aria-label',el.querySelector('.cy-lab').textContent);el.removeAttribute('data-wx');}catch(e){}});}
+cyArtFill(document.getElementById('page0'));
+window.cyArt=cyArt;
+
 // the Cities table for a searched town: the same markup as city_rows() in weather_dashboard.py
 function cityTable(pt,uid){
   var D=window.WxPoint.days(pt),lo=Infinity,hi=-Infinity,row={time:'',temp:'',pop:'',amt:'',gust:''};
@@ -1961,7 +2019,9 @@ function cityTable(pt,uid){
     var td='<td class="d'+di+' dsum'+wk+'" data-d="'+di+'" onclick="wxDay(\''+uid+'\','+di+')" title="Show this day in the charts">';
     var tx=Math.round(mx(H,'temp')),tn=Math.round(Math.min.apply(null,H.map(function(h){return h.temp;})));
     var p=Math.round(mx(H,'pop')),rain=H.reduce(function(a,h){return a+h.p;},0),snow=H.reduce(function(a,h){return a+h.s;},0),g=mx(H,'gust'),w=mx(H,'wind');
-    row.time+=td+'<div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div><div class="ds-ci">'+window.WxPoint.icon(H)+'</div></td>';
+    var dayH=H.filter(function(h){var hr=+h.t.slice(11,13);return hr>=8&&hr<=17;});if(!dayH.length)dayH=H;
+    var art=cyArt({sky:dayH.reduce(function(a,h){return a+(h.sky||0);},0)/dayH.length,r:rain,s:snow,pop:p,g:g});
+    row.time+=td+'<div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div><div class="cy-art" role="img">'+art+'</div></td>';
     row.temp+=td+'<div class="cy-plot"><div class="cy-rng" style="top:'+((hi-tx)/(hi-lo)*100).toFixed(1)+'%;bottom:'+((tn-lo)/(hi-lo)*100).toFixed(1)+'%;background:linear-gradient('+TB(tx)+','+TB(tn)+')"><b>'+tx+'°</b><em>'+tn+'°</em></div></div></td>';
     row.pop+=td+'<div class="cy-pop'+(p?'':' z')+'"><div class="cy-pbar"><i style="width:'+p+'%;opacity:'+(0.35+0.65*p/100).toFixed(2)+'"></i></div><span>'+p+'%</span></div></td>';
     row.amt+=td+(snow>=0.05?'<div class="cy-amt snow">'+snow.toFixed(1)+'″<small>snow</small></div>':rain>=0.005?'<div class="cy-amt rain">'+rain.toFixed(2)+'″</div>':'<div class="cy-amt none">—</div>')+'</td>';
