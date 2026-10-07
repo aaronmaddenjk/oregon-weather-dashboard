@@ -1183,7 +1183,96 @@ def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
     return c, depth_now
 
 
-def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_pts=None, snow_obs=None):
+# ---------- the Cities forecast table (owner, 2026-10-06): one column per day, only what reads at a glance -
+# the high/low as a range bar on a shared scale (so the week's trend shows, numbers riding the bar ends),
+# chance of rain as a small fill bar, the amount, and wind gusts. Cloud layers, base and AQI live in the
+# charts. cityTable() in CITY_JS draws the same markup for a searched town. ----------
+CY_CSS = r"""
+.cy-tbl { border-collapse:separate; border-spacing:0; }
+.cy-tbl th { min-width:0; padding:9px 12px 9px 0; vertical-align:middle; font-size:12px; color:#5A5F6B; }
+.cy-tbl td.dsum { min-width:74px; padding:9px 6px; vertical-align:middle; border-left:1px solid #EEF0F3; }
+.cy-tbl tr + tr td.dsum, .cy-tbl tr + tr th { border-top:1px solid #F0F1F4; }
+.cy-tbl td.wkd { background:#F7F8FA; }
+.cy-tbl td.dsel { background:#FFF1E8; }
+.cy-tbl .dh { white-space:nowrap; }
+.cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
+.cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
+.cy-tbl .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
+.cy-plot { position:relative; height:96px; margin:20px auto 20px; width:44px; }
+.cy-plot::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:10px; margin-left:-5px; border-radius:5px; background:#EEF0F3; }
+.cy-rng { position:absolute; left:50%; width:10px; margin-left:-5px; border-radius:5px; min-height:6px; }
+.cy-rng b, .cy-rng em { position:absolute; left:50%; transform:translateX(-50%); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1; }
+.cy-rng b { bottom:calc(100% + 4px); font-size:16px; font-weight:800; color:#111; }
+.cy-rng em { top:calc(100% + 4px); font-style:normal; font-size:13px; font-weight:600; color:#7D8592; }
+.cy-pop { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.cy-pop span { font-size:13.5px; font-weight:700; color:#0B6F7C; font-variant-numeric:tabular-nums; }
+.cy-pbar { width:52px; height:6px; border-radius:3px; background:#EEF0F3; overflow:hidden; }
+.cy-pbar i { display:block; height:100%; border-radius:3px; background:#0E9AAE; }
+.cy-pop.z span { color:#B8BDC6; font-weight:600; }
+.cy-amt { font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
+.cy-amt.rain { color:#0B7A87; }
+.cy-amt.snow { color:#5A4FCF; }
+.cy-amt small { display:block; font-size:10.5px; font-weight:600; color:#8A8F9C; }
+.cy-amt.none { color:#C9CDD5; font-weight:600; }
+.cy-g { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
+.cy-u { font-size:10.5px; font-weight:600; color:#8A8F9C; margin-left:2px; }
+.cy-w { font-size:11px; color:#8A8F9C; margin-top:2px; font-variant-numeric:tabular-nums; }
+"""
+
+
+def gust_color(g):
+    return "#D11A24" if g >= 45 else "#D9730D" if g >= 30 else "#111"
+
+
+def cy_temp(hi, lo, t_lo, t_hi):
+    """The day's high-low as a bar on the week's scale; the numbers ride the bar's ends."""
+    top = (t_hi - hi) / (t_hi - t_lo) * 100
+    bot = (lo - t_lo) / (t_hi - t_lo) * 100
+    return (f'<div class="cy-plot"><div class="cy-rng" style="top:{top:.1f}%;bottom:{bot:.1f}%;'
+            f'background:linear-gradient({temp_bg(hi)},{temp_bg(lo)})"><b>{hi:.0f}\u00b0</b><em>{lo:.0f}\u00b0</em></div></div>')
+
+
+def cy_pop(p):
+    p = round(p or 0)
+    return (f'<div class="cy-pop{" z" if p == 0 else ""}"><div class="cy-pbar"><i style="width:{p}%;opacity:{0.35 + 0.65 * p / 100:.2f}"></i></div>'
+            f'<span>{p}%</span></div>')
+
+
+def cy_amt(rain, snow):
+    if snow >= 0.05:
+        return f'<div class="cy-amt snow">{snow:.1f}\u2033<small>snow</small></div>'
+    if rain >= 0.005:
+        return f'<div class="cy-amt rain">{rain:.2f}\u2033</div>'
+    return '<div class="cy-amt none">\u2014</div>'
+
+
+def cy_gust(g, w):
+    return f'<span class="cy-g" style="color:{gust_color(g)}">{g:.0f}</span><span class="cy-u">mph</span><div class="cy-w">wind {w:.0f}</div>'
+
+
+def city_rows(cd, uid):
+    t_lo = min(d["lo"] for d in cd) - 3
+    t_hi = max(d["hi"] for d in cd) + 3
+    R = {"time": "", "temp": "", "pop": "", "amt": "", "gust": ""}
+    for di, d in enumerate(cd):
+        dd = datetime.strptime(d["dk"], "%Y-%m-%d")
+        wk = " wkd" if dd.weekday() >= 5 else ""
+        td = f'<td class="d{di} dsum{wk}" data-d="{di}" onclick="wxDay(\'{uid}\',{di})" title="Show this day in the charts">'
+        tt = ' <span class="tt">TODAY</span>' if di == 0 else ""
+        R["time"] += td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div><div class="ds-ci">{d["ci"]}</div>{pred_badge(d["pred"])}</td>'
+        R["temp"] += td + cy_temp(d["hi"], d["lo"], t_lo, t_hi) + "</td>"
+        R["pop"] += td + cy_pop(d["mp"]) + "</td>"
+        R["amt"] += td + cy_amt(d["rt"], d["st"]) + "</td>"
+        R["gust"] += td + cy_gust(d["mg"], d["mw"]) + "</td>"
+    return R
+
+
+def city_labels():
+    return [("time", ""), ("temp", ri("temp") + "High / low"), ("pop", ri("chance") + "Chance of rain"),
+            ("amt", ri("drop") + "Rain / snow"), ("gust", ri("wind") + "Wind gusts")]
+
+
+def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_pts=None, snow_obs=None, city=False):
     """Returns (full_html, summary): the 6-day tables, and the first waypoint's today plus
     every waypoint's next 24 hours (for the chart panels) and all its hours (hour_cols, for the
     day-click charts). `profile` (from elevation_profile) moves temperature and wind to each
@@ -1271,7 +1360,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             dk=e["date_lbl"]
             if dk not in days:days[dk]={"entries":[],"day_num":e["day_num"]}
             days[dk]["entries"].append(e)
-        R={"time":"","temp":"","ch":"","cm":"","cl":"","cb":"","wind":"","precip":"","pa":"","aqi":""}
+        R={"time":"","temp":"","ch":"","cm":"","cl":"","cb":"","wind":"","precip":"","pa":"","aqi":""};cd=[]
         for di,(dk,dinfo) in enumerate(days.items()):
             ents=dinfo["entries"];nc=len(ents)
             hi2,lo2=max(e["temp"] for e in ents),min(e["temp"] for e in ents)
@@ -1279,6 +1368,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             mp=max(e["precip"] for e in ents);rt=sum(e["precip_in"] for e in ents);st=sum(e["snow_in"] for e in ents)
             aqis=[e["aqi"] for e in ents if e["aqi"] is not None];maq=max(aqis) if aqis else None
             ci=condition_icon(ents)
+            cd.append({"dk":ents[0]["date_key"],"hi":hi2,"lo":lo2,"mw":mw,"mg":mg,"mp":mp,"rt":rt,"st":st,"ci":ci,"pred":pred.get(ents[0]["date_key"])})
             tt=' <span class="tt">TODAY</span>' if di==0 else ""
             S,D=f'd{di} dsum',f'd{di} ddet';oc=f'onclick="wxDay(\'{uid}\',{di})"'
             R["time"]+=f'<td class="{S}" colspan="{nc}" {oc}><div class="dl">{dk}{tt}</div><div class="ds-ci">{ci}</div>{pred_badge(pred.get(ents[0]["date_key"]))}</td>'
@@ -1327,6 +1417,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
                 R["sd"]+=f'<td class="{S} sdp" {oc}>'+('<span class="sd0">0</span>' if v is None or v<0.5 else f'<b>{v:.0f}\u2033</b>')+'</td>'
         # one column per day: drop the hidden 3-hourly cells and the colspans that made room for them
         R={k:re.sub(r' colspan="\d+"','',re.sub(r'<td class="d\d+ ddet[^"]*"[^>]*>.*?</td>','',v)) for k,v in R.items()}
+        if city:R=city_rows(cd,uid)   # the Cities table: its own, simpler rows
         all_fc.append({"name":wp["name"],"lat":lat,"lon":lon,"elev_ft":elev_ft,"R":dict(R),"entries":entries,"h24":h24,"hrs":hrs,"depth":depth_now})
     tbl_html=""
     if len(all_fc)>1:
@@ -1335,21 +1426,24 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             f'<button class="wp-chip{" active" if fi==0 else ""}" data-wp="{uid}" onclick="showWp_{uid}({fi})">'
             f'<span class="wp-dot" style="background:{["#FE5000","#FAA21B","#6BBF68"][fi%3]}"></span>{html.escape(fc["name"])}'
             f'<span class="wp-chip-el">{fc["elev_ft"]:,.0f}′</span></button>' for fi,fc in enumerate(all_fc))+'</div>'
+    tcls=' class="cy-tbl"' if city else ''
     for fi,fc in enumerate(all_fc):
         col=['#FE5000','#FAA21B','#6BBF68'][fi%3]
         fc_display='' if fi==0 else 'display:none;'
         actual_rows=""
-        for key,label in [("time",""),("temp",ri("temp")+'Temp'),("ch",ri("cloud")+'High <span class="alt">20-40k</span>'),("cm",ri("cloud")+'Mid <span class="alt">6-20k</span>'),("cl",ri("cloud")+'Low <span class="alt">&lt;6k</span>'),("cb",ri("base")+'Base'),("wind",ri("wind")+'Wind (Gust)'),("precip",ri("chance")+'Chance'),("pa",ri("drop")+'Rain/Snow'),("sd",'<span title="This season\'s snow on the ground at the end of each day: measured depths at SNOTEL stations within 35 km, carried forward with the forecast (new snow, melt, settling). Glaciers and old snowfields are not included.">'+ri("depth")+'Snow depth</span>'),("aqi",ri("aqi")+'AQI')]:
+        for key,label in (city_labels() if city else [("time",""),("temp",ri("temp")+'Temp'),("ch",ri("cloud")+'High <span class="alt">20-40k</span>'),("cm",ri("cloud")+'Mid <span class="alt">6-20k</span>'),("cl",ri("cloud")+'Low <span class="alt">&lt;6k</span>'),("cb",ri("base")+'Base'),("wind",ri("wind")+'Wind (Gust)'),("precip",ri("chance")+'Chance'),("pa",ri("drop")+'Rain/Snow'),("sd",'<span title="This season\'s snow on the ground at the end of each day: measured depths at SNOTEL stations within 35 km, carried forward with the forecast (new snow, melt, settling). Glaciers and old snowfields are not included.">'+ri("depth")+'Snow depth</span>'),("aqi",ri("aqi")+'AQI')]):
             if key not in fc["R"]:continue   # (snow depth: volcanoes only)
             cls='class="cch"' if key in ('ch','cm','cl') else ''
             actual_rows+=f'<tr><th {cls}>{label}</th>{fc["R"][key]}</tr>\n'
         tbl_html+=f'''
     <div id="fc_{uid}_{fi}" style="{fc_display}">
     <div class="wp-header"><span class="wp-dot" style="background:{col}"></span><span class="wp-name">{html.escape(fc["name"])}</span><span class="wp-meta">{fc["elev_ft"]:,.0f}\u2032 MSL \u00b7 {fc["lat"]:.4f}, {fc["lon"]:.4f}</span></div>
-    <div class="scroll-wrap"><table id="tbl_{uid}_{fi}">
+    <div class="scroll-wrap"><table id="tbl_{uid}_{fi}"{tcls}>
       {actual_rows}
     </table></div>
     </div>'''
+    leg=("NWS forecast at the town's elevation \u00b7 bars share one scale across the week \u00b7 % under the icon = WeatherNext 2 predictability \u00b7 click a day for its hours (clouds, air quality and more) in the charts"
+         if city else "NWS forecast (temp, wind, precip, sky) adjusted to each spot's elevation \u00b7 ECMWF cloud layers \u00b7 Open-Meteo AQI \u00b7 % = WeatherNext 2 predictability \u00b7 click a day for its hours in the charts")
     full_html=f"""
 <html><head><style>
 * {{ box-sizing:border-box; }}
@@ -1383,11 +1477,12 @@ th.cch {{ font-size:9px; min-width:85px; padding:1px 8px 1px 0; }}
 .dsum.dsel:hover {{ background:#FFE9DC; }}
 .sdp b {{ font-size:12px; color:#5A4FCF; }}
 .sd0 {{ color:#C9CDD5; }}
+{CY_CSS if city else ''}
 </style></head><body>
 <div class="hike-layout">
 <div class="hike-fc-panel">
   {tbl_html}
-  <div class="leg">NWS forecast (temp, wind, precip, sky) adjusted to each spot's elevation \u00b7 ECMWF cloud layers \u00b7 Open-Meteo AQI \u00b7 % = WeatherNext 2 predictability \u00b7 click a day for its hours in the charts</div>
+  <div class="leg">{leg}</div>
 </div>
 </div>
 <script>
@@ -1780,7 +1875,7 @@ window.WxCams=function(root){
 
 
 CITY_JS = r"""
-var HRS=__HRS__.map(function(c){return WxCharts.hours(c);}), SUN=__SUN__, MOON=__MOON__, NAMES=__CITYNAMES__, cityMarkerEls=window.cityMarkerEls=[], ccSel=0, daySel=null;
+var HRS=__HRS__.map(function(c){return WxCharts.hours(c);}), SUN=__SUN__, MOON=__MOON__, NAMES=__CITYNAMES__, META=__CITYMETA__, cityMarkerEls=window.cityMarkerEls=[], ccSel=0, daySel=null;
 var charts=WxCharts(document.getElementById('city-cc'),{grid:['temp','cloud','wind','pop','aqi','precip']});
 // the charts: the next 24 hours, or the day clicked in the forecast table (click it again for the next 24)
 function drawCharts(){var hs=HRS[ccSel]||[];charts.set(WxCharts.day(hs,daySel));
@@ -1798,7 +1893,9 @@ function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||
 // the chosen city: its charts, its marker, its sun times, and only its 6-day forecast below
 window.selectCity=function(i,init){
   if(i===undefined)i=ccSel;ccSel=i;sunLine(i);
-  var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;}
+  var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;
+    var pl=document.getElementById('cc-place');if(pl)pl.textContent=s.options[i].text;}
+  var mt=document.getElementById('cy-meta');if(mt)mt.textContent=META[i]||'';
   cityMarkerEls.forEach(function(el,j){el.classList.toggle('sel',j===i);});
   NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d)d.hidden=j!==i;});
   drawCharts();   // (the chosen day stays chosen, so towns compare day for day)
@@ -1854,6 +1951,25 @@ function evOf(rows){return rows.map(function(r){return{t:Date.parse(r[0]+':00Z')
 var TIDE_HTML={};Object.keys(TIDES).forEach(function(i){TIDE_HTML[i]=tideBox(evOf(TIDES[i].ev),TIDES[i].st,LL[i][0],LL[i][1],OFF,'c'+i);});
 function showTide(){var x=document.getElementById('cc-extra');if(x)x.innerHTML=TIDE_HTML[ccSel]||'';}
 
+// the Cities table for a searched town: the same markup as city_rows() in weather_dashboard.py
+function cityTable(pt,uid){
+  var D=window.WxPoint.days(pt),lo=Infinity,hi=-Infinity,row={time:'',temp:'',pop:'',amt:'',gust:''};
+  D.forEach(function(d){d.h.forEach(function(h){lo=Math.min(lo,h.temp);hi=Math.max(hi,h.temp);});});lo-=3;hi+=3;
+  var TB=function(t){return t>=80?'#ED1E29':t>=70?'#FAA21B':t>=50?'#6BBF68':t>=35?'#4FB1BE':'#368994';};
+  var mx=function(H,k){return Math.max.apply(null,H.map(function(h){return h[k]||0;}));};
+  D.forEach(function(d,di){var H=d.h,dt=new Date(d.date+'T12:00:00Z'),wk=dt.getUTCDay()===0||dt.getUTCDay()===6?' wkd':'';
+    var td='<td class="d'+di+' dsum'+wk+'" data-d="'+di+'" onclick="wxDay(\''+uid+'\','+di+')" title="Show this day in the charts">';
+    var tx=Math.round(mx(H,'temp')),tn=Math.round(Math.min.apply(null,H.map(function(h){return h.temp;})));
+    var p=Math.round(mx(H,'pop')),rain=H.reduce(function(a,h){return a+h.p;},0),snow=H.reduce(function(a,h){return a+h.s;},0),g=mx(H,'gust'),w=mx(H,'wind');
+    row.time+=td+'<div class="dh"><b>'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getUTCDay()]+'</b> <span>'+dt.getUTCDate()+'</span>'+(di===0?' <span class="tt">TODAY</span>':'')+'</div><div class="ds-ci">'+window.WxPoint.icon(H)+'</div></td>';
+    row.temp+=td+'<div class="cy-plot"><div class="cy-rng" style="top:'+((hi-tx)/(hi-lo)*100).toFixed(1)+'%;bottom:'+((tn-lo)/(hi-lo)*100).toFixed(1)+'%;background:linear-gradient('+TB(tx)+','+TB(tn)+')"><b>'+tx+'°</b><em>'+tn+'°</em></div></div></td>';
+    row.pop+=td+'<div class="cy-pop'+(p?'':' z')+'"><div class="cy-pbar"><i style="width:'+p+'%;opacity:'+(0.35+0.65*p/100).toFixed(2)+'"></i></div><span>'+p+'%</span></div></td>';
+    row.amt+=td+(snow>=0.05?'<div class="cy-amt snow">'+snow.toFixed(1)+'″<small>snow</small></div>':rain>=0.005?'<div class="cy-amt rain">'+rain.toFixed(2)+'″</div>':'<div class="cy-amt none">—</div>')+'</td>';
+    row.gust+=td+'<span class="cy-g" style="color:'+(g>=45?'#D11A24':g>=30?'#D9730D':'#111')+'">'+Math.round(g)+'</span><span class="cy-u">mph</span><div class="cy-w">wind '+Math.round(w)+'</div></td>';});
+  var ri=function(n){return'<svg class="rl" aria-hidden="true"><use href="#ri-'+n+'"/></svg>';};
+  return'<table class="cy-tbl"><tr><th></th>'+row.time+'</tr><tr><th>'+ri('temp')+'High / low</th>'+row.temp+'</tr><tr><th>'+ri('chance')+'Chance of rain</th>'+row.pop+'</tr>'
+    +'<tr><th>'+ri('drop')+'Rain / snow</th>'+row.amt+'</tr><tr><th>'+ri('wind')+'Wind gusts</th>'+row.gust+'</tr></table>';}
+
 // ---------- search any Oregon / Washington town: forecast live in this browser, nothing kept ----------
 var S=NAMES.length,sInput=document.getElementById('city-q'),sList=document.getElementById('city-q-list'),sTok=0,tTok=0,sTimer;
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -1891,7 +2007,7 @@ async function showTown(g){
     var h24=pt.all.slice(0,24),today=pt.hours.slice(pt.now).filter(function(h){return h.t.slice(0,10)===pt.hours[pt.now].t.slice(0,10);});
     var hi=Math.max.apply(null,today.map(function(h){return h.temp;})),lo=Math.min.apply(null,today.map(function(h){return h.temp;}));
     var ic=window.WxPoint.icon(pt.hours.slice(pt.now,pt.now+12));
-    HRS[S]=pt.all;SUN[S]=sunFor(lat,lon,f.off);
+    HRS[S]=pt.all;SUN[S]=sunFor(lat,lon,f.off);META[S]=Math.round(ele*3.28084).toLocaleString('en-US')+'′ · '+lat.toFixed(3)+', '+lon.toFixed(3)+' · searched, not saved';
     var o=document.createElement('option');o.value=S;o.textContent=name+', '+st;document.getElementById('cc-city').appendChild(o);
     // its pill on the map, dashed: it goes away with the next search or the ×
     var mk=window.cityMarkers;mk[S]={name:name,lat:lat,lon:lon,icon:ic,feels:h24[0].feels,now:h24[0].temp,wnow:h24[0].wind,gnow:h24[0].gust,gust:h24[0].gust,hi:Math.round(hi),
@@ -1909,11 +2025,8 @@ async function showTown(g){
     var coastKm=Infinity;COAST.forEach(function(c){var d=kmTo(lat,lon,c[1],c[0]);if(d<coastKm)coastKm=d;});
     var best=null;if(coastKm<=8.05)TIDE_ST.forEach(function(s){var d=kmTo(lat,lon,s[2],s[3]),e=d+2*Math.max(0,s[3]-lon)*79;
       if(d<=25&&(!best||e<best.e))best={id:s[0],name:s[1],d:d,e:e};});
-    sDetail.innerHTML='<div class="city-detail-header"><span class="ch-icon">'+ic+'</span><span class="ch-name">'+esc(name)+', '+st+'</span>'
-      +'<span class="ch-temps"><b>'+Math.round(hi)+'°</b> / '+Math.round(lo)+'°</span>'
-      +'<span class="ch-meta">'+Math.round(ele*3.28084).toLocaleString('en-US')+'′ MSL · '+lat.toFixed(4)+', '+lon.toFixed(4)+' · searched, not saved</span>'
-      +'<button type="button" class="cq-clear" aria-label="Clear the searched town">×</button></div>'
-      +'<div class="city-detail-body"><div class="tl-10">'+window.WxPoint.table(pt,'search')+'</div>'
+    sDetail.innerHTML='<div class="cq-bar">Searched town, not saved<button type="button" class="cq-clear" aria-label="Clear the searched town">× Clear</button></div>'
+      +'<div class="city-detail-body"><div class="scroll-wrap">'+cityTable(pt,'search')+'</div>'
       +'<p class="cq-foot">'+(pt.nws?'National Weather Service forecast':'Open-Meteo forecast')+' at the town’s elevation, computed live in your browser (the same engine as Trail Forecast)</p></div>';
     sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
     selectCity(S);
@@ -1965,7 +2078,7 @@ def build_cities_page():
     with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as ex:
         rendered = list(ex.map(lambda ic: render_hike_forecast(
             [{"name": ic[1]["name"], "lat": ic[1]["lat"], "lon": ic[1]["lon"]}],
-            ic[1]["name"], "city" + str(ic[0]), nws_pts=[nws.point(ic[1]["lat"], ic[1]["lon"])]), enumerate(CITIES)))
+            ic[1]["name"], "city" + str(ic[0]), nws_pts=[nws.point(ic[1]["lat"], ic[1]["lon"])], city=True), enumerate(CITIES)))
     for ci, (city, (full_html, sm)) in enumerate(zip(CITIES, rendered)):
         print(f"  {city['name']}")
         sm["name"] = city["name"]; sm["lat"] = city["lat"]; sm["lon"] = city["lon"]
@@ -2013,6 +2126,18 @@ def build_cities_page():
         ".cc-panel { flex:1; min-width:0; position:relative; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; display:flex; flex-direction:column; }\n"
         ".cc-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; padding-bottom:10px; border-bottom:1px solid #EEF0F3; }\n"
         ".cc-kicker { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#9A9FAB; }\n"
+        ".cy-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; margin:0 0 14px; }\n"
+        ".cy-pick { position:relative; display:inline-flex; align-items:center; gap:10px; padding:8px 14px 8px 16px; background:#fff; border:1px solid #DDE0E6; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); font-size:20px; font-weight:800; letter-spacing:-.01em; color:#111; cursor:pointer; }\n"
+        ".cy-pick svg { color:#5A5F6B; }\n"
+        ".cy-pick:hover { border-color:#FE5000; }\n"
+        ".cy-pick:hover svg { color:#FE5000; }\n"
+        ".cy-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:16px; }\n"
+        ".cy-pick:has(select:focus-visible) { outline:2px solid #FE5000; outline-offset:2px; }\n"
+        ".cq-bar { display:flex; align-items:center; gap:10px; margin:0 0 8px; font-size:12px; color:#8A8F9C; }\n"
+        ".cq-bar .cq-clear { width:auto; height:auto; padding:3px 9px; border:1px solid #DDE0E6; border-radius:999px; background:#fff; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
+        ".cq-bar .cq-clear:hover { border-color:#FE5000; color:#FE5000; }\n"
+        ".cy-meta { font-size:12px; color:#8A8F9C; font-variant-numeric:tabular-nums; }\n"
+        ".cc-place { font-size:15px; font-weight:700; color:#111; }\n"
         ".cc-pick { position:relative; display:inline-flex; align-items:center; gap:7px; font-size:19px; font-weight:700; letter-spacing:-.01em; color:#111; cursor:pointer; border-radius:4px; }\n"
         ".cc-pick:hover #cc-name { color:#FE5000; }\n"
         ".cc-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:14px; }\n"
@@ -2195,28 +2320,21 @@ def build_cities_page():
         temps = f'<b>{sm["hi"]:.0f}°</b> / {sm["lo"]:.0f}°' if "hi" in sm else ''
         elev = f'{sm["elev_ft"]:,.0f}′ MSL · ' if "elev_ft" in sm else ''
         detail_sections += '<div class="city-detail" id="city_detail_' + str(ci) + '"' + (' hidden' if ci else '') + '>'
-        detail_sections += (
-            '<div class="city-detail-header" onclick="var b=document.getElementById(\'city_body_' + str(ci) + '\');'
-            'b.style.display=b.style.display==\'none\'?\'block\':\'none\';this.classList.toggle(\'collapsed\')">'
-            f'<span class="ch-icon">{sm.get("icon", "")}</span>'
-            f'<span class="ch-name">{html.escape(city["name"])}</span>'
-            f'<span class="ch-temps">{temps}</span>'
-            f'<span class="ch-meta">{elev}{city["lat"]:.4f}, {city["lon"]:.4f}</span>'
-            '<svg class="ch-chev" aria-hidden="true"><use href="#ri-chev"/></svg>'
-            '</div>')
         detail_sections += '<div id="city_body_' + str(ci) + '" class="city-detail-body">' + body + tide_block(city) + '</div>'
         detail_sections += '</div>'
 
     full_html = '<html><head><link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"><script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script><style>' + dashboard_css + '</style></head><body>'
     opts = ''.join(f'<option value="{ci}">{html.escape(c["name"])}</option>' for ci, c in enumerate(CITIES))
     # the selected city's forecast table first (owner), then the map (1/3) and the 24-hour charts (2/3)
+    full_html += ('<div class="cy-bar"><label class="cy-pick"><span id="cc-name">' + html.escape(CITIES[0]["name"]) + '</span>'
+                  '<svg width="12" height="8" aria-hidden="true"><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                  '<select id="cc-city" aria-label="City" onchange="selectCity(+this.value)">' + opts + '</select></label>'
+                  '<span class="cy-meta" id="cy-meta"></span></div>')
     full_html += '<div class="lay-a"><div class="la-main">'
     full_html += ('<div class="detail-list"><div class="city-detail cq-detail" id="city_detail_' + str(len(CITIES)) + '" hidden></div>'
                   + detail_sections + '</div>')
     full_html += ('<div class="cc-panel" id="city-cc"><div class="cc-head"><div><div class="cc-kicker" id="cc-kicker">Next 24 hours</div>'
-                  '<label class="cc-pick"><span id="cc-name">' + html.escape(CITIES[0]["name"]) + '</span>'
-                  '<svg width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="#A0A5B1" stroke-width="1.6"/></svg>'
-                  '<select id="cc-city" aria-label="City" onchange="selectCity(+this.value)">' + opts + '</select></label></div>'
+                  '<div class="cc-place" id="cc-place">' + html.escape(CITIES[0]["name"]) + '</div></div>'
                   '<div class="cc-now"></div></div>'
                   '<div class="cc-charts"></div><div class="cc-extra" id="cc-extra"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
@@ -2233,6 +2351,7 @@ def build_cities_page():
     full_html += ('<script>' + CITY_JS.replace("__HRS__", json.dumps([s.get("hrs") for s in summaries], separators=(",", ":")))
                   .replace("__SUN__", json.dumps(sun)).replace("__MOON__", json.dumps(moon))
                   .replace("__CITYNAMES__", json.dumps([c["name"] for c in CITIES]))
+                  .replace("__CITYMETA__", json.dumps([(f'{sm["elev_ft"]:,.0f}\u2032 \u00b7 ' if "elev_ft" in sm else '') + f'{c["lat"]:.3f}, {c["lon"]:.3f}' for c, sm in zip(CITIES, summaries)]))
                   .replace("__LATLON__", json.dumps([[c["lat"], c["lon"]] for c in CITIES]))
                   .replace("__TIDES__", json.dumps(tide_data)).replace("__TIDEST__", json.dumps(tide_stations))
                   .replace("__OFF__", str(utc_off))

@@ -148,6 +148,15 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   the hi/lo events; `tideBox`/`tideSVG` in CITY_JS draw the curve in the page: half-cosine between
   hi/lo, nights shaded (`sunUTC`, a JS port of sun_times), minus tides teal between curve and 0 ft,
   times only on highs and lows (owner: no heights; exact heights in the dots' hover titles).
+- Cities picker + table (owner, 2026-10-06): a real dropdown at the top of the page (`.cy-bar` / `#cc-city`,
+  elevation + position beside it from META; a searched town is appended as an option), no per-city header.
+  The Cities table is its own simpler layout (`render_hike_forecast(..., city=True)` -> `city_rows()`,
+  CY_CSS; `cityTable()` in CITY_JS draws the same markup for a searched town via `WxPoint.days`):
+  High / low as a vertical range bar on one scale across the week with the numbers riding the bar ends
+  (trend at a glance), Chance of rain (fill bar + %), Rain / snow amount, Wind gusts (big, coloured at
+  30/45 mph, sustained wind under it). Cloud layers, base and AQI were dropped from the table (they're in
+  the charts). Volcanos keep the old table. Careful editing CITY_JS from PowerShell: a Get-Content /
+  Set-Content round trip re-encodes ° ′ ″ · — (mojibake); write edit scripts with the Write tool.
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice). Cities + Volcanos
   "layout A" (owner, `LAYOUT_CSS`): left 2/3 = the selected place's table with the charts under it,
   right 1/3 = the map, as tall as both (ResizeObserver -> map.resize). On the narrow Cities map the

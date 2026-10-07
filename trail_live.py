@@ -478,7 +478,7 @@ var restored=false;
 window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailStats,profile:profileFt};
 // the same engine for one spot, used by the Cities tab's town search: forecast([{p:{lat,lon,ele}}]),
 // then table(point) = the 7-day table, icon(hours) = the condition icon
-window.WxPoint={forecast:forecast,table:table,icon:icon};
+window.WxPoint={forecast:forecast,table:table,icon:icon,days:days};
 // the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
 window.openTrailForecast=function(poly,name,link){
   pending={src:{poly:poly,name:name||''},link:link||''};
