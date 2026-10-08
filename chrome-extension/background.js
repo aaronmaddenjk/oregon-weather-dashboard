@@ -22,8 +22,19 @@ const TITLE = "Save this trail to your trails (right-click: save and open the fo
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "forecast", title: "Save and open the forecast", contexts: ["action"] });
+  chrome.contextMenus.create({ id: "list", title: "Open your trail list", contexts: ["action"] });
 });
-chrome.contextMenus.onClicked.addListener((info, tab) => { if (info.menuItemId === "forecast") forecast(tab); });
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "forecast") forecast(tab);
+  if (info.menuItemId === "list") chrome.tabs.create({ url: chrome.runtime.getURL("list.html") });
+});
+// the trail list page (list.html) asks for a fresh look at trails.json for its Saved marks
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  if (msg && msg.type === "refreshSaved") {
+    chrome.storage.local.set({ cloudAt: 0 }).then(savedLinks).then(() => reply(true), () => reply(false));
+    return true;
+  }
+});
 chrome.action.onClicked.addListener((tab) => save(tab));
 
 async function readRoute(tab) {
