@@ -48,6 +48,7 @@ import webcams
 import snowpack
 import trail_live
 import trail_explorer
+import sections
 import tides
 from snow_model import new_snow_in, rh_from_dew
 
@@ -1044,6 +1045,7 @@ ROW_ICONS = {
     "target": '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
     "map":   '<path d="M3 6.5 9 4l6 2.5 6-2.5v13.5L15 20l-6-2.5L3 20z"/><path d="M9 4v13.5M15 6.5V20"/>',
     "compass": '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+    "areas": '<rect x="3.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.2"/><path d="m14 17.2 2.2 2.3 4.3-4.6"/>',
     "route": '<circle cx="6" cy="18.5" r="2"/><circle cx="18" cy="5.5" r="2"/><path d="M8 18.5h6.5a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6H16"/>',
 }
 WX_DEFS = ('<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>'
@@ -4111,7 +4113,7 @@ def build_dashboard() -> str:
     # ---- Merge CSS (shared base + page-specific) ----
     # the Mt Hood page's stylesheet uses generic names (.map-panel, table, th...) - scope it to
     # its own tab so it can't restyle the Cities / Trails pages
-    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4') + '\n' + scope_css(trail_live.TABLE_CSS, '#page0') + '\n' + LAYOUT_CSS
+    merged_css = c_css + '\n' + trails_css + '\n' + scope_css(k_css, '#page3') + '\n' + trail_explorer.TRAILS_CSS + '\n' + scope_css(trail_live.TRAIL_CSS, '#page4') + '\n' + scope_css(trail_live.TABLE_CSS, '#page0') + '\n' + scope_css(sections.CSS, '#page6') + '\n' + LAYOUT_CSS
 
     # Shell CSS: left sidebar nav, page headers, section headers (loaded last, so it wins)
     tab_css = """
@@ -4345,6 +4347,7 @@ def build_dashboard() -> str:
       <button class="tab-btn" onclick="showTab(3)"><svg class="nv" aria-hidden="true"><use href="#ri-lift"/></svg><span class="nl">Mt Hood</span><span class="ns">Mt Hood</span></button>
       <button class="tab-btn" onclick="showTab(4)"><svg class="nv" aria-hidden="true"><use href="#ri-route"/></svg><span class="nl">Trail Forecast</span><span class="ns">Trails</span></button>
       <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg><span class="nl">Accuracy</span><span class="ns">Accuracy</span></button>
+      <button class="tab-btn" onclick="showTab(6)"><svg class="nv" aria-hidden="true"><use href="#ri-areas"/></svg><span class="nl">Trail Sections</span><span class="ns">Sections</span></button>
       <div class="updated"><b>Updated</b>{updated_str}</div>
     </nav>
     <main class="main">
@@ -4375,6 +4378,8 @@ def build_dashboard() -> str:
     <div class="page-section" id="page5" style="display:none">
       <header class="page-head"><h1>Forecast Accuracy</h1><p>How our precipitation forecasts compare with SNOTEL gauges near the mountains · re-scored and re-tuned every run</p></header>
       {verification.report_html(report)}</div>
+    <div class="page-section" id="page6" style="display:none" data-init="sectionsShown">
+      {sections.PAGE_HTML}</div>
     </main>
     </div>
 
@@ -4415,6 +4420,7 @@ def build_dashboard() -> str:
     combined += '<script>' + TERRAIN_LAYERS_JS + '</script>\n'   # terrain layers on a 3D map, Mt Hood and the trail page
     combined += '<script>' + trail_live.TRAIL_LIVE_JS + '</script>\n'   # the Trail Forecast tab's in-browser engine
     combined += '<script>' + trail_explorer.TRAILS_JS.replace('__TRAILS_VER__', str(int(time.time()))) + '</script>\n'   # the Map tab's Trails layer + panel
+    combined += '<script>' + sections.JS.replace('__SECTIONS__', sections.sections_json()) + '</script>\n'   # the Trail Sections tab (uses WxMine)
     for s in c_scripts:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
     for s in trails_scripts:

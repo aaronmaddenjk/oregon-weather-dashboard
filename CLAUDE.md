@@ -65,7 +65,7 @@ and asks for features in plain language. See README.md for data sources and dev 
 
 ## Tabs (page ids in the shell, `build_dashboard()`)
 page0 Cities · page1 Volcanos (was Mountain Trails) · page2 Map (+ Trails layer and side panel) · page3 Mt Hood ·
-page4 Trail Forecast (`TRAIL_TAB=4` in trail_live.py) · page5 Accuracy.
+page4 Trail Forecast (`TRAIL_TAB=4` in trail_live.py) · page5 Accuracy · page6 Trail Sections (`sections.py`).
 Sidebar button order must match page index. `data-init` / `data-lazy` build maps on first view
 (Mapbox bills per map load).
 
@@ -136,8 +136,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   the extension closes it. Saves queue one at a time; ✓ badge on trails already saved (local list + trails.json
   raw); right-click the button = "Save and open the forecast"; option to close the trail tab after saving.
   Owner's line (AllTrails terms): one trail per click on a page the owner opened - never auto-open trails,
-  walk lists, scrape counts or bulk-extract. Area checklist for working through OR/WA by hand:
-  https://claude.ai/artifact/BtNVH1SZMU65LanjuxfiCC (57 sections, separate from the dashboard on purpose).
+  walk lists, scrape counts or bulk-extract. Extension 1.7: list.html ("Open your trail list" on the button's
+  right-click menu) opens links from a pasted / .txt list a batch (5-20) at a time, 0.7 s apart; saving stays manual.
+- Trail Sections tab (page6, `sections.py`, owner 2026-10-07): 57 named OR/WA areas to work through by hand
+  on AllTrails. Live progress: WxMine's trails counted into the box holding most of each trail's points, drawn
+  on an SVG map (no Mapbox map load); "done" ticks in sections.json on the trails branch (same wx-gh-token),
+  localStorage wx-sections-done as the copy. Supersedes the artifact checklist (claude.ai/artifact/BtNVH1SZMU65LanjuxfiCC).
 
 - Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /
   rain next 24 h / gusts now; the selected one just gets an orange ring, no pop-open details or dot -
