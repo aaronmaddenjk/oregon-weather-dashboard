@@ -1200,8 +1200,8 @@ CY_CSS = r"""
 .cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
 .cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
 .cy-tbl .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
-.cy-art { display:flex; flex-direction:column; align-items:center; min-height:64px; margin:3px 0 2px; }
-.cy-art svg { width:60px; height:48px; overflow:visible; }
+.cy-art { display:flex; flex-direction:column; align-items:center; min-height:60px; margin:2px 0 0; }
+.cy-art svg { width:76px; height:61px; overflow:visible; }
 .cy-lab { font-size:10.5px; font-weight:600; color:#5A5F6B; white-space:nowrap; margin-top:1px; }
 .cy-art .wx-fall { animation:wxfall 1.3s linear infinite; }
 .cy-art .wx-blow { stroke-dasharray:14 14; animation:wxblow 2.2s ease-in-out infinite; }
@@ -1279,7 +1279,7 @@ def city_rows(cd, uid):
         wk = " wkd" if dd.weekday() >= 5 else ""
         td = f'<td class="d{di} dsum{wk}" data-d="{di}" onclick="wxDay(\'{uid}\',{di})" title="Show this day in the charts">'
         tt = ' <span class="tt">TODAY</span>' if di == 0 else ""
-        R["time"] += td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>{cy_art(d)}{pred_badge(d["pred"])}</td>'
+        R["time"] += td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>{cy_art(d)}</td>'
         R["temp"] += td + cy_temp(d["hi"], d["lo"], t_lo, t_hi) + "</td>"
         R["pop"] += td + cy_pop(d["mp"]) + "</td>"
         R["amt"] += td + cy_amt(d["rt"], d["st"]) + "</td>"
@@ -1300,7 +1300,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
     `snow_obs` (volcanoes) adds the estimated snow depth, a table row and the `sd` column."""
     c_lat=sum(w["lat"] for w in waypoints)/len(waypoints)
     c_lon=sum(w["lon"] for w in waypoints)/len(waypoints)
-    pred=ensemble_predictability(c_lat,c_lon,6)
+    pred={}   # (the WeatherNext predictability badges are gone, owner 2026-10-09)
     url="https://api.open-meteo.com/v1/forecast"
     all_fc=[]
     for wi,wp in enumerate(waypoints):
@@ -1392,7 +1392,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             cd.append({"dk":ents[0]["date_key"],"hi":hi2,"lo":lo2,"mw":mw,"mg":mg,"mp":mp,"rt":rt,"st":st,"ci":ci,"pred":pred.get(ents[0]["date_key"]),"sky":sum(dsk)/len(dsk)})
             tt=' <span class="tt">TODAY</span>' if di==0 else ""
             S,D=f'd{di} dsum',f'd{di} ddet';oc=f'onclick="wxDay(\'{uid}\',{di})"'
-            R["time"]+=f'<td class="{S}" colspan="{nc}" {oc}><div class="dl">{dk}{tt}</div><div class="ds-ci">{ci}</div>{pred_badge(pred.get(ents[0]["date_key"]))}</td>'
+            R["time"]+=f'<td class="{S}" colspan="{nc}" {oc}><div class="dl">{dk}{tt}</div><div class="ds-ci">{ci}</div></td>'
             for ei,e in enumerate(ents):
                 dl=f'<div class="dl">{dk}{tt}</div>' if ei==0 else '';bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
                 R["time"]+=f'<td class="{D}" style="display:none;{bdr}">{dl}<div class="tl">{e["time"]}</div></td>'
@@ -1463,8 +1463,8 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
       {actual_rows}
     </table></div>
     </div>'''
-    leg=("NWS forecast at the town's elevation \u00b7 bars share one scale across the week \u00b7 % under the icon = WeatherNext 2 predictability \u00b7 click a day for its hours (clouds, air quality and more) in the charts"
-         if city else "NWS forecast (temp, wind, precip, sky) adjusted to each spot's elevation \u00b7 ECMWF cloud layers \u00b7 Open-Meteo AQI \u00b7 % = WeatherNext 2 predictability \u00b7 click a day for its hours in the charts")
+    leg=("NWS forecast at the town's elevation \u00b7 bars share one scale across the week \u00b7 click a day for its hours (clouds, air quality and more) in the charts"
+         if city else "NWS forecast (temp, wind, precip, sky) adjusted to each spot's elevation \u00b7 ECMWF cloud layers \u00b7 Open-Meteo AQI \u00b7 click a day for its hours in the charts")
     full_html=f"""
 <html><head><style>
 * {{ box-sizing:border-box; }}
@@ -2005,9 +2005,9 @@ function cyArt(d){
   else if(d.sky<85){o=cySun(13,8.5,3.4)+cyCloud(17,15,1.5,W)+cyCloud(26,13,1.3,W);name='Mostly cloudy';}
   else{o=cyCloud(14,12,1.6,G)+cyCloud(25,14,1.45,W);name='Cloudy';}
   if(d.g>=30){o+=cyWind();name+=', windy';}
-  return'<svg viewBox="0 0 40 32" aria-hidden="true">'+o+'</svg><div class="cy-lab">'+name+'</div>';}
+  return'<svg viewBox="0 0 40 32"><title>'+name+'</title>'+o+'</svg>';}
 function cyArtFill(root){(root||document).querySelectorAll('.cy-art[data-wx]').forEach(function(el){
-  try{var d=JSON.parse(el.dataset.wx);el.innerHTML=cyArt(d);el.setAttribute('aria-label',el.querySelector('.cy-lab').textContent);el.removeAttribute('data-wx');}catch(e){}});}
+  try{var d=JSON.parse(el.dataset.wx);el.innerHTML=cyArt(d);el.setAttribute('aria-label',el.querySelector('title').textContent);el.removeAttribute('data-wx');}catch(e){}});}
 cyArtFill(document.getElementById('page0'));
 window.cyArt=cyArt;
 
@@ -3256,7 +3256,7 @@ def build_ski_page():
     blue_today_entries = []
     blue_elev_ft = 0
     local_tz = "America/Los_Angeles"
-    pred = ensemble_predictability(SKI_POINTS[0]["lat"], SKI_POINTS[0]["lon"], 10)  # all three points share one 25 km cell
+    pred = {}   # (no predictability badges any more, owner 2026-10-09)
     nws_pts = [nws.point(p["lat"], p["lon"]) for p in SKI_POINTS]   # the base forecast, per point's grid box
     qpf = [merge_qpf(n, b) for n, b in zip(nws_pts, blended_qpf(SKI_POINTS, 10))]
     # the same forecast-by-elevation as the Trails tab and the Map: moves temperature and wind to
@@ -3506,7 +3506,7 @@ def build_ski_page():
             oc = f'onclick="toggleSkiDay({di})" title="Click for 3-hourly detail"'
             td = f'<td class="{s_cls}" colspan="{nc}" {oc}>'
             rows["time"] += (td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>'
-                             f'<div class="ds-ci">{ci}</div>{pred_badge(pred.get(ents[0]["date_key"]))}</td>')
+                             f'<div class="ds-ci">{ci}</div></td>')
             # new snow: the day's total (the snow summary below charts it)
             rows["snow"] += td + (f'<span class="snow-day">{sn:.1f}\u2033</span>' if 0.05 <= sn < 10
                                   else f'<span class="snow-day">{sn:.0f}\u2033</span>' if sn >= 10
@@ -3544,8 +3544,7 @@ def build_ski_page():
             ("temp", ri("temp") + 'High / low'),
             ("wind", ri("wind") + 'Wind, gust'),
             ("vis", ri("eye") + 'Visibility'),
-            ("chance", ri("chance") + 'Chance'),
-            ("base", ri("base") + 'Cloud base')
+            ("chance", ri("chance") + 'Chance')
         ]:
             actual_rows += f'<tr class="r-{key}"><th>{label}</th>{rows[key]}</tr>\n'
 

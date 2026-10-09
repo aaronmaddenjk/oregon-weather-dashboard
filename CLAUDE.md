@@ -182,8 +182,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Daily icons there = weather art like the volcano pins (owner): Python writes `<div class="cy-art"
   data-wx='{sky,r,s,pop,g}'>` (sky = 8 am-5 pm cloud cover), `cyArt()` / `cyArtFill()` in CITY_JS draw it
   (sun behind, clouds in front, animated rain/snow columns = more with a higher chance, wind streaks at
-  gusts >= 30) plus a name: Sunny / Mostly sunny / Partly / Mostly cloudy / Cloudy / Showers / Rain /
-  Snow / Rain & snow (+ ", windy"). Wet = >= 0.01" and chance >= 30%; Rain (not Showers) at 70%+ or 0.15"+.
+  gusts >= 30), 76x61 px, NO text under it (owner) - the name (Sunny / Mostly sunny / Partly / Mostly
+  cloudy / Cloudy / Showers / Rain / Snow / Rain & snow, + ", windy") is only the svg <title> / aria-label.
+  Wet = >= 0.01" and chance >= 30%; Rain (not Showers) at 70%+ or 0.15"+.
+- Removed (owner, 2026-10-09): the WeatherNext predictability badges on every daily table (no longer
+  fetched: `pred = {}`; `ensemble_predictability()` / `pred_badge()` left unused) and Mt Hood's
+  10-day "Cloud base" row.
 - Cities detail: only the selected city's 6-day forecast shows (owner's choice). Cities + Volcanos
   "layout A" (owner, `LAYOUT_CSS`): left 2/3 = the selected place's table with the charts under it,
   right 1/3 = the map, as tall as both (ResizeObserver -> map.resize). On the narrow Cities map the
