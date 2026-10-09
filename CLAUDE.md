@@ -137,7 +137,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   raw); right-click the button = "Save and open the forecast"; option to close the trail tab after saving.
   Owner's line (AllTrails terms): one trail per click on a page the owner opened - never auto-open trails,
   walk lists, scrape counts or bulk-extract. Extension 1.7: list.html ("Open your trail list" on the button's
-  right-click menu) opens links from a pasted / .txt list a batch (5-20) at a time, 0.7 s apart; saving stays manual.
+  right-click menu) opens links from a pasted / .txt list a batch (5-20) at a time, 0.7 s apart.
+  Extension 1.8 (owner asked, 2026-10-08): Alt+Shift+A / right-click "Save every trail tab in this window" =
+  the save above for each trail tab already open in the current window (already-saved skipped, sleeping tabs
+  woken, one at a time). Still only pages the owner opened; the extension never opens AllTrails pages itself.
 - Trail Sections tab (page6, `sections.py`, owner 2026-10-07): 57 named OR/WA areas to work through by hand
   on AllTrails. Live progress: WxMine's trails counted into the box holding most of each trail's points, drawn
   on an SVG map (no Mapbox map load); "done" ticks in sections.json on the trails branch (same wx-gh-token),

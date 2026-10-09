@@ -6,8 +6,10 @@
 // Click the button (or Alt+Shift+S): SAVE it to your trails and stay on the page. A background tab of
 // the dashboard (<dashboard>#save=...) measures it (Mapbox terrain: gain, profile), keeps it (GitHub when
 // that browser is connected), answers in its address (#saved=...) and is closed. Saves run one at a time,
-// so trails opened in several tabs can be saved in a row. One trail per click on a page you opened:
-// nothing here walks lists or opens trails by itself (owner's rule: stay within AllTrails' terms).
+// so trails opened in several tabs can be saved in a row. Alt+Shift+A (or right-click: "Save every trail tab
+// in this window") does the same for each trail tab already open in the current window, skipping ones
+// already saved (owner, 2026-10-08). It only reads pages you opened; nothing here walks lists or opens
+// trails on AllTrails by itself (owner's rule: stay within AllTrails' terms).
 // Right-click the button: "Save and open the forecast" (<dashboard>#trail=..., the Trail Forecast tab).
 // Nothing is sent anywhere but the dashboard.
 
@@ -22,10 +24,13 @@ const TITLE = "Save this trail to your trails (right-click: save and open the fo
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "forecast", title: "Save and open the forecast", contexts: ["action"] });
+  chrome.contextMenus.create({ id: "all", title: "Save every trail tab in this window (Alt+Shift+A)", contexts: ["action"] });
   chrome.contextMenus.create({ id: "list", title: "Open your trail list", contexts: ["action"] });
 });
+chrome.commands.onCommand.addListener((cmd, tab) => { if (cmd === "save-all") saveAll(tab); });
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "forecast") forecast(tab);
+  if (info.menuItemId === "all") saveAll(tab);
   if (info.menuItemId === "list") chrome.tabs.create({ url: chrome.runtime.getURL("list.html") });
 });
 // the trail list page (list.html) asks for a fresh look at trails.json for its Saved marks
@@ -74,6 +79,45 @@ async function save(tab) {
   badge(tab.id, "…", busy ? "Waiting to save (" + queue.length + " in line)…" : "Saving…");
   if (!busy) next();
 }
+// ---------- save every trail tab in this window (tabs you opened; already-saved ones skipped) ----------
+const TRAIL_PAGE = [
+  /^https:\/\/(www\.)?alltrails\.com\/(explore\/)?trail\//,
+  /^https:\/\/(www\.)?trailforks\.com\/(trails|route)\/[^/]+\/?(\?|#|$)/,
+  /^https:\/\/(webmap|backcountry)\.onxmaps\.com\/(.*\/)?map\/([a-z]+-route|route|line)\//,
+];
+let sweeping = false;
+async function saveAll(fromTab) {
+  if (sweeping) return;
+  sweeping = true;
+  try {
+    const win = fromTab && fromTab.windowId != null ? { windowId: fromTab.windowId } : { currentWindow: true };
+    const tabs = (await chrome.tabs.query(win)).filter((t) => TRAIL_PAGE.some((re) => re.test(t.url || "")));
+    const saved = await savedLinks();
+    const todo = tabs.filter((t) => !saved[linkKey(t.url)]);
+    tabs.filter((t) => saved[linkKey(t.url)]).forEach((t) => badge(t.id, "✓", "Already in your trails · " + TITLE, "#2F7A45"));
+    if (fromTab) badge(fromTab.id, todo.length ? "…" : (saved[linkKey(fromTab.url || "")] ? "✓" : ""),
+      todo.length ? "Saving " + todo.length + " trail tab" + (todo.length > 1 ? "s" : "") + " in this window…"
+        : tabs.length ? "Every trail tab in this window is already saved" : "No trail tabs open in this window", "#2F7A45");
+    for (const t of todo) {
+      const tab = await loaded(t);
+      if (!tab) { badge(t.id, "!", "This tab isn't loaded yet: open it once, then press Alt+Shift+A again"); continue; }
+      await save(tab);   // reads it now, queues the save
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  } finally { sweeping = false; }
+}
+// a tab Chrome put to sleep (Memory Saver) or still loading: wake it / wait for it, up to 30 s
+async function loaded(t) {
+  if (t.discarded) { try { await chrome.tabs.reload(t.id); } catch (e) { return null; } }
+  for (let i = 0; i < 60; i++) {
+    const cur = await chrome.tabs.get(t.id).catch(() => null);
+    if (!cur) return null;
+    if (cur.status === "complete" && !cur.discarded) return cur;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return null;
+}
+
 async function next() {
   const job = queue.shift();
   if (!job) { busy = false; return; }
