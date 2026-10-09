@@ -8,13 +8,15 @@
 // that browser is connected), answers in its address (#saved=...) and is closed. Saves run one at a time,
 // so trails opened in several tabs can be saved in a row. Alt+Shift+A (or right-click: "Save every trail tab
 // in this window") does the same for each trail tab already open in the current window, skipping ones
-// already saved (owner, 2026-10-08). It only reads pages you opened; nothing here walks lists or opens
-// trails on AllTrails by itself (owner's rule: stay within AllTrails' terms).
+// already saved (owner, 2026-10-08). The trail list page (list.html) can also open a batch of 20 of your
+// collected links and have each saved and its tab closed (owner asked, 2026-10-08): one batch per click,
+// never continuing by itself; a tab that fails stays open.
 // Right-click the button: "Save and open the forecast" (<dashboard>#trail=..., the Trail Forecast tab).
 // Nothing is sent anywhere but the dashboard.
 
 const DEFAULT_URL = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/";
-const TRAILS_RAW = "https://raw.githubusercontent.com/aaronmaddenjk/oregon-weather-dashboard/trails/trails.json";
+// your trails (private repo, owner 2026-10-08): read for the ✓ marks with the key from the options page
+const TRAILS_API = "https://api.github.com/repos/aaronmaddenjk/wx-trails/contents/trails.json?ref=main";
 const SITES = [
   { re: /^https:\/\/(www\.)?alltrails\.com\//, func: extractRoute },
   { re: /^https:\/\/(webmap|backcountry)\.onxmaps\.com\//, func: extractOnx },
@@ -39,6 +41,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     chrome.storage.local.set({ cloudAt: 0 }).then(savedLinks).then(() => reply(true), () => reply(false));
     return true;
   }
+  if (msg && msg.type === "saveTabs" && Array.isArray(msg.items)) { saveTabs(msg.items); reply(true); }
 });
 chrome.action.onClicked.addListener((tab) => save(tab));
 
@@ -70,12 +73,14 @@ async function forecast(tab) {
 // ---------- save: one at a time, in a background dashboard tab ----------
 const queue = [];
 let busy = false;
-async function save(tab) {
+// opts.close: close the trail's tab once it's saved (the trail list's batches); opts.from: the tab's url as
+// the list knows it, echoed back in its "saveResult" message
+async function save(tab, opts = {}) {
   badge(tab.id, "…", "Reading the trail…");
   let route;
   try { route = await readRoute(tab); }
-  catch (e) { return badge(tab.id, "!", "Couldn't read this trail: " + e.message); }
-  queue.push({ tab, route });
+  catch (e) { report(opts.from || tab.url, false, "couldn't read the trail: " + e.message); return badge(tab.id, "!", "Couldn't read this trail: " + e.message); }
+  queue.push({ tab, route, close: !!opts.close, from: opts.from || tab.url });
   badge(tab.id, "…", busy ? "Waiting to save (" + queue.length + " in line)…" : "Saving…");
   if (!busy) next();
 }
@@ -130,11 +135,27 @@ async function next() {
     badge(job.tab.id, "✓", "Saved “" + res.name + "” to your trails"
       + (res.cloud ? "" : " in the dashboard's browser only" + (res.error ? " (GitHub: " + res.error + ")" : " (connect GitHub in Map → Trails)")), "#2F7A45");
     const { closeAfterSave } = await chrome.storage.sync.get({ closeAfterSave: false });
-    if (closeAfterSave) chrome.tabs.remove(job.tab.id).catch(() => {});
+    if (closeAfterSave || job.close) chrome.tabs.remove(job.tab.id).catch(() => {});
   } else {
-    badge(job.tab.id, "!", "Couldn't save this trail: " + res.error);
+    badge(job.tab.id, "!", "Couldn't save this trail: " + res.error);   // the tab stays open to look at
   }
+  report(job.from, !!res.ok, res.ok ? "" : res.error);
   next();
+}
+// tell the trail list page (if open) how a trail went
+function report(url, ok, error) {
+  chrome.runtime.sendMessage({ type: "saveResult", url, ok, error: error || "" }).catch(() => {});
+}
+// the trail list's "Open and save next 20": it opened the tabs; save each, closing it when saved
+async function saveTabs(items) {
+  for (const it of items) {
+    const t = await chrome.tabs.get(it.tabId).catch(() => null);
+    const tab = t && await loaded(t);
+    if (!tab) { report(it.url, false, "the tab didn't finish loading"); continue; }
+    if (!TRAIL_PAGE.some((re) => re.test(tab.url || ""))) { report(it.url, false, "that link didn't open a trail page"); continue; }
+    await save(tab, { close: true, from: it.url });
+    await new Promise((r) => setTimeout(r, 400));
+  }
 }
 // -> the dashboard's answer {ok, name, cloud, error}
 async function saveInBackground(route) {
@@ -171,8 +192,10 @@ function linkKey(u) {
 async function savedLinks() {
   const { saved = {}, cloudAt = 0 } = await chrome.storage.local.get(["saved", "cloudAt"]);
   if (Date.now() - cloudAt > 10 * 60 * 1000) {
-    try {
-      const r = await fetch(TRAILS_RAW + "?t=" + Date.now());
+    try {   // your trails are in a private repo: read with the GitHub key from the options page, if given
+      const { ghToken = "" } = await chrome.storage.local.get("ghToken");
+      const r = ghToken ? await fetch(TRAILS_API, { cache: "no-store",
+        headers: { Accept: "application/vnd.github.raw+json", Authorization: "Bearer " + ghToken } }) : { ok: false };
       if (r.ok) {
         (await r.json()).forEach((m) => { const k = linkKey(m.link || ""); if (k) saved[k] = saved[k] || 1; });
         await chrome.storage.local.set({ saved, cloudAt: Date.now() });

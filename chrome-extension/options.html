@@ -9,7 +9,7 @@
   p { color: #5A5F6B; line-height: 1.5; }
   label { display: block; font-weight: 600; margin: 18px 0 6px; }
   label.check { display: flex; gap: 8px; align-items: center; }
-  input[type=url] { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #C9CDD5; border-radius: 8px; font: inherit; }
+  input[type=url], input[type=password] { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #C9CDD5; border-radius: 8px; font: inherit; }
   button { margin-top: 12px; padding: 8px 14px; border: none; border-radius: 8px; background: #FE5000; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   #saved { margin-left: 10px; color: #3F7440; }
 </style>
@@ -23,6 +23,10 @@
   <p>The live dashboard is <code>https://aaronmaddenjk.github.io/oregon-weather-dashboard/</code> (the default). For your local copy while developing, use <code>http://localhost:8000/</code>. Saved trails stay with whichever address you use.</p>
   <label class="check"><input id="close" type="checkbox"> Close the trail's tab once it's saved</label>
   <p>Handy for working through an area: open the trails you want in tabs, then press Alt+Shift+S on each one, or <b>Alt+Shift+A</b> to save every trail tab in this window at once (ones already saved are skipped). Or collect links in a notepad file and use <a href="list.html">your trail list</a> (also on the button's right-click menu) to open them a batch at a time.</p>
+  <label for="gh">GitHub key (for the ✓ marks)</label>
+  <input id="gh" type="password" autocomplete="off" placeholder="github_pat_…">
+  <p>Your trails live in your private <code>wx-trails</code> repo. Paste the same key you connected in the dashboard (Map → Trails) so the button can show ✓ on trails saved from any device.
+    It stays in this browser's extension storage and is only sent to GitHub. Without it, ✓ shows only for trails saved from this browser. Saving works either way (the dashboard does it).</p>
   <button id="save">Save</button><span id="saved"></span>
   <script src="options.js"></script>
 </body>

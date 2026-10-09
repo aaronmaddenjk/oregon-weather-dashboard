@@ -491,7 +491,7 @@ TRAILS_PANEL_HTML = """
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
   <ol class="ex-list" id="ex-list"></ol>
   <p class="ex-foot">Your trails: saved from AllTrails, onX and Trailforks with the Chrome extension, or added as GPX.
-    Gain and high point from Mapbox terrain, climbing from the low end. Kept on GitHub, so every device sees them.</p>
+    Gain and high point from Mapbox terrain, climbing from the low end. Kept in your private GitHub repo, so every device you connect sees them.</p>
 </aside>
 """
 
@@ -521,6 +521,7 @@ TRAILS_CSS = r"""
 .ex-sync button { border:0; background:none; padding:0; font:inherit; font-weight:700; color:#6B3FA8; cursor:pointer; }
 .ex-sync button:hover { text-decoration:underline; }
 .ex-sync .ex-ok { color:#2F7A45; font-weight:600; }
+.ex-sync .ex-err { color:#B4441C; font-weight:600; }
 .ex-how ol { margin:6px 0 6px 18px; padding:0; }
 .ex-how li { margin-bottom:3px; }
 .ex-how a { color:#6B3FA8; font-weight:600; }
@@ -602,15 +603,18 @@ function encode(pts){var out='',pl=0,pn=0;function put(v){v=v<0?~(v<<1):v<<1;whi
 function meta(t){return t.mi.toFixed(1)+' mi \u00B7 '+(t.gain==null?'':fmt(t.gain)+'\u2032 gain \u00B7 ')
   +(t.act==='mtb'&&t.loss!=null?fmt(t.loss)+'\u2032 descent \u00B7 ':'')+(t.hi==null?'':fmt(t.hi)+'\u2032 top');}
 function readMine(){return window.WxMine.list();}
-// ---------- your trails: trails.json on the repo's "trails" branch, so every device (phone, other laptops)
-// and every republish sees them (publishing only replaces gh-pages). Reading is public; saving needs a
-// GitHub key pasted once per browser ("Connect GitHub" in the Trails panel). This browser keeps a copy in
+// ---------- your trails: trails.json in the PRIVATE repo aaronmaddenjk/wx-trails (owner, 2026-10-08; it was the
+// public repo's "trails" branch before), so every device (phone, other laptops) and every republish sees them.
+// Reading and saving both need the GitHub key pasted once per browser ("Connect GitHub" in the Trails panel),
+// a fine-grained key with Contents read/write on wx-trails. Without it this browser shows only its own copy;
+// a key that can't see wx-trails shows an error instead of an empty list. This browser keeps a copy in
 // localStorage: the list shows instantly and works offline. `synced` marks a copy that came from GitHub,
 // so a trail removed on another device disappears here too; unsynced ones are this browser's own and
 // are uploaded once it's connected (that's how trails saved before connecting move over). ----------
 window.WxMine=(function(){
-  var REPO='aaronmaddenjk/oregon-weather-dashboard',BR='trails',API='https://api.github.com/repos/'+REPO+'/contents/trails.json',KEY='wx-gh-token';
-  var list=localGet(),loading=null,subs=[];
+  var REPO='aaronmaddenjk/wx-trails',BR='main',API='https://api.github.com/repos/'+REPO+'/contents/trails.json',KEY='wx-gh-token';
+  var list=localGet(),loading=null,subs=[],err='';
+  var NOREPO='your GitHub key can’t see the private wx-trails repo: on GitHub, edit the key and add wx-trails (Contents: Read and write)';
   function localGet(){try{return JSON.parse(localStorage.getItem(MINE_KEY)||'[]')||[];}catch(e){return[];}}
   function localSet(a){try{localStorage.setItem(MINE_KEY,JSON.stringify(a));return true;}catch(e){return false;}}
   function key(m){return m.link||m.p;}
@@ -619,22 +623,25 @@ window.WxMine=(function(){
   function b64(s){var u=new TextEncoder().encode(s),out='';for(var i=0;i<u.length;i+=0x8000)out+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(out);}
   function strip(a){return a.map(function(m){var o=Object.assign({},m);delete o.synced;return o;});}
   function fire(){subs.forEach(function(f){try{f(list);}catch(e){}});}
-  async function pull(){   // -> {items, sha}
-    try{var r=await fetch(API+'?ref='+BR,{headers:hdr(),cache:'no-store'});
-      if(r.status===404)return{items:[],sha:null};if(!r.ok)throw new Error(r.status);
-      var j=await r.json(),txt=j.content&&j.encoding==='base64'
-        ?new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\s/g,'')),function(c){return c.charCodeAt(0);}))
-        :await (await fetch(API+'?ref='+BR,{headers:hdr(true),cache:'no-store'})).text();   // over 1 MB: the raw form
-      return{items:JSON.parse(txt||'[]'),sha:j.sha};}
-    catch(e){   // GitHub allows 60 keyless API reads an hour per connection: the raw file (cached ~5 min) is the fallback
-      var r2=await fetch('https://raw.githubusercontent.com/'+REPO+'/'+BR+'/trails.json?t='+Date.now());if(!r2.ok)throw e;
-      return{items:await r2.json(),sha:null,raw:true};}}
+  async function pull(){   // -> {items, sha}; private repo, so only with a key
+    if(!token())throw new Error('nokey');
+    var r=await fetch(API+'?ref='+BR,{headers:hdr(),cache:'no-store'});
+    if(r.status===404){   // no trails.json yet - or a key that can't see the repo (GitHub says 404 for both)
+      var rr=await fetch('https://api.github.com/repos/'+REPO,{headers:hdr(),cache:'no-store'});
+      if(!rr.ok)throw new Error(NOREPO);return{items:[],sha:null};}
+    if(r.status===401)throw new Error('GitHub didn’t accept the key (expired?): reconnect in Map → Trails');
+    if(!r.ok)throw new Error('GitHub said '+r.status);
+    var j=await r.json(),txt=j.content&&j.encoding==='base64'
+      ?new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\s/g,'')),function(c){return c.charCodeAt(0);}))
+      :await (await fetch(API+'?ref='+BR,{headers:hdr(true),cache:'no-store'})).text();   // over 1 MB: the raw form
+    return{items:JSON.parse(txt||'[]'),sha:j.sha};}
   async function push(fn,msg){   // read, change, write; retried if another device saved in between
-    for(var k=0;k<3;k++){var g=await pull();if(g.raw)throw new Error('GitHub isn’t answering right now');
+    for(var k=0;k<3;k++){var g=await pull();
       var items=fn(g.items.slice()),body={message:msg,content:b64(JSON.stringify(items)),branch:BR};if(g.sha)body.sha=g.sha;
       var r=await fetch(API,{method:'PUT',headers:Object.assign(hdr(),{'Content-Type':'application/json'}),body:JSON.stringify(body)});
       if(r.ok)return items;
-      if(r.status===401||r.status===403||r.status===404)throw new Error('GitHub refused the key ('+r.status+'): reconnect in Map → Trails');
+      if(r.status===404)throw new Error(NOREPO);
+      if(r.status===401||r.status===403)throw new Error('GitHub refused the key ('+r.status+'): reconnect in Map → Trails');
       if(r.status!==409&&r.status!==422)throw new Error('GitHub said '+r.status);}
     throw new Error('another device kept saving at the same moment; try again');}
   function merge(cloud){var inC={};cloud.forEach(function(m){inC[key(m)]=1;});
@@ -644,8 +651,9 @@ window.WxMine=(function(){
     if(!loading)loading=(async function(){
       try{var own=merge((await pull()).items);
         if(own.length&&token())merge(await push(function(c){var h={};c.forEach(function(m){h[key(m)]=1;});
-          return c.concat(strip(own.filter(function(m){return!h[key(m)];})));},'Trails: add '+own.length+' saved in a browser'));}
-      catch(e){}
+          return c.concat(strip(own.filter(function(m){return!h[key(m)];})));},'Trails: add '+own.length+' saved in a browser'));
+        err='';}
+      catch(e){err=e.message==='nokey'?'':e.message;}   // this browser's copy stays as it was
       loading=null;fire();return list;})();
     return loading;}
   async function save(m){   // add or replace one trail: here at once, on GitHub when connected
@@ -659,10 +667,10 @@ window.WxMine=(function(){
     list=list.filter(function(x){return key(x)!==k;});localSet(list);fire();}
   async function connect(tok){   // check the key can write to the repo before keeping it
     var r=await fetch('https://api.github.com/repos/'+REPO,{headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+tok}});
-    if(!r.ok)throw new Error(r.status===401?'GitHub didn’t accept that key':'GitHub said '+r.status);
+    if(!r.ok)throw new Error(r.status===401?'GitHub didn’t accept that key':r.status===404?NOREPO:'GitHub said '+r.status);
     var j=await r.json();if(j.permissions&&!j.permissions.push)throw new Error('that key can read but not write: give it Contents → Read and write');
     localStorage.setItem(KEY,tok);return load();}
-  return{list:function(){return list;},load:load,save:save,remove:remove,connect:connect,key:key,
+  return{list:function(){return list;},load:load,save:save,remove:remove,connect:connect,key:key,error:function(){return err;},
     connected:function(){return!!token();},disconnect:function(){try{localStorage.removeItem(KEY);}catch(e){}fire();},
     on:function(f){subs.push(f);}};
 })();
@@ -856,10 +864,11 @@ window.TrailsLayer=function(map,opt){
   var GH_NEW='https://github.com/settings/personal-access-tokens/new';
   function syncUI(){var el=$('ex-sync');if(!el)return;
     el.innerHTML=window.WxMine.connected()
-      ?'<span class="ex-ok">☁ Saving to GitHub · every device sees your trails</span> <button type="button" data-a="off">Disconnect</button>'
-      :'Your trails show on every device. To save or remove them from this browser, <button type="button" data-a="how">connect GitHub</button>'
+      ?(window.WxMine.error()?'<span class="ex-err">GitHub: '+esc(window.WxMine.error())+'</span> <button type="button" data-a="off">Disconnect</button>'
+        :'<span class="ex-ok">☁ Saving to GitHub (private) · every device sees your trails</span> <button type="button" data-a="off">Disconnect</button>')
+      :'Your trails are private. To see and save them in this browser, <button type="button" data-a="how">connect GitHub</button>'
         +'<div class="ex-how" hidden><ol><li><a target="_blank" rel="noopener" href="'+GH_NEW+'">Create a GitHub key ↗</a>: any name, expiration up to a year, '
-        +'<b>Only select repositories</b> → oregon-weather-dashboard, <b>Repository permissions</b> → Contents → <b>Read and write</b>. Generate, copy.</li>'
+        +'<b>Only select repositories</b> → wx-trails, <b>Repository permissions</b> → Contents → <b>Read and write</b>. Generate, copy.</li>'
         +'<li>Paste it here (kept in this browser only):</li></ol><div class="ex-keyrow"><input type="password" autocomplete="off" placeholder="github_pat_…" aria-label="GitHub key">'
         +'<button type="button" data-a="save">Connect</button></div></div>';}
   function syncMsg(t){var el=$('ex-sync');if(!el)return;var n=el.querySelector('.ex-msg');if(!n){n=document.createElement('div');n.className='ex-msg';el.appendChild(n);}n.textContent=t;}
@@ -882,7 +891,7 @@ window.TrailsLayer=function(map,opt){
     window.addEventListener('storage',function(e){if(e.key===MINE_KEY&&ready)window.WxMine.load();});
   }
   // GitHub's list arrived or changed: redraw
-  window.WxMine.on(function(){if(ready)ready.then(refresh);});
+  window.WxMine.on(function(){syncUI();if(ready)ready.then(refresh);});
 
   return{
     show:function(v){on=v;if(P){P.hidden=!v;P.parentNode.classList.toggle('trl',v);setTimeout(function(){map.resize();},0);}

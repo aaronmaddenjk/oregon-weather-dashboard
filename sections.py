@@ -1,8 +1,8 @@
 """The Sections tab (page6): Oregon + Washington cut into 57 named hiking areas the owner works through
 BY HAND on AllTrails (open the area, open each trail, save it with the extension). Progress is live:
-your saved trails (window.WxMine, trails.json on the repo's "trails" branch) are counted into the area
+your saved trails (window.WxMine, trails.json in the private wx-trails repo) are counted into the area
 holding most of each trail's points, and drawn on a small SVG map (no Mapbox map, so no map loads).
-"Done" ticks sync like your trails: sections.json on the trails branch, written with the same GitHub key
+"Done" ticks sync like your trails: sections.json in the private wx-trails repo, read and written with the same GitHub key
 (localStorage wx-gh-token, Map -> Trails -> connect GitHub); this browser keeps a copy.
 Nothing here fetches from AllTrails: each area is only an "Open on AllTrails" link to its explore map.
 """
@@ -207,21 +207,22 @@ function count(){var list=window.WxMine?window.WxMine.list():[];
   BY.forEach(function(a){a.sort(function(x,y){return x.name.localeCompare(y.name);});});}
 
 // ---------- done ticks: sections.json on the trails branch (same GitHub key as your trails), plus this browser ----------
-var REPO='aaronmaddenjk/oregon-weather-dashboard',BR='trails',API='https://api.github.com/repos/'+REPO+'/contents/sections.json',LKEY='wx-sections-done';
+var REPO='aaronmaddenjk/wx-trails',BR='main',API='https://api.github.com/repos/'+REPO+'/contents/sections.json',LKEY='wx-sections-done';
 function token(){try{return localStorage.getItem('wx-gh-token')||'';}catch(e){return'';}}
 function hdr(){var h={Accept:'application/vnd.github+json'};if(token())h.Authorization='Bearer '+token();return h;}
 function localGet(){try{return JSON.parse(localStorage.getItem(LKEY)||'{}')||{};}catch(e){return{};}}
 function localSet(d){try{localStorage.setItem(LKEY,JSON.stringify(d));}catch(e){}}
 function b64(s){var u=new TextEncoder().encode(s),o='';for(var i=0;i<u.length;i+=0x8000)o+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(o);}
-async function pull(){   // -> {done, sha}
+async function pull(){   // -> {done, sha}; private repo, so only with a key
+  if(!token())throw new Error('nokey');
   var r=await fetch(API+'?ref='+BR,{headers:hdr(),cache:'no-store'});
-  if(r.status===404)return{done:{},sha:null};
-  if(!r.ok){var r2=await fetch('https://raw.githubusercontent.com/'+REPO+'/'+BR+'/sections.json?t='+Date.now());
-    if(r2.status===404)return{done:{},sha:null};if(!r2.ok)throw new Error(r.status);return{done:((await r2.json())||{}).done||{},sha:null,raw:true};}
+  if(r.status===404){var rr=await fetch('https://api.github.com/repos/'+REPO,{headers:hdr(),cache:'no-store'});
+    if(!rr.ok)throw new Error('your key can’t see the private wx-trails repo');return{done:{},sha:null};}
+  if(!r.ok)throw new Error('GitHub said '+r.status);
   var j=await r.json(),txt=new TextDecoder().decode(Uint8Array.from(atob((j.content||'').replace(/\s/g,'')),function(c){return c.charCodeAt(0);}));
   return{done:(JSON.parse(txt||'{}')||{}).done||{},sha:j.sha};}
 async function push(fn){
-  for(var k=0;k<3;k++){var g=await pull();if(g.raw)throw new Error('GitHub isn’t answering right now');
+  for(var k=0;k<3;k++){var g=await pull();
     var d=fn(Object.assign({},g.done)),body={message:'Sections: progress',content:b64(JSON.stringify({done:d},null,1)),branch:BR};if(g.sha)body.sha=g.sha;
     var r=await fetch(API,{method:'PUT',headers:Object.assign(hdr(),{'Content-Type':'application/json'}),body:JSON.stringify(body)});
     if(r.ok)return d;
@@ -237,8 +238,8 @@ async function loadDone(){DONE=localGet();render();
     if(own.length&&token())DONE=await push(function(d){own.forEach(function(k){d[k]=mine[k];});return d;});
     else own.forEach(function(k){DONE[k]=mine[k];});   // not connected: this browser's ticks stay on top
     localSet(DONE);
-    syncNote(token()?'☁ Ticks saved to GitHub · every device sees them':'Ticks show from GitHub; connect GitHub (Map → Trails) to change them on every device',!!token());}
-  catch(e){syncNote('Ticks kept in this browser (GitHub: '+(e.message||e)+')');}
+    syncNote('☁ Ticks saved to GitHub (private) · every device sees them',true);}
+  catch(e){syncNote(e.message==='nokey'?'Ticks and trails are private: connect GitHub (Map → Trails) to see them here':'Ticks kept in this browser (GitHub: '+(e.message||e)+')');}
   render();}
 async function setDone(id,on){
   if(on)DONE[id]=today();else delete DONE[id];localSet(DONE);render();

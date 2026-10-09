@@ -88,10 +88,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Trails (open, unpaved, not state/federal). Not covered yet: Saddle Mountain SNA, non-Metro city
   trails (OSM is the planned fill). The Map tab's "Trails" button (RegionLayers) creates
   `window.TrailsLayer`; the Trail Forecast map gets lines + tips but no panel. GPX uploads live in
-  "Your trails" (GPX uploads + every trail opened from the extension) live in `trails.json` on the repo's
-  `trails` branch (public, owner OK'd; publishing only replaces gh-pages). `window.WxMine` in TRAILS_JS
-  reads it keyless (GitHub API, raw.githubusercontent fallback) and writes it via the contents API with
-  a fine-grained key the owner pastes once per browser (Map → Trails → "connect GitHub"; localStorage
+  "Your trails" (GPX uploads + every trail opened from the extension) live in `trails.json` in the PRIVATE
+  repo aaronmaddenjk/wx-trails (branch main; moved 2026-10-08 from the public repo's `trails` branch, which was
+  deleted). `window.WxMine` in TRAILS_JS reads AND writes it via the contents API only with a key (no keyless
+  read: a browser without the key shows just its own local copy; a 404 is checked against the repo so a key
+  without wx-trails access shows an error, not an empty list), a fine-grained key with Contents read/write on
+  wx-trails that the owner pastes once per browser (Map → Trails → "connect GitHub"; localStorage
   `wx-gh-token`, per site origin). localStorage `wx-mytrails` is the local copy; `synced` = came from
   GitHub (so remote removals propagate); unsynced local ones upload on connect. Never put a key in code.
   Measured via `window.WxTrail` from trail_live.py. The extension (1.3+) opens the GitHub Pages
@@ -140,10 +142,15 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   right-click menu) opens links from a pasted / .txt list a batch (5-20) at a time, 0.7 s apart.
   Extension 1.8 (owner asked, 2026-10-08): Alt+Shift+A / right-click "Save every trail tab in this window" =
   the save above for each trail tab already open in the current window (already-saved skipped, sleeping tabs
-  woken, one at a time). Still only pages the owner opened; the extension never opens AllTrails pages itself.
+  woken, one at a time).
+  Extension 1.9 (owner asked, 2026-10-08): the trail list's "Open and save next 20" opens 20 unsaved links (0.7 s
+  apart), background.js saves each (saveTabs) and closes its tab; failures stay open and show their reason.
+  One batch per click, never continuing by itself; batch fixed at 20 (owner).
+  Extension 2.0: ✓ marks read wx-trails' trails.json via the GitHub API with a key pasted in the extension's
+  options (chrome.storage.local ghToken; checked against the repo before it's kept). Without it, ✓ = this browser's saves only.
 - Trail Sections tab (page6, `sections.py`, owner 2026-10-07): 57 named OR/WA areas to work through by hand
   on AllTrails. Live progress: WxMine's trails counted into the box holding most of each trail's points, drawn
-  on an SVG map (no Mapbox map load); "done" ticks in sections.json on the trails branch (same wx-gh-token),
+  on an SVG map (no Mapbox map load); "done" ticks in sections.json in wx-trails (same wx-gh-token),
   localStorage wx-sections-done as the copy. Supersedes the artifact checklist (claude.ai/artifact/BtNVH1SZMU65LanjuxfiCC).
 
 - Cities map: slim pills (icon, name, one number that follows the shading switch: feels like now /

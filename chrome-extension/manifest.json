@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trail Forecast for AllTrails, onX and Trailforks",
-  "version": "1.8",
+  "version": "2.0",
   "description": "On an AllTrails trail page, a Trailforks trail or route, or a route or track in the onX Backcountry web map, click to save it to your trails in your Oregon Weather dashboard (right-click: save and open its forecast).",
   "action": {
     "default_title": "Save this trail to your trails (right-click: save and open the forecast)",
@@ -18,7 +18,7 @@
     "https://www.alltrails.com/*", "https://alltrails.com/*",
     "https://www.trailforks.com/*", "https://trailforks.com/*","https://webmap.onxmaps.com/*", "https://backcountry.onxmaps.com/*",
     "https://aaronmaddenjk.github.io/*", "http://localhost/*",
-    "https://raw.githubusercontent.com/*"
+    "https://api.github.com/*"
   ],
   "options_page": "options.html"
 }
