@@ -37,6 +37,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 import http_cache
+import widgets
 http_cache.install()  # local runs reuse API responses for 3 h; off in GitHub Actions
 
 import nws
@@ -1440,7 +1441,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
         # one column per day: drop the hidden 3-hourly cells and the colspans that made room for them
         R={k:re.sub(r' colspan="\d+"','',re.sub(r'<td class="d\d+ ddet[^"]*"[^>]*>.*?</td>','',v)) for k,v in R.items()}
         if city:R=city_rows(cd,uid)   # the Cities table: its own, simpler rows
-        all_fc.append({"name":wp["name"],"lat":lat,"lon":lon,"elev_ft":elev_ft,"R":dict(R),"entries":entries,"h24":h24,"hrs":hrs,"depth":depth_now})
+        all_fc.append({"name":wp["name"],"lat":lat,"lon":lon,"elev_ft":elev_ft,"R":dict(R),"entries":entries,"h24":h24,"hrs":hrs,"depth":depth_now,"cd":cd})
     tbl_html=""
     if len(all_fc)>1:
         # waypoint switcher; mirrors the 3D map markers (and works when the map can't load)
@@ -1529,6 +1530,7 @@ function showWp_{uid}(i) {{
               "precip": max(e["precip"] for e in today), "rain": sum(e["precip_in"] for e in today),
               "clouds": ac, "icon": condition_icon(today), "elev_ft": all_fc[0]["elev_ft"]}
     sm["h24"] = all_fc[0]["h24"]
+    sm["days"] = all_fc[0]["cd"]   # the table's per-day numbers (the Portland home-screen widget)
     sm["hrs"] = all_fc[0]["hrs"]
     sm["points"] = [{"name": fc["name"], "elev_ft": round(fc["elev_ft"]), "hrs": fc["hrs"],
                      "depth": None if fc["depth"] is None else round(fc["depth"])} for fc in all_fc]
@@ -2145,6 +2147,8 @@ def build_cities_page():
     for ci, (city, (full_html, sm)) in enumerate(zip(CITIES, rendered)):
         print(f"  {city['name']}")
         sm["name"] = city["name"]; sm["lat"] = city["lat"]; sm["lon"] = city["lon"]
+        if city["name"] == "Portland":
+            WIDGET["city_days"] = sm.get("days") or []
         summaries.append(sm)
         if ci == 0:
             css_m = re.search(r'<style>(.*?)</style>', full_html, re.DOTALL)
@@ -3055,6 +3059,14 @@ def snow_summary_html(pi, lat, lon, ev, now, entries):
         if dd > today:
             fut[dd] = fut.get(dd, 0.0) + e["snow_in"]
     days_fut = list(fut.items())[:10]
+    if SKI_POINTS[pi]["name"] == "Meadows Base":   # the snow-timeline widget: today + the next 6 days, and the past
+        f7 = OrderedDict()
+        for e in entries:
+            dd = datetime.strptime(e["date_key"], "%Y-%m-%d").date()
+            if dd >= today:
+                f7[dd] = f7.get(dd, 0.0) + e["snow_in"]
+        WIDGET["hood_fut"] = list(f7.items())[:7]
+        WIDGET["hood_past"] = days_past
 
     def amt(v, big=False):
         if v < 0.05:
@@ -4445,6 +4457,7 @@ def build_dashboard() -> str:
 # that file every 5 minutes: a newer build reloads a tab in the background, and shows a small notice
 # in a tab you're looking at (so a reload never pulls the page out from under you).
 BUILD_ID = int(time.time())
+WIDGET = {}   # home-screen widgets (widgets.py): Portland's days, Meadows Base past + forecast snow
 RELOAD_JS = r"""
 (function(){
 var BUILD=__BUILD__,note=null;
@@ -4498,6 +4511,9 @@ def main():
     app_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")   # the installable app's files
     for fn in os.listdir(app_dir):
         shutil.copyfile(os.path.join(app_dir, fn), os.path.join(os.path.dirname(OUTPUT_PATH), fn))
+    if WIDGET.get("city_days") and WIDGET.get("hood_fut"):
+        widgets.render(os.path.dirname(OUTPUT_PATH), WIDGET["city_days"], WIDGET.get("hood_past", []), WIDGET["hood_fut"],
+                       datetime.now(ZoneInfo("America/Los_Angeles")).date())
     print(f"Wrote {OUTPUT_PATH} ({len(html_out) / 1024:.0f} KB)")
     print(f"API usage: {http_cache.summary()}")
 

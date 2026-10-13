@@ -193,6 +193,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
+  index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
+  `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site
+  5,370 ft, falling back to the model's past estimate labelled "estimated"; | today | today + 6 days of
+  forecast new snow, days 6-7 paler). Data via the global WIDGET dict: Portland's `sm["days"]` (the
+  Cities table's `cd`) and Meadows Base's past/future from snow_summary_html. Pillow's built-in font
+  (no ′ glyph: write "ft"; bold = same-colour stroke). The phone shows them with KWGT (free) image
+  elements pointed at the URLs, refreshed hourly. Owner declined KWGT-from-JSON (too fiddly).
 - Forecast lengths (owner, 2026-10-12): Cities + Volcanos tables 7 days (the NWS range; render_hike_forecast
   forecast_days 7, nbm_overlay 7), same as searched towns (7, WxPoint `days()`); the coastal tide strip 7 days.
   Mt Hood alone keeps 10 days (days 8-10 = ECMWF + NBM, never raw GFS). Icons 68x54 so 7 columns fit.
