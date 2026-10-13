@@ -1,108 +1,108 @@
 {
  "calibration": {
-  "updated": "2026-10-12T11:10+00:00",
+  "updated": "2026-10-13T11:10+00:00",
   "window": [
-   "2026-08-28",
-   "2026-10-11"
+   "2026-08-29",
+   "2026-10-12"
   ],
-  "wet_station_days": 278,
+  "wet_station_days": 280,
   "trust": 0.9,
   "weights": {
-   "ncep_nbm_conus": 0.325,
-   "ecmwf_ifs": 0.266,
-   "gem_hrdps_continental": 0.139,
+   "ncep_nbm_conus": 0.326,
+   "ecmwf_ifs": 0.265,
+   "gem_hrdps_continental": 0.14,
    "ncep_hrrr_conus": 0.081,
    "icon_seamless": 0.093,
    "gfs_global": 0.095
   },
-  "qpf_scale": 1.014
+  "qpf_scale": 1.015
  },
  "models": {
   "ncep_nbm_conus": {
-   "days": 1027,
-   "fc_total": 115.23,
-   "obs_total": 103.8,
+   "days": 1025,
+   "fc_total": 114.89,
+   "obs_total": 103.6,
    "bias_pct": 11,
-   "mae_wet": 0.152,
-   "pod": 0.63,
+   "mae_wet": 0.151,
+   "pod": 0.62,
    "far": 0.2
   },
   "ecmwf_ifs": {
-   "days": 1027,
-   "fc_total": 92.94,
-   "obs_total": 103.8,
-   "bias_pct": -10,
+   "days": 1025,
+   "fc_total": 92.6,
+   "obs_total": 103.6,
+   "bias_pct": -11,
    "mae_wet": 0.155,
-   "pod": 0.59,
+   "pod": 0.58,
    "far": 0.18
   },
   "gem_hrdps_continental": {
-   "days": 1027,
-   "fc_total": 105.09,
-   "obs_total": 103.8,
+   "days": 1025,
+   "fc_total": 105.1,
+   "obs_total": 103.6,
    "bias_pct": 1,
-   "mae_wet": 0.181,
-   "pod": 0.51,
+   "mae_wet": 0.179,
+   "pod": 0.5,
    "far": 0.21
   },
   "ncep_hrrr_conus": {
-   "days": 1027,
-   "fc_total": 108.78,
-   "obs_total": 103.8,
+   "days": 1025,
+   "fc_total": 108.44,
+   "obs_total": 103.6,
    "bias_pct": 5,
-   "mae_wet": 0.211,
-   "pod": 0.53,
+   "mae_wet": 0.21,
+   "pod": 0.52,
    "far": 0.15
   },
   "icon_seamless": {
-   "days": 1027,
-   "fc_total": 91.26,
-   "obs_total": 103.8,
+   "days": 1025,
+   "fc_total": 91.03,
+   "obs_total": 103.6,
    "bias_pct": -12,
    "mae_wet": 0.18,
    "pod": 0.51,
    "far": 0.24
   },
   "gfs_global": {
-   "days": 1027,
-   "fc_total": 84.34,
-   "obs_total": 103.8,
+   "days": 1025,
+   "fc_total": 84.18,
+   "obs_total": 103.6,
    "bias_pct": -19,
-   "mae_wet": 0.176,
-   "pod": 0.56,
+   "mae_wet": 0.175,
+   "pod": 0.55,
    "far": 0.18
   }
  },
  "blend": {
-  "days": 1027,
-  "fc_total": 103.62,
-  "obs_total": 103.8,
+  "days": 1025,
+  "fc_total": 103.48,
+  "obs_total": 103.6,
   "bias_pct": 0,
-  "mae_wet": 0.134,
-  "pod": 0.61,
-  "far": 0.18
+  "mae_wet": 0.133,
+  "pod": 0.6,
+  "far": 0.19
  },
  "vs_nws": {
   "nws": {
-   "days": 369,
-   "fc_total": 26.13,
-   "obs_total": 39.6,
-   "bias_pct": -34,
-   "mae_wet": 0.176,
-   "pod": 0.44,
+   "days": 390,
+   "fc_total": 26.16,
+   "obs_total": 40.1,
+   "bias_pct": -35,
+   "mae_wet": 0.172,
+   "pod": 0.41,
    "far": 0.09
   },
   "blend": {
-   "days": 369,
-   "fc_total": 35.95,
-   "obs_total": 39.6,
-   "bias_pct": -9,
-   "mae_wet": 0.134,
-   "pod": 0.52,
+   "days": 390,
+   "fc_total": 36.05,
+   "obs_total": 40.1,
+   "bias_pct": -10,
+   "mae_wet": 0.131,
+   "pod": 0.49,
    "far": 0.1
   },
   "since": "2026-09-24",
-  "wet_days": 89
+  "wet_days": 94
  },
  "snow": {
   "days": 11,
@@ -120,8 +120,8 @@
    "elev_ft": 3520.0,
    "mountain": "Mt. Baker",
    "km": 8.7,
-   "obs_precip": 8.9,
-   "fc_precip": 7.48,
+   "obs_precip": 8.8,
+   "fc_precip": 7.42,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -133,8 +133,8 @@
    "elev_ft": 4940.0,
    "mountain": "Mt. Baker",
    "km": 9.9,
-   "obs_precip": 9.4,
-   "fc_precip": 8.54,
+   "obs_precip": 9.0,
+   "fc_precip": 8.4,
    "obs_snow": 0.0,
    "fc_snow": 0.9
   },
@@ -146,7 +146,7 @@
    "elev_ft": 5990.0,
    "mountain": "Glacier Peak",
    "km": 17.4,
-   "obs_precip": 3.5,
+   "obs_precip": 3.6,
    "fc_precip": 4.48,
    "obs_snow": 0.0,
    "fc_snow": 2.3
@@ -160,7 +160,7 @@
    "mountain": "Glacier Peak",
    "km": 20.1,
    "obs_precip": 2.3,
-   "fc_precip": 2.62,
+   "fc_precip": 2.63,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -172,8 +172,8 @@
    "elev_ft": 4850.0,
    "mountain": "Mt. Olympus",
    "km": 21.6,
-   "obs_precip": 6.3,
-   "fc_precip": 6.4,
+   "obs_precip": 6.4,
+   "fc_precip": 6.41,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -186,7 +186,7 @@
    "mountain": "Mt. Rainier",
    "km": 7.9,
    "obs_precip": 6.7,
-   "fc_precip": 6.3,
+   "fc_precip": 6.31,
    "obs_snow": 0.0,
    "fc_snow": 0.4
   },
@@ -225,7 +225,7 @@
    "mountain": "Mt. Adams",
    "km": 24.2,
    "obs_precip": 3.6,
-   "fc_precip": 4.3,
+   "fc_precip": 4.31,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -238,7 +238,7 @@
    "mountain": "Mt. St. Helens",
    "km": 2.9,
    "obs_precip": 8.8,
-   "fc_precip": 7.47,
+   "fc_precip": 7.49,
    "obs_snow": 0.0,
    "fc_snow": 0.1
   },
@@ -250,8 +250,8 @@
    "elev_ft": 3990.0,
    "mountain": "Mt. St. Helens",
    "km": 5.2,
-   "obs_precip": 7.3,
-   "fc_precip": 7.22,
+   "obs_precip": 7.2,
+   "fc_precip": 7.23,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -264,7 +264,7 @@
    "mountain": "Table Mountain",
    "km": 15.7,
    "obs_precip": 4.9,
-   "fc_precip": 4.8,
+   "fc_precip": 4.81,
    "obs_snow": 0.0,
    "fc_snow": 0.0
   },
@@ -290,7 +290,7 @@
    "mountain": "Mt. Hood",
    "km": 6.0,
    "obs_precip": 5.7,
-   "fc_precip": 4.18,
+   "fc_precip": 4.19,
    "obs_snow": 0.0,
    "fc_snow": 1.1
   },
@@ -302,8 +302,8 @@
    "elev_ft": 4410.0,
    "mountain": "Mt. Hood",
    "km": 10.1,
-   "obs_precip": 4.6,
-   "fc_precip": 3.84,
+   "obs_precip": 4.7,
+   "fc_precip": 3.85,
    "obs_snow": 0.0,
    "fc_snow": 0.1
   },
@@ -316,9 +316,9 @@
    "mountain": "Sacajawea Peak",
    "km": 8.6,
    "obs_precip": 2.5,
-   "fc_precip": 3.57,
+   "fc_precip": 3.56,
    "obs_snow": 4.0,
-   "fc_snow": 4.0
+   "fc_snow": 4.2
   },
   {
    "triplet": "653:OR:SNTL",
@@ -331,7 +331,7 @@
    "obs_precip": 2.5,
    "fc_precip": 3.28,
    "obs_snow": 8.0,
-   "fc_snow": 3.6
+   "fc_snow": 3.9
   },
   {
    "triplet": "614:OR:SNTL",
@@ -355,7 +355,7 @@
    "mountain": "South Sister",
    "km": 11.2,
    "obs_precip": 3.2,
-   "fc_precip": 3.18,
+   "fc_precip": 3.19,
    "obs_snow": 0.0,
    "fc_snow": 0.6
   },
@@ -368,7 +368,7 @@
    "mountain": "South Sister",
    "km": 14.5,
    "obs_precip": 3.9,
-   "fc_precip": 4.59,
+   "fc_precip": 4.58,
    "obs_snow": 0.0,
    "fc_snow": 0.1
   },
@@ -406,8 +406,8 @@
    "elev_ft": 6020.0,
    "mountain": "Crater Lake",
    "km": 13.5,
-   "obs_precip": 3.6,
-   "fc_precip": 3.55,
+   "obs_precip": 3.7,
+   "fc_precip": 3.56,
    "obs_snow": 0.0,
    "fc_snow": 1.6
   },
@@ -420,7 +420,7 @@
    "mountain": "Crater Lake",
    "km": 15.5,
    "obs_precip": 2.6,
-   "fc_precip": 2.29,
+   "fc_precip": 2.3,
    "obs_snow": 0.0,
    "fc_snow": 0.2
   }
