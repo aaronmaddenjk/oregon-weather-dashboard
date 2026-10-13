@@ -20,6 +20,7 @@ Run locally:
 import html
 import itertools
 import json
+import shutil
 import math
 import os
 import re
@@ -4314,6 +4315,10 @@ def build_dashboard() -> str:
     <html><head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#FAFAFA">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <title>Oregon Weather Forecast — {now_str}</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
@@ -4460,6 +4465,8 @@ st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;displ
   +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}'
   +'@media (max-width:760px){.wx-newer{right:12px;left:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));justify-content:space-between}}';   // above the tab bar
 document.head.appendChild(st);
+// installed as an app (owner, 2026-10-12): the service worker keeps the last good copy for offline use
+if('serviceWorker' in navigator)addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});
 })();
 """
 
@@ -4488,6 +4495,9 @@ def main():
         f.write(html_out)
     with open(os.path.join(os.path.dirname(OUTPUT_PATH), "version.json"), "w", encoding="utf-8") as f:
         json.dump({"build": BUILD_ID}, f)   # what open dashboards check to know a newer build is out
+    app_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")   # the installable app's files
+    for fn in os.listdir(app_dir):
+        shutil.copyfile(os.path.join(app_dir, fn), os.path.join(os.path.dirname(OUTPUT_PATH), fn))
     print(f"Wrote {OUTPUT_PATH} ({len(html_out) / 1024:.0f} KB)")
     print(f"API usage: {http_cache.summary()}")
 

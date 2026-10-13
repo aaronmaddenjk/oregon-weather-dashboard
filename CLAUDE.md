@@ -185,6 +185,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   gusts >= 30), 76x61 px, NO text under it (owner) - the name (Sunny / Mostly sunny / Partly / Mostly
   cloudy / Cloudy / Showers / Rain / Snow / Rain & snow, + ", windy") is only the svg <title> / aria-label.
   Wet = >= 0.01" and chance >= 30%; Rain (not Showers) at 70%+ or 0.15"+.
+- INSTALLABLE APP (owner, 2026-10-12; "option 1" = PWA, not an APK): `app/` holds manifest.webmanifest,
+  sw.js and the icons (drawn by `tools/make_icons.py`, Pillow; orange tile, snowy peak, low sun); every
+  build copies app/* next to index.html. The page links the manifest/icons + theme-color and RELOAD_JS
+  registers sw.js. The service worker is NETWORK FIRST for the site's own files (the last good copy only
+  when offline), never caches version.json, leaves other hosts alone except Mapbox's versioned
+  mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
+  Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
+  Owner installs from Chrome on Android: menu -> Install app.
 - Forecast lengths (owner, 2026-10-12): Cities + Volcanos tables 7 days (the NWS range; render_hike_forecast
   forecast_days 7, nbm_overlay 7), same as searched towns (7, WxPoint `days()`); the coastal tide strip 7 days.
   Mt Hood alone keeps 10 days (days 8-10 = ECMWF + NBM, never raw GFS). Icons 68x54 so 7 columns fit.
