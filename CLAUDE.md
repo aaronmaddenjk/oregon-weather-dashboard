@@ -185,6 +185,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   gusts >= 30), 76x61 px, NO text under it (owner) - the name (Sunny / Mostly sunny / Partly / Mostly
   cloudy / Cloudy / Showers / Rain / Snow / Rain & snow, + ", windy") is only the svg <title> / aria-label.
   Wet = >= 0.01" and chance >= 30%; Rain (not Showers) at 70%+ or 0.15"+.
+- Forecast lengths (owner, 2026-10-12): Cities + Volcanos tables 7 days (the NWS range; render_hike_forecast
+  forecast_days 7, nbm_overlay 7), same as searched towns (7, WxPoint `days()`); the coastal tide strip 7 days.
+  Mt Hood alone keeps 10 days (days 8-10 = ECMWF + NBM, never raw GFS). Icons 68x54 so 7 columns fit.
 - Removed (owner, 2026-10-09): the WeatherNext predictability badges on every daily table (no longer
   fetched: `pred = {}`; `ensemble_predictability()` / `pred_badge()` left unused) and Mt Hood's
   10-day "Cloud base" row.

@@ -1191,17 +1191,17 @@ def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
 # charts. cityTable() in CITY_JS draws the same markup for a searched town. ----------
 CY_CSS = r"""
 .cy-tbl { border-collapse:separate; border-spacing:0; }
-.cy-tbl th { min-width:0; padding:9px 12px 9px 0; vertical-align:middle; font-size:12px; color:#5A5F6B; }
-.cy-tbl td.dsum { min-width:74px; padding:9px 6px; vertical-align:middle; border-left:1px solid #EEF0F3; }
+.cy-tbl th { min-width:0; width:84px; white-space:normal; line-height:1.25; padding:9px 10px 9px 0; vertical-align:middle; font-size:12px; color:#5A5F6B; }
+.cy-tbl td.dsum { min-width:70px; padding:9px 5px; vertical-align:middle; border-left:1px solid #EEF0F3; }
 .cy-tbl tr + tr td.dsum, .cy-tbl tr + tr th { border-top:1px solid #F0F1F4; }
 .cy-tbl td.wkd { background:#F7F8FA; }
 .cy-tbl td.dsel { background:#FFF1E8; }
 .cy-tbl .dh { white-space:nowrap; }
 .cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
 .cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
-.cy-tbl .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
-.cy-art { display:flex; flex-direction:column; align-items:center; min-height:60px; margin:2px 0 0; }
-.cy-art svg { width:76px; height:61px; overflow:visible; }
+.cy-tbl .dh .tt { display:block; width:fit-content; margin:3px auto 0; color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
+.cy-art { display:flex; flex-direction:column; align-items:center; min-height:54px; margin:2px 0 0; }
+.cy-art svg { width:68px; height:54px; overflow:visible; }
 .cy-lab { font-size:10.5px; font-weight:600; color:#5A5F6B; white-space:nowrap; margin-top:1px; }
 .cy-art .wx-fall { animation:wxfall 1.3s linear infinite; }
 .cy-art .wx-blow { stroke-dasharray:14 14; animation:wxblow 2.2s ease-in-out infinite; }
@@ -1293,7 +1293,7 @@ def city_labels():
 
 
 def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_pts=None, snow_obs=None, city=False):
-    """Returns (full_html, summary): the 6-day tables, and the first waypoint's today plus
+    """Returns (full_html, summary): the 7-day tables, and the first waypoint's today plus
     every waypoint's next 24 hours (for the chart panels) and all its hours (hour_cols, for the
     day-click charts). `profile` (from elevation_profile) moves temperature and wind to each
     waypoint's elevation; `qpf` (one series per waypoint) replaces ECMWF/HRRR precipitation;
@@ -1307,11 +1307,11 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
         lat,lon=wp["lat"],wp["lon"]
         pe=requests.get("https://api.open-meteo.com/v1/elevation",params={"latitude":lat,"longitude":lon}).json().get("elevation",[None])[0]
         ev={"elevation":pe} if pe is not None else {}
-        d=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"],"temperature_unit":"fahrenheit","precipitation_unit":"inch","wind_speed_unit":"mph","timezone":"auto","forecast_days":6,"models":"ecmwf_ifs",**ev}).json()
+        d=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"],"temperature_unit":"fahrenheit","precipitation_unit":"inch","wind_speed_unit":"mph","timezone":"auto","forecast_days":7,"models":"ecmwf_ifs",**ev}).json()
         h=d["hourly"];tz=d.get("timezone","UTC");now=datetime.now(ZoneInfo(tz)).replace(tzinfo=None);elev_ft=d.get("elevation",0)*3.28084
-        bm=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["precipitation_probability","cloud_cover_low","cloud_cover_mid","cloud_cover_high","uv_index","wind_direction_10m"],"timezone":"auto","forecast_days":6,**ev}).json().get("hourly",{})
+        bm=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["precipitation_probability","cloud_cover_low","cloud_cover_mid","cloud_cover_high","uv_index","wind_direction_10m"],"timezone":"auto","forecast_days":7,**ev}).json().get("hourly",{})
         h["precipitation_probability"]=bm.get("precipitation_probability",[0]*len(h["time"]))
-        tr=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m"],"temperature_unit":"fahrenheit","timezone":"auto","forecast_days":6,**ev}).json().get("hourly",{})
+        tr=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m"],"temperature_unit":"fahrenheit","timezone":"auto","forecast_days":7,**ev}).json().get("hourly",{})
         if "temperature_2m" in tr and len(tr["temperature_2m"])==len(h["time"]):h["temperature_2m"]=tr["temperature_2m"];h["dew_point_2m"]=tr["dew_point_2m"]
         hr=requests.get(url,params={"latitude":lat,"longitude":lon,"hourly":["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"],"temperature_unit":"fahrenheit","precipitation_unit":"inch","wind_speed_unit":"mph","timezone":"auto","forecast_days":2,"models":"gfs_hrrr",**ev}).json()
         hh=hr.get("hourly",{});hi={t:i for i,t in enumerate(hh.get("time",[]))};ts=now.strftime("%Y-%m-%d")
@@ -1320,7 +1320,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
                 j=hi[t]
                 for k in ["temperature_2m","dew_point_2m","cloud_cover","cloud_cover_low","cloud_cover_mid","cloud_cover_high","cloud_base","visibility","wind_speed_10m","wind_gusts_10m","precipitation","snowfall"]:
                     if k in hh and j<len(hh[k]) and hh[k][j] is not None:h[k][i]=hh[k][j]
-        nbm_overlay(h,lat,lon,ev,6)
+        nbm_overlay(h,lat,lon,ev,7)
         if qpf:  # precipitation for this waypoint: the NWS's, our blend where they have none
             for i,t in enumerate(h["time"]):
                 if qpf[wi].get(t) is not None:h["precipitation"][i]=qpf[wi][t]
@@ -1340,7 +1340,7 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
                 if pg.get(t) is not None:h["wind_gusts_10m"][i]=max(h["wind_gusts_10m"][i] or 0,pg[t])
                 if pw.get(t) is not None:h["wind_speed_10m"][i]=max(h["wind_speed_10m"][i] or 0,pw[t])
         vis=h.get("visibility",[None]*len(h["time"]))
-        aq=requests.get("https://air-quality-api.open-meteo.com/v1/air-quality",params={"latitude":lat,"longitude":lon,"hourly":["us_aqi","pm2_5"],"timezone":"auto","forecast_days":6}).json().get("hourly",{})
+        aq=requests.get("https://air-quality-api.open-meteo.com/v1/air-quality",params={"latitude":lat,"longitude":lon,"hourly":["us_aqi","pm2_5"],"timezone":"auto","forecast_days":7}).json().get("hourly",{})
         aqi_idx={t:i for i,t in enumerate(aq.get("time",[]))};aqi_l=aq.get("us_aqi",[])
         hrs,depth_now=hour_cols(h,n,bm,aq,now,pe,snow_obs)
         # the estimated snow depth at the end of each day (volcanoes): the table's Snow depth row
@@ -1911,7 +1911,7 @@ function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||
     +'<span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7 18a5 5 0 0 1 10 0M12 12V7M9.5 9.5 12 12l2.5-2.5" fill="none" stroke="#D9580F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sunset <b>'+s.set+'</b></span>'
     +'<span>Daylight <b>'+s.len+'</b> <em>'+(s.delta<0?'−'+(-s.delta):'+'+s.delta)+' min tomorrow</em></span>'
     +'<span class="cs-moon">'+MOON.emoji+' '+MOON.name+' <em>'+MOON.pct+'% lit</em></span>';}
-// the chosen city: its charts, its marker, its sun times, and only its 6-day forecast below
+// the chosen city: its charts, its marker, its sun times, and only its 7-day forecast below
 window.selectCity=function(i,init){
   if(i===undefined)i=ccSel;ccSel=i;sunLine(i);
   var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;
@@ -1936,7 +1936,7 @@ var WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function clock(ms,short){var d=new Date(ms),h=d.getUTCHours(),m=d.getUTCMinutes(),mm=(m<10?'0':'')+m;
   return short?((h%12)||12)+':'+mm+(h<12?'a':'p'):((h%12)||12)+':'+mm+(h<12?' am':' pm');}
 function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' curve
-  var now=Date.now()+off*1000,t0=Math.floor(now/DAY)*DAY,t1=t0+6*DAY,W=960,H=230,pl=34,pr=8,pt=32,pb=24;
+  var now=Date.now()+off*1000,t0=Math.floor(now/DAY)*DAY,t1=t0+7*DAY,W=960,H=230,pl=34,pr=8,pt=32,pb=24;
   var fts=ev.map(function(e){return e.ft;}),lo=Math.min(0,Math.min.apply(null,fts))-1.6,hi=Math.max.apply(null,fts)+1.8;
   var X=function(t){return pl+(t-t0)/(t1-t0)*(W-pl-pr);},Y=function(v){return pt+(hi-v)/(hi-lo)*(H-pt-pb);},f1=function(v){return v.toFixed(1);};
   function height(t){for(var k=0;k+1<ev.length;k++){var a=ev[k],b=ev[k+1];if(a.t<=t&&t<=b.t){var f=(t-a.t)/(b.t-a.t);   // half-cosine between extremes
@@ -1944,10 +1944,10 @@ function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' cur
   var P=[];for(var t=t0;t<=t1;t+=20*6e4){var v=height(t);if(v!=null)P.push([X(t),Y(v)]);}
   if(P.length<2)return'';
   var line='M'+P.map(function(p){return f1(p[0])+','+f1(p[1]);}).join('L'),base=Y(lo),z=Y(0),s=[];
-  for(var k=-1;k<6;k++){   // nights (sunset to sunrise): tide-pooling wants daylight
+  for(var k=-1;k<7;k++){   // nights (sunset to sunrise): tide-pooling wants daylight
     var a=Math.max(t0,sunUTC(lat,lon,t0+k*DAY)[1]+off*1000),b=Math.min(t1,sunUTC(lat,lon,t0+(k+1)*DAY)[0]+off*1000);
     if(b>a)s.push('<rect x="'+f1(X(a))+'" y="'+(pt-4)+'" width="'+f1(X(b)-X(a))+'" height="'+(H-pt-pb+4)+'" fill="#EEF0F5"/>');}
-  for(k=0;k<6;k++){var d=t0+k*DAY,dt=new Date(d);   // a hairline at each midnight and the day's name
+  for(k=0;k<7;k++){var d=t0+k*DAY,dt=new Date(d);   // a hairline at each midnight and the day's name
     s.push('<line x1="'+f1(X(d))+'" x2="'+f1(X(d))+'" y1="'+(pt-18)+'" y2="'+(H-pb)+'" stroke="#DDE0E6"/><text x="'+f1(X(d)+5)+'" y="'+(pt-9)+'" class="td-day">'+WD[dt.getUTCDay()].toUpperCase()+' '+dt.getUTCDate()+'</text>');}
   // water, and teal only between the curve and the 0 ft line where it dips below (minus tides)
   var last=P[P.length-1][0],first=P[0][0];
@@ -1964,7 +1964,7 @@ function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' cur
     s.push('<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+(minus?4:3)+'" fill="'+(minus?'#0B7A87':'#1F5F8B')+'" stroke="#fff" stroke-width="1.5"><title>'+tip+'</title></circle>');
     s.push(e.hi?'<text x="'+f1(x)+'" y="'+f1(y-7)+'" text-anchor="middle" class="td-hi">'+clock(e.t,1)+'</text>'
       :'<text x="'+f1(x)+'" y="'+f1(y+15)+'" text-anchor="middle" class="td-lo'+(minus?' td-minus':'')+'">'+clock(e.t,1)+'</text>');});
-  return'<svg class="tide-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tides, next six days">'+s.join('')+'</svg>';}
+  return'<svg class="tide-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tides, next seven days">'+s.join('')+'</svg>';}
 function tideBox(ev,station,lat,lon,off,id){var svg=tideSVG(ev,lat,lon,off,id);if(!svg)return'';
   return'<div class="tide-box"><div class="tide-h">Tides <span>NOAA · '+station+' · feet above mean lower low water · grey = night · <i class="minus">minus tides</i> are the best for tide-pooling · hover a high or low for its exact time</span></div>'+svg+'</div>';}
 function evOf(rows){return rows.map(function(r){return{t:Date.parse(r[0]+':00Z'),ft:r[1],hi:r[2]};});}
@@ -2093,7 +2093,7 @@ async function showTown(g){
     sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
     selectCity(S);
     if(best){var d0=new Date(Date.now()+f.off*1000-DAY),ymd=d0.toISOString().slice(0,10).replace(/-/g,'');
-      fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&station='+best.id+'&time_zone=lst_ldt&units=english&interval=hilo&format=json&begin_date='+ymd+'&range=192&application=oregon-weather-dashboard')
+      fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&station='+best.id+'&time_zone=lst_ldt&units=english&interval=hilo&format=json&begin_date='+ymd+'&range=216&application=oregon-weather-dashboard')
         .then(function(r){return r.json();}).then(function(j){if(tok!==tTok)return;var p=j.predictions||[];if(p.length<4)return;
           var ev=p.map(function(x){return{t:Date.parse(x.t.replace(' ','T')+':00Z'),ft:+x.v,hi:x.type==='H'};});
           TIDE_HTML[S]=tideBox(ev,esc(best.name)+' ('+(best.d*0.621371).toFixed(1)+' mi away)',lat,lon,f.off,'s');if(ccSel===S)showTide();})
@@ -2367,7 +2367,7 @@ def build_cities_page():
     # (for the curve's ends); drawn in the page by tideBox() in CITY_JS, like a searched town's
     tide_data = {}
     for ci, c in enumerate(CITIES):
-        ev = tides.hilo(c["name"], today - timedelta(days=1), days=8)
+        ev = tides.hilo(c["name"], today - timedelta(days=1), days=9)
         if ev and len(ev) >= 4:
             tide_data[ci] = {"st": tides.station_name(c["name"]),
                              "ev": [[e["t"].strftime("%Y-%m-%dT%H:%M"), round(e["ft"], 2), e["hi"]] for e in ev]}
@@ -2425,7 +2425,7 @@ def build_cities_page():
 
 
 # ---------------------------------------------------------------------------
-# Page 2: Volcanos (formerly Mountain Trails) - PNW overview map + 24-hour charts, 6-day forecasts below
+# Page 2: Volcanos (formerly Mountain Trails) - PNW overview map + 24-hour charts, 7-day forecasts below
 # ---------------------------------------------------------------------------
 # North to south. Waypoints run summit -> mid -> base; the first is the default view and
 # the map-marker summary.
@@ -2653,7 +2653,7 @@ function show(){
   var m=MT[sel];drawTiers();drawCharts();pinWx();
   var w=window['showWp_'+m.uid];if(w&&tier<m.points.length)w(tier);
 }
-// the chosen mountain: its charts (summit by default), its marker, and its 6-day forecast first
+// the chosen mountain: its charts (summit by default), its marker, and its 7-day forecast first
 window.selectMountain=function(i,init){
   if(i===undefined)i=sel;
   if(i!==sel){tier=0;cam=0;}sel=i;
