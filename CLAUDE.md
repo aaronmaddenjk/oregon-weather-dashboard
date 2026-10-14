@@ -193,6 +193,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- Mt Hood's 10-day table works like Cities (owner, 2026-10-13): no 3-hourly expansion; a day click ->
+  `wxDay('hood', di)` -> that day's hours in the Mt Hood charts for the selected lift (again: next 24 h),
+  column highlighted (.dsel), kept through a refresh ('hday'). HP[i].hrs = every hour of the 10 days per lift
+  (dated; was h24). toggleSkiDay is no longer called.
 - KEEPS YOUR PLACE THROUGH A REFRESH (owner, 2026-10-13): `window.WxState` (STATE_JS, sessionStorage 'wx-view')
   - tab; Cities city / searched-or-located town (re-fetched quietly) / clicked day (same date only); Volcanos
   mountain + tier + day; Mt Hood lift; Map tab layer + view (restored in RegionLayers' load handler, Map tab

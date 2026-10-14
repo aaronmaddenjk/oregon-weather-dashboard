@@ -3199,7 +3199,7 @@ def layer_depth(layers, elev_m, dt):
 # Mt Hood page, top-right panel: the next 24 hours at Top of Blue / Top of Cascade (with
 # the cloud cross-section with the tier's elevation dotted), and Meadows' cameras.
 HOOD_JS = r"""
-var HP=__HP__, HCAMS=__HCAMS__, sel=0, view='fc', cam=0;
+var HP=__HP__, HCAMS=__HCAMS__, sel=0, view='fc', cam=0, daySel=null;
 var charts=WxCharts(document.getElementById('hood-cc')), tiers=document.getElementById('hood-tiers');
 var camsEl=document.getElementById('hood-cams'), camsView=WxCams(camsEl);
 function draw(){
@@ -3208,7 +3208,9 @@ function draw(){
   document.querySelectorAll('#page3 .ski-marker').forEach(function(el,j){el.classList.toggle('active',j===sel);});
   document.querySelectorAll('#page3 [data-p]').forEach(function(el){el.hidden=+el.dataset.p!==sel;});
   document.querySelectorAll('#page3 .hood-pick [data-t]').forEach(function(b){b.classList.toggle('active',+b.dataset.t===sel);});
-  charts.set(HP[sel].h24,{elev:HP[sel].elev_ft});
+  charts.set(WxCharts.day(HP[sel].hrs,daySel),{elev:HP[sel].elev_ft});
+  var k=document.querySelector('#hood-cc .cc-kicker');if(k)k.textContent=daySel==null?'Next 24 hours':WxCharts.dayName(HP[sel].hrs,daySel);
+  document.querySelectorAll('#page3 .ski-tbl td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&c.dataset.d===String(daySel));});
 }
 function setView(v){
   var n=HCAMS.length;if(v==='cams'&&!n)v='fc';view=v;
@@ -3219,8 +3221,10 @@ function setView(v){
   if(!fc)camsView.show(HCAMS,Math.min(cam,n-1),function(j){cam=j;});
 }
 window.hoodPick=function(i){if(i!==undefined)sel=i;WxState.set('hood',sel);draw();};
+WxDayH.push(function(uid,di){if(uid!=='hood')return false;daySel=daySel===di?null:di;
+  WxState.set('hday',daySel==null?null:{d:daySel,on:WxState.today});draw();return true;});
 (function(){   // the video poster: Mt Hood with the weather at the base right now
-  var b=document.getElementById('yt-badge'),h=HP[0]&&HP[0].h24[0];if(!b||!h||!window.wxArt)return;
+  var b=document.getElementById('yt-badge'),h=HP[0]&&HP[0].hrs[0];if(!b||!h||!window.wxArt)return;
   var w=window.wxArt(h),ic=b.querySelector('svg');
   if(w.back)ic.insertAdjacentHTML('beforebegin','<svg class="mtn-wx" viewBox="0 0 32 22" aria-hidden="true">'+w.back+'</svg>');
   if(w.front)ic.insertAdjacentHTML('afterend','<svg class="mtn-wx" viewBox="0 0 32 22" aria-hidden="true">'+w.front+'</svg>');
@@ -3231,7 +3235,8 @@ window.hoodPick=function(i){if(i!==undefined)sel=i;WxState.set('hood',sel);draw(
 [tiers].concat([].slice.call(document.querySelectorAll('#page3 .hood-pick'))).forEach(function(g){
   g.addEventListener('click',function(ev){var b=ev.target.closest('[data-t]');if(b)window.hoodPick(+b.dataset.t);});});
 document.getElementById('hood-view').addEventListener('click',function(ev){var b=ev.target.closest('[data-view]');if(b)setView(b.dataset.view);});
-(function(){var h=WxState.get('hood');if(typeof h==='number'&&HP[h])sel=h;})();
+(function(){var h=WxState.get('hood'),dy=WxState.get('hday');if(typeof h==='number'&&HP[h])sel=h;
+  if(dy&&dy.on===WxState.today)daySel=dy.d;})();
 draw();setView('fc');
 """
 
@@ -3324,6 +3329,7 @@ def build_ski_page():
     profile = elevation_profile(SKI_POINTS, qpf, days=7, nws_pts=nws_pts)
     layers = hood_layers(profile)
     h24_all = []
+    hrs_all = []   # every forecast hour per lift (with its date), for a clicked day in the charts
     snow_sums = []
 
     for pi, pt in enumerate(SKI_POINTS):
@@ -3428,7 +3434,7 @@ def build_ski_page():
                     h["wind_speed_10m"][i] = max(h["wind_speed_10m"][i] or 0, pw[t])
 
         entries = []
-        next24 = []   # the next 24 hours, hour by hour, whatever the time of day
+        allh = []   # every hour from now on, for the charts (the next 24, or a clicked day)
         prev_date = None
         day_num = 0
         acc_p = acc_s = 0
@@ -3448,10 +3454,10 @@ def build_ski_page():
                     continue
             acc_p += p_h
             acc_s += s_h
-            if len(next24) < 24:   # the next 24 hours, hour by hour (the chart panel)
+            if day_num <= 10:   # the chart panel's hours (the table's 10 days)
                 ty = "" if p_h < 0.005 else ("snow" if f_h >= 0.8 else "mix" if f_h > 0.2 else "rain")
                 vm = meters_to_miles(h.get("visibility", [None] * n)[i])
-                next24.append({"t": dt.strftime("%a %I%p").replace(" 0", " "), "temp": round(t_h or 0),
+                allh.append({"t": dt.strftime("%a %I%p").replace(" 0", " "), "date": dk, "temp": round(t_h or 0),
                                "feels": round(feels_like(t_h, h["wind_speed_10m"][i], d_h) or t_h or 0),
                                "wind": round(h["wind_speed_10m"][i] or 0), "gust": round(h["wind_gusts_10m"][i] or 0),
                                "sky": round(h["cloud_cover"][i] or 0), "p": round(p_h, 3), "s": round(s_h, 2), "ty": ty,
@@ -3461,7 +3467,7 @@ def build_ski_page():
                 bft = _base_ft(cloud_base_display(h["cloud_base"][i], h["cloud_cover_low"][i], h["cloud_cover_mid"][i],
                                                   h["cloud_cover_high"][i], h["cloud_cover"][i], t_h, d_h,
                                                   h.get("visibility", [None] * n)[i], elev_ft), pe)
-                next24[-1]["cb"] = None if bft is None else bft * 100
+                allh[-1]["cb"] = None if bft is None else bft * 100
             if day_num != 1 and (dt.hour - 2) % 3 != 0:
                 continue
             vis_m = h.get("visibility", [None] * n)[i]
@@ -3490,6 +3496,8 @@ def build_ski_page():
                 )
             })
 
+        next24 = allh[:24]
+        hrs_all.append(allh)
         today = [e for e in entries if entries and e["day_num"] == entries[0]["day_num"]]   # the first day with hours ahead
         h24_all.append(next24)
         if pt["name"] == "Top of Blue":
@@ -3563,8 +3571,8 @@ def build_ski_page():
             wk = ' wkd' if dd.weekday() >= 5 else ''
             d_hide = 'display:none;'
             s_cls, d_cls = f'd{di} dsum{wk}', f'd{di} ddet'
-            oc = f'onclick="toggleSkiDay({di})" title="Click for 3-hourly detail"'
-            td = f'<td class="{s_cls}" colspan="{nc}" {oc}>'
+            oc = f'onclick="wxDay(\'hood\',{di})" title="Show this day in the charts"'
+            td = f'<td class="{s_cls}" data-d="{di}" {oc}>'
             rows["time"] += (td + f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>'
                              f'<div class="ds-ci">{ci}</div></td>')
             # new snow: the day's total (the snow summary below charts it)
@@ -3581,21 +3589,7 @@ def build_ski_page():
             rows["vis"] += td + f'<span class="vis-pill" style="color:{vis_color(mv)}">{fmt_vis(mv)}</span></td>'
             rows["chance"] += td + f'{precip_icon(mp)} {mp}%</td>'
             rows["base"] += td + f'{html.escape(cb)}</td>'
-            for ei, e in enumerate(ents):
-                bdr = 'border-left:1px solid #DDE0E6;' if ei == 0 else ''
-                dl = f'<div class="dh"><b>{dd:%a}</b> <span>{dd.day}</span>{tt}</div>' if ei == 0 else ''
-                rows["time"] += f'<td class="{d_cls}" style="{d_hide}{bdr}">{dl}<div class="tl">{e["time"]}</div></td>'
-            for key, formatter in [
-                ("snow", lambda e: f'<span class="snow-txt">{fmt_depth(e["snow_in"])}</span>' if e["snow_in"] >= 0.05 else '<span style="color:#DDD;">·</span>'),
-                ("temp", lambda e: f'<div class="temp-pill" style="background:{temp_bg(e["temp"])}">{e["temp"]:.0f}°</div>'),
-                ("wind", lambda e: f'<span class="wv" style="color:{wind_color(e["wind"])}">{e["wind"]:.0f}</span><span class="gust">g{e["gust"]:.0f}</span>'),
-                ("vis", lambda e: f'<span class="vis-pill" style="color:{vis_color(e["vis_mi"])}">{fmt_vis(e["vis_mi"])}</span>'),
-                ("chance", lambda e: f'{precip_icon(e["precip"])} {e["precip"]}%'),
-                ("base", lambda e: html.escape(e["cb"]))
-            ]:
-                for ei, e in enumerate(ents):
-                    bdr = 'border-left:1px solid #DDE0E6;' if ei == 0 else ''
-                    rows[key] += f'<td class="{d_cls}" style="{d_hide}{bdr}">{formatter(e)}</td>'
+            # (no 3-hourly columns any more: a clicked day shows its hours in the charts, as on Cities)
 
         actual_rows = ""
         for key, label in [
@@ -3717,6 +3711,7 @@ def build_ski_page():
     .ski-tbl tr + tr td.dsum, .ski-tbl tr + tr th { border-top:1px solid #F0F1F4; }
     .ski-tbl th { padding:7px 12px 7px 0; vertical-align:middle; }
     .ski-tbl td.wkd { background:#F7F8FA; }
+    .ski-tbl td.dsum.dsel { background:#FFF1E8; }
     .dh { white-space:nowrap; }
     .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
     .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
@@ -3832,8 +3827,8 @@ def build_ski_page():
         '<div class="ski-card ski-card-placeholder"><div class="ski-card-title">\U0001F4CB Meadows Report</div>'
         '<div class="ski-card-sub">Mt Hood Meadows</div><div style="color:#999;font-size:11px;margin-top:10px;">No report posted today.</div></div>')
 
-    hp = [{"name": pt["name"], "elev_ft": round(mp["elev_ft"]), "h24": h24}
-          for pt, mp, h24 in zip(SKI_POINTS, map_points, h24_all)]
+    hp = [{"name": pt["name"], "elev_ft": round(mp["elev_ft"]), "hrs": hrs}
+          for pt, mp, hrs in zip(SKI_POINTS, map_points, hrs_all)]
     if layers:
         layers["pts"] = [{"name": x["name"], "elev_ft": x["elev_ft"]} for x in hp]   # for the layer legend's readouts
     lyr_ctl = ('<div class="lyr-ctl" id="hlyr"><div><button data-l="none">Terrain</button><button class="active" data-l="temp">Temperature</button>'
