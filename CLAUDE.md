@@ -193,6 +193,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- OPENS WHERE YOU ARE (owner, 2026-10-13, installed phone app ONLY: display-mode standalone; never a browser
+  tab): CITY_JS asks for the location on open (Android asks permission once; maximumAge 15 min). Within 10 mi
+  (16.1 km) of a city -> that city; elsewhere in the OR/WA box -> `showTown({..., here:true})`, a live forecast
+  like a searched town, labelled "📍 Near <place>" from Nominatim reverse (zoom 14; city/town/village/hamlet/
+  locality only, else "Your location") at Open-Meteo's elevation. Portland stays up until it's ready; failure
+  = quietly nothing. A pick made before the fix wins (locPicked / ccSel / a search). Nothing stored.
+  Test from the console: `wxLocateAt(lat, lon)`. Don't end a JS line in CITY_JS with a // comment that
+  precedes more code on the same line (twice now that ate the rest of the line).
 - HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
   index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
   `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site

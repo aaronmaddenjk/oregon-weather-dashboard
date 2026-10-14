@@ -2063,21 +2063,22 @@ function sunFor(lat,lon,off){var t0=Math.floor((Date.now()+off*1000)/DAY)*DAY,a=
   var d0=(a[1]-a[0])/6e4,d1=(b[1]-b[0])/6e4;
   return{rise:clock(a[0]+off*1000),set:clock(a[1]+off*1000),len:Math.floor(d0/60)+'h '+Math.floor(d0%60)+'m',delta:Math.round(d1-d0)};}
 async function showTown(g){
-  var name=g.name,st=(g.admin1==='Oregon'?'OR':'WA'),lat=g.latitude,lon=g.longitude,ele=g.elevation||0,tok=++tTok;
+  var name=g.name,st=(g.admin1==='Oregon'?'OR':'WA'),lat=g.latitude,lon=g.longitude,ele=g.elevation||0,tok=++tTok,here=!!g.here;
   clearTown();NAMES[S]=name;
-  sDetail.innerHTML='<div class="cq-status">Getting the forecast for '+esc(name)+'…</div>';sDetail.hidden=false;
-  NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d&&j!==S)d.hidden=true;});
+  if(!here){   // (your location: the current city stays up until its forecast is ready)
+    sDetail.innerHTML='<div class="cq-status">Getting the forecast for '+esc(name)+'…</div>';sDetail.hidden=false;
+    NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d&&j!==S)d.hidden=true;});}
   try{
     var P=[{p:{lat:lat,lon:lon,ele:ele}}],f=await window.WxPoint.forecast(P),pt=P[0];if(tok!==tTok)return;
     var h24=pt.all.slice(0,24),today=pt.hours.slice(pt.now).filter(function(h){return h.t.slice(0,10)===pt.hours[pt.now].t.slice(0,10);});
     var hi=Math.max.apply(null,today.map(function(h){return h.temp;})),lo=Math.min.apply(null,today.map(function(h){return h.temp;}));
     var ic=window.WxPoint.icon(pt.hours.slice(pt.now,pt.now+12));
-    HRS[S]=pt.all;SUN[S]=sunFor(lat,lon,f.off);META[S]=Math.round(ele*3.28084).toLocaleString('en-US')+'′ · '+lat.toFixed(3)+', '+lon.toFixed(3)+' · searched, not saved';
-    var o=document.createElement('option');o.value=S;o.textContent=name+', '+st;document.getElementById('cc-city').appendChild(o);
+    HRS[S]=pt.all;SUN[S]=sunFor(lat,lon,f.off);META[S]=Math.round(ele*3.28084).toLocaleString('en-US')+'′ · '+lat.toFixed(3)+', '+lon.toFixed(3)+(here?' · your location, not saved':' · searched, not saved');
+    var o=document.createElement('option');o.value=S;o.textContent=here?name:name+', '+st;document.getElementById('cc-city').appendChild(o);
     // its pill on the map, dashed: it goes away with the next search or the ×
     var mk=window.cityMarkers;mk[S]={name:name,lat:lat,lon:lon,icon:ic,feels:h24[0].feels,now:h24[0].temp,wnow:h24[0].wind,gnow:h24[0].gust,gust:h24[0].gust,hi:Math.round(hi),
       rain24:Math.round(h24.reduce(function(a,h){return a+(h.ty?h.p:0);},0)*100)/100};
-    var el=document.createElement('div');el.className='weather-marker searched';
+    var el=document.createElement('div');el.className='weather-marker searched'+(here?' here':'');
     el.innerHTML='<span class="wm-ic">'+ic+'</span><span class="wm-name">'+esc(name)+'</span><span class="wm-temp"></span>';
     el.addEventListener('click',function(){selectCity(S);});cityMarkerEls[S]=el;
     var map=window.cityMap;if(map){sMarker=new mapboxgl.Marker({element:el,anchor:'left'}).setLngLat([lon,lat]).addTo(map);
@@ -2090,7 +2091,7 @@ async function showTown(g){
     var coastKm=Infinity;COAST.forEach(function(c){var d=kmTo(lat,lon,c[1],c[0]);if(d<coastKm)coastKm=d;});
     var best=null;if(coastKm<=8.05)TIDE_ST.forEach(function(s){var d=kmTo(lat,lon,s[2],s[3]),e=d+2*Math.max(0,s[3]-lon)*79;
       if(d<=25&&(!best||e<best.e))best={id:s[0],name:s[1],d:d,e:e};});
-    sDetail.innerHTML='<div class="cq-bar">Searched town, not saved<button type="button" class="cq-clear" aria-label="Clear the searched town">× Clear</button></div>'
+    sDetail.innerHTML='<div class="cq-bar">'+(here?'Your location, not saved':'Searched town, not saved')+'<button type="button" class="cq-clear" aria-label="Clear the searched town">× Clear</button></div>'
       +'<div class="city-detail-body"><div class="scroll-wrap">'+cityTable(pt,'search')+'</div>'
       +'<p class="cq-foot">'+(pt.nws?'National Weather Service forecast':'Open-Meteo forecast')+' at the town’s elevation, computed live in your browser (the same engine as Trail Forecast)</p></div>';
     sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
@@ -2101,9 +2102,33 @@ async function showTown(g){
           var ev=p.map(function(x){return{t:Date.parse(x.t.replace(' ','T')+':00Z'),ft:+x.v,hi:x.type==='H'};});
           TIDE_HTML[S]=tideBox(ev,esc(best.name)+' ('+(best.d*0.621371).toFixed(1)+' mi away)',lat,lon,f.off,'s');if(ccSel===S)showTide();})
         .catch(function(){});}
-  }catch(e){if(tok!==tTok)return;sDetail.innerHTML='<div class="cq-status err">'+esc((e&&e.message)||'The forecast couldn’t be loaded.')+'</div>';}
+  }catch(e){if(tok!==tTok)return;if(here){clearTown();return;}sDetail.innerHTML='<div class="cq-status err">'+esc((e&&e.message)||'The forecast couldn’t be loaded.')+'</div>';}
 }
 selectCity(0,true);
+
+// ---------- the installed phone app opens on where you are (owner, 2026-10-13): within 10 miles of one of
+// the cities -> that city; anywhere else in Oregon / Washington -> a live forecast for the spot (like a
+// searched town), named after the nearest place by OpenStreetMap's Nominatim. Only in the installed app
+// (display-mode standalone), never in a browser tab. Nothing is stored; the location only goes into the
+// same forecast requests a search makes. A city or town picked before the fix arrives wins. ----------
+var locT0=Date.now(),locPicked=false;
+document.getElementById('cc-city').addEventListener('change',function(){locPicked=true;});
+async function locateAt(lat,lon){
+  if(locPicked||ccSel!==0||NAMES.length>S)return 'skipped: you already picked';
+  if(lat<41.9||lat>49.1||lon<-124.9||lon>-116.4)return 'outside Oregon / Washington';
+  var best=-1,bd=Infinity;for(var i=0;i<S;i++){var d=kmTo(lat,lon,LL[i][0],LL[i][1]);if(d<bd){bd=d;best=i;}}
+  if(bd<=16.1){if(best!==ccSel)selectCity(best);return 'near '+NAMES[best];}   // 10 miles
+  var name='Your location',state=lat>46.1?'Washington':'Oregon',ele=0;   // (no town around: stays "Your location")
+  try{var r=await (await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&lat='+lat.toFixed(4)+'&lon='+lon.toFixed(4))).json(),a=r.address||{};
+    var place=a.city||a.town||a.village||a.hamlet||a.locality;if(place)name='Near '+place;if(a.state==='Oregon'||a.state==='Washington')state=a.state;}catch(e){}
+  try{ele=(await (await fetch('https://api.open-meteo.com/v1/elevation?latitude='+lat.toFixed(4)+'&longitude='+lon.toFixed(4))).json()).elevation[0]||0;}catch(e){}
+  if(locPicked||ccSel!==0||NAMES.length>S)return 'skipped: you picked while it looked';
+  await showTown({name:'📍 '+name,admin1:state,latitude:lat,longitude:lon,elevation:ele,here:true});
+  return 'forecast for '+name;}
+window.wxLocateAt=locateAt;   // (for testing from the console)
+if(((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true)&&navigator.geolocation)
+  navigator.geolocation.getCurrentPosition(function(pos){locateAt(pos.coords.latitude,pos.coords.longitude);},function(){},
+    {enableHighAccuracy:false,timeout:10000,maximumAge:15*60000});
 """
 
 
