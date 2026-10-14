@@ -42,10 +42,10 @@ def _card():
 
 
 def _header(d, label, dot, right=""):
-    d.ellipse([36 * SS, 36 * SS, 50 * SS, 50 * SS], fill=dot)
-    _text(d, (60, 43), label.upper(), 22, MUT, True, "lm")
+    d.ellipse([30 * SS, 27 * SS, 46 * SS, 43 * SS], fill=dot)
+    _text(d, (56, 35), label.upper(), 26, MUT, True, "lm")
     if right:
-        _text(d, (W - 36, 43), right, 20, MUT, False, "rm")
+        _text(d, (W - 30, 35), right, 24, MUT, False, "rm")
 
 
 def _save(im, path):
@@ -129,27 +129,27 @@ def week(name, days, path, today):
     _header(d, name, ORANGE, "6 days")
     lo = min(x["lo"] for x in days) - 3
     hi = max(x["hi"] for x in days) + 3
-    cw = (W - 56) / len(days)
-    top, bot = 236, 368
+    cw = (W - 24) / len(days)
+    top, bot = 272, 384
     for i, x in enumerate(days):
-        cx = 28 + cw * i + cw / 2
+        cx = 12 + cw * i + cw / 2
         dd = date.fromisoformat(x["dk"])
-        _text(d, (cx, 86), "TODAY" if dd == today else DOW[dd.weekday()], 22, ORANGE if dd == today else INK, True, "mm")
-        _art(d, cx - 44, 104, 2.2, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
+        _text(d, (cx, 84), "TODAY" if dd == today else DOW[dd.weekday()], 30, ORANGE if dd == today else INK, True, "mm")
+        _art(d, cx - 66, 100, 3.3, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
         y1 = top + (hi - x["hi"]) / (hi - lo) * (bot - top)
         y2 = bot - (x["lo"] - lo) / (hi - lo) * (bot - top)
-        d.rounded_rectangle([(cx - 6) * SS, top * SS, (cx + 6) * SS, bot * SS], radius=6 * SS, fill=LINE)
+        d.rounded_rectangle([(cx - 8) * SS, top * SS, (cx + 8) * SS, bot * SS], radius=8 * SS, fill=LINE)
         bar = Image.new("RGBA", (1, 2))
         bar.putpixel((0, 0), _temp_col(x["hi"]) + (255,)); bar.putpixel((0, 1), _temp_col(x["lo"]) + (255,))
-        bh = max(12, int((y2 - y1) * SS))
-        grad = bar.resize((12 * SS, bh), Image.BILINEAR)
+        bh = max(16, int((y2 - y1) * SS))
+        grad = bar.resize((16 * SS, bh), Image.BILINEAR)
         mask = Image.new("L", grad.size, 0)
-        ImageDraw.Draw(mask).rounded_rectangle([0, 0, grad.size[0] - 1, grad.size[1] - 1], radius=6 * SS, fill=255)
-        im.paste(grad, (int((cx - 6) * SS), int(y1 * SS)), mask)
-        _text(d, (cx, y1 - 18), f"{x['hi']:.0f}°", 28, INK, True, "mm")
-        _text(d, (cx, y1 + bh / SS + 18), f"{x['lo']:.0f}°", 23, MUT, False, "mm")
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, grad.size[0] - 1, grad.size[1] - 1], radius=8 * SS, fill=255)
+        im.paste(grad, (int((cx - 8) * SS), int(y1 * SS)), mask)
+        _text(d, (cx, y1 - 24), f"{x['hi']:.0f}°", 40, INK, True, "mm")
+        _text(d, (cx, y1 + bh / SS + 22), f"{x['lo']:.0f}°", 32, MUT, False, "mm")
         p = round(x["mp"] or 0)
-        _text(d, (cx, 446), f"{p}%", 22, RAIN if p >= 10 else (194, 198, 206), True, "mm")
+        _text(d, (cx, 452), f"{p}%", 30, RAIN if p >= 10 else (194, 198, 206), True, "mm")
     _save(im, path)
 
 
@@ -179,32 +179,40 @@ def snow_timeline(past, fut, path, today, measured=True):
     _header(d, "Meadows Base snow", SNOW, "5,361 ft")
     vals = [v for _, v in past] + [v for _, v in fut]
     mx = max([4.0] + vals)
-    n, x0, x1, base, top = len(vals), 36, W - 36, 326, 96
+    n, x0, x1, base, top = len(vals), 22, W - 22, 318, 108
     bw = (x1 - x0) / n
     for i, (dd, v) in enumerate(past + fut):
         f = i >= len(past)
         col = (SNOW2 if i >= len(past) + 5 else SNOW) if f else PAST
         h = v / mx * (base - top)
-        bx = x0 + i * bw + 7
-        d.rounded_rectangle([bx * SS, (base - max(3, h)) * SS, (bx + bw - 14) * SS, base * SS], radius=6 * SS, fill=col)
+        bx = x0 + i * bw + 5
+        d.rounded_rectangle([bx * SS, (base - max(4, h)) * SS, (bx + bw - 10) * SS, base * SS], radius=8 * SS, fill=col)
         if v >= 0.5:
-            _text(d, (bx + (bw - 14) / 2, base - h - 16), f"{v:.0f}" if v >= 1.5 else f"{v:.1f}", 20, SNOW if f else MUT, True, "mm")
-        _text(d, (bx + (bw - 14) / 2, base + 22), DOW[dd.weekday()][0], 19, (154, 160, 172), True, "mm")
+            _text(d, (bx + (bw - 10) / 2, base - h - 20), f"{v:.0f}" if v >= 1.5 else f"{v:.1f}", 28, SNOW if f else MUT, True, "mm")
+        _text(d, (bx + (bw - 10) / 2, base + 28), DOW[dd.weekday()][0], 26, (154, 160, 172), True, "mm")
     tx = x0 + len(past) * bw
     for y in range(int(top) - 6, base + 4, 10):   # today: a dashed orange line
         d.line([(tx * SS, y * SS), (tx * SS, (y + 5) * SS)], fill=ORANGE, width=3 * SS // 2)
-    _text(d, (tx + 6, top - 4), "TODAY", 18, ORANGE, True, "lm")
+    _text(d, (tx + 7, top - 8), "TODAY", 24, ORANGE, True, "lm")
     ps, fs = sum(v for _, v in past), sum(v for _, v in fut)
-    _text(d, (36, 388), "LAST 7 DAYS", 18, MUT, True)
+    _text(d, (30, 384), "LAST 7 DAYS", 24, MUT, True)
     big = f'{ps:.0f}"' if ps >= 1 or ps < 0.05 else f'{ps:.1f}"'
-    _text(d, (36, 418), big, 38, (90, 95, 107), True)
-    _text(d, (36 + _font(38).getlength(big) / SS + 10, 434), "depth gained" if measured else "estimated", 19, MUT)
-    _text(d, (W - 36, 388), "NEXT 7 DAYS", 18, MUT, True, "ra")
-    _text(d, (W - 36, 418), f'{fs:.0f}" forecast' if fs >= 1 or fs < 0.05 else f'{fs:.1f}" forecast', 38, SNOW, True, "ra")
+    _text(d, (30, 414), big, 50, (90, 95, 107), True)
+    _text(d, (30 + _font(50).getlength(big) / SS + 12, 436), "depth gained" if measured else "estimated", 26, MUT)
+    _text(d, (W - 30, 384), "NEXT 7 DAYS", 24, MUT, True, "ra")
+    _text(d, (W - 30, 414), f'{fs:.0f}" forecast' if fs >= 1 or fs < 0.05 else f'{fs:.1f}" forecast', 50, SNOW, True, "ra")
     _save(im, path)
 
 
 def render(out_dir, city_days, hood_past, hood_fut, today):
+    try:   # what was drawn, so `python widgets.py` can redraw without a build
+        import json
+        os.makedirs(".cache", exist_ok=True)
+        with open(os.path.join(".cache", "widget_data.json"), "w", encoding="utf-8") as f:
+            json.dump({"today": today.isoformat(), "city_days": city_days,
+                       "past": [(d.isoformat(), v) for d, v in hood_past], "fut": [(d.isoformat(), v) for d, v in hood_fut]}, f)
+    except Exception:
+        pass
     """Draw both widgets into out_dir; any failure only costs that widget (the build goes on)."""
     try:
         week("Portland", city_days, os.path.join(out_dir, "widget-week.png"), today)
@@ -215,3 +223,13 @@ def render(out_dir, city_days, hood_past, hood_fut, today):
         snow_timeline(g or hood_past[-7:], hood_fut[:7], os.path.join(out_dir, "widget-snow.png"), today, measured=bool(g))
     except Exception as exc:
         print(f"  WARNING: snow widget not drawn ({exc})")
+
+
+if __name__ == "__main__":   # redraw from the last build's data (tuning the look without a build)
+    import json
+    with open(os.path.join(".cache", "widget_data.json"), encoding="utf-8") as f:
+        D = json.load(f)
+    t = date.fromisoformat(D["today"])
+    render("docs", D["city_days"], [(date.fromisoformat(a), v) for a, v in D["past"]],
+           [(date.fromisoformat(a), v) for a, v in D["fut"]], t)
+    print("redrawn")
