@@ -905,6 +905,11 @@ function hover(e){
     if(opt.onLoad)opt.onLoad(map);
     // the Map tab (the one with the trail panel) opens with your trails on - hikes first (owner)
     if(opt.trailPanel&&!trlOn){var tb=ctl.querySelector('[data-trails]');if(tb)tb.click();}
+    if(opt.trailPanel){   // the Map tab after a refresh: the layer and view you had
+      var sl=WxState.get('mlayer'),lb=sl&&sl!==st.l&&ctl.querySelector('[data-l="'+sl+'"]');if(lb)lb.click();
+      var mv=WxState.get('mview');if(mv&&mv.c)map.jumpTo({center:mv.c,zoom:mv.z,pitch:mv.p||0,bearing:mv.b||0});
+      map.on('moveend',function(){var c=map.getCenter();
+        WxState.set('mview',{c:[+c.lng.toFixed(4),+c.lat.toFixed(4)],z:+map.getZoom().toFixed(2),p:Math.round(map.getPitch()),b:Math.round(map.getBearing())});});}
   });
   map.on('moveend',render);
   map.on('mousemove',hover);
@@ -919,7 +924,7 @@ function hover(e){
       if(window.TrailsLayer){trl=trl||window.TrailsLayer(map,{panel:opt.trailPanel,tip:tip,beforeId:sym});trl.show(trlOn);}return;}
     if(b.dataset.fires!==undefined){fireOn=!fireOn;b.classList.toggle('active',fireOn);b.setAttribute('aria-pressed',fireOn);
       ['fire-fill','fire-line','fire-dot','fire-name'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',fireOn?'visible':'none');});return;}
-    if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')play(false);retime();}
+    if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')play(false);retime();if(opt.trailPanel)WxState.set('mlayer',st.l);}
     if(b.dataset.mode){mode=b.dataset.mode;total=false;retime();}
     if(b.dataset.total!==undefined){total=!total;play(false);}
     if(b.dataset.smode){smode=b.dataset.smode;}
@@ -1906,7 +1911,8 @@ function drawCharts(){var hs=HRS[ccSel]||[];charts.set(WxCharts.day(hs,daySel));
   document.getElementById('cc-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(hs,daySel);
   var d=document.getElementById('city_detail_'+ccSel);
   if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&(c.classList.contains('d'+daySel)||c.dataset.d===String(daySel)));});}
-WxDayH.push(function(uid,di){if(uid!=='city'+ccSel&&!(uid==='search'&&ccSel===S))return false;daySel=daySel===di?null:di;drawCharts();return true;});
+WxDayH.push(function(uid,di){if(uid!=='city'+ccSel&&!(uid==='search'&&ccSel===S))return false;daySel=daySel===di?null:di;drawCharts();
+  WxState.set('cday',daySel==null?null:{d:daySel,on:WxState.today});return true;});
 // the page header: the selected city's sunrise, sunset and daylight, and the moon
 function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||!s)return;
   el.innerHTML='<span class="cs-city">'+NAMES[i]+'</span>'
@@ -1917,6 +1923,7 @@ function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||
 // the chosen city: its charts, its marker, its sun times, and only its 7-day forecast below
 window.selectCity=function(i,init){
   if(i===undefined)i=ccSel;ccSel=i;sunLine(i);
+  if(!init)WxState.set('city',i===S?'town':i);
   var s=document.getElementById('cc-city');if(s){s.value=i;document.getElementById('cc-name').textContent=s.options[i].text;
     var pl=document.getElementById('cc-place');if(pl)pl.textContent=s.options[i].text;}
   var mt=document.getElementById('cy-meta');if(mt)mt.textContent=META[i]||'';
@@ -2064,8 +2071,9 @@ function sunFor(lat,lon,off){var t0=Math.floor((Date.now()+off*1000)/DAY)*DAY,a=
   return{rise:clock(a[0]+off*1000),set:clock(a[1]+off*1000),len:Math.floor(d0/60)+'h '+Math.floor(d0%60)+'m',delta:Math.round(d1-d0)};}
 async function showTown(g){
   var name=g.name,st=(g.admin1==='Oregon'?'OR':'WA'),lat=g.latitude,lon=g.longitude,ele=g.elevation||0,tok=++tTok,here=!!g.here;
+  if(g.label!==undefined){here=!!g.label;}   // (restored after a refresh: quiet load, original label)
   clearTown();NAMES[S]=name;
-  if(!here){   // (your location: the current city stays up until its forecast is ready)
+  if(!here&&g.label===undefined){   // (your location / a restore: the current city stays up until ready)
     sDetail.innerHTML='<div class="cq-status">Getting the forecast for '+esc(name)+'…</div>';sDetail.hidden=false;
     NAMES.forEach(function(_,j){var d=document.getElementById('city_detail_'+j);if(d&&j!==S)d.hidden=true;});}
   try{
@@ -2094,7 +2102,8 @@ async function showTown(g){
     sDetail.innerHTML='<div class="cq-bar">'+(here?'Your location, not saved':'Searched town, not saved')+'<button type="button" class="cq-clear" aria-label="Clear the searched town">× Clear</button></div>'
       +'<div class="city-detail-body"><div class="scroll-wrap">'+cityTable(pt,'search')+'</div>'
       +'<p class="cq-foot">'+(pt.nws?'National Weather Service forecast':'Open-Meteo forecast')+' at the town’s elevation, computed live in your browser (the same engine as Trail Forecast)</p></div>';
-    sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();});
+    sDetail.querySelector('.cq-clear').addEventListener('click',function(){++tTok;clearTown();WxState.set('town',null);if(WxState.get('city')==='town')WxState.set('city',0);});
+    WxState.set('town',{name:name,admin1:g.admin1,latitude:lat,longitude:lon,elevation:ele,here:here});
     selectCity(S);
     if(best){var d0=new Date(Date.now()+f.off*1000-DAY),ymd=d0.toISOString().slice(0,10).replace(/-/g,'');
       fetch('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&datum=MLLW&station='+best.id+'&time_zone=lst_ldt&units=english&interval=hilo&format=json&begin_date='+ymd+'&range=216&application=oregon-weather-dashboard')
@@ -2126,7 +2135,15 @@ async function locateAt(lat,lon){
   await showTown({name:'📍 '+name,admin1:state,latitude:lat,longitude:lon,elevation:ele,here:true});
   return 'forecast for '+name;}
 window.wxLocateAt=locateAt;   // (for testing from the console)
-if(((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true)&&navigator.geolocation)
+// after a refresh: back to the city / town and day you had (and no location lookup - that's for a fresh open)
+(function(){var c=WxState.get('city'),tw=WxState.get('town'),cd=WxState.get('cday');
+  if(c===undefined&&!tw)return;
+  locPicked=true;
+  var day=function(){if(cd&&cd.on===WxState.today){daySel=cd.d;drawCharts();}};
+  if(c==='town'&&tw)showTown(Object.assign({},tw,{here:true,label:tw.here})).then(day);
+  else if(typeof c==='number'&&c>0&&c<S){selectCity(c);day();}
+  else day();})();
+if(!locPicked&&((window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true)&&navigator.geolocation)
   navigator.geolocation.getCurrentPosition(function(pos){locateAt(pos.coords.latitude,pos.coords.longitude);},function(){},
     {enableHighAccuracy:false,timeout:10000,maximumAge:15*60000});
 """
@@ -2612,7 +2629,8 @@ function drawCharts(){var p=MT[sel].points[tier];charts.set(WxCharts.day(p.hours
   document.getElementById('mtn-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(p.hours,daySel);
   var d=document.getElementById('mtn_'+sel);
   if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&c.classList.contains('d'+daySel));});}
-WxDayH.push(function(uid,di){if(uid!==UIDS[sel])return false;daySel=daySel===di?null:di;drawCharts();return true;});
+WxDayH.push(function(uid,di){if(uid!==UIDS[sel])return false;daySel=daySel===di?null:di;drawCharts();
+  WxState.set('mday',daySel==null?null:{d:daySel,on:WxState.today});return true;});
 
 // ---- current weather drawn onto the selected mountain's pin, in the icon's own 32x22 units:
 // sun/moon behind the peak; clouds, falling rain/snow and wind streaks in front ----
@@ -2680,13 +2698,13 @@ function drawTiers(){
   document.getElementById('mtn-wp').textContent=pt.name+(pt.depth!=null?' \u00b7 ~'+pt.depth+'\u2033 seasonal snow':'');
 }
 function show(){
-  var m=MT[sel];drawTiers();drawCharts();pinWx();
+  var m=MT[sel];drawTiers();drawCharts();pinWx();WxState.set('tier',tier);
   var w=window['showWp_'+m.uid];if(w&&tier<m.points.length)w(tier);
 }
 // the chosen mountain: its charts (summit by default), its marker, and its 7-day forecast first
 window.selectMountain=function(i,init){
   if(i===undefined)i=sel;
-  if(i!==sel){tier=0;cam=0;}sel=i;
+  if(i!==sel){tier=0;cam=0;}sel=i;WxState.set('mtn',i);
   var s=document.getElementById('mtn-pick');if(s){s.value=i;document.getElementById('mtn-name').innerHTML=MT[i].icon+MT[i].name;}
   document.querySelectorAll('.mtn-marker').forEach(function(el,j){el.classList.toggle('active',j===i);});
   if(window.pinFlip)window.pinFlip();
@@ -2699,7 +2717,10 @@ tiers.addEventListener('click',function(ev){var b=ev.target.closest('[data-t]');
 // a waypoint chip in the selected mountain's forecast table moves the charts (and pin weather) with it
 window.onWp=function(uid,j){if(uid===UIDS[sel]&&j!==tier){tier=j;drawTiers();drawCharts();pinWx();}};
 window.trailsShown=function(){window.runLazy('trails-overview');show();};
-selectMountain(__DEF__);   // opens on Mt. Hood
+(function(){var m=WxState.get('mtn'),t=WxState.get('tier'),dy=WxState.get('mday');   // opens on Mt. Hood, or where you were
+  selectMountain(typeof m==='number'&&MT[m]?m:__DEF__);
+  if(typeof t==='number'&&t>0&&t<MT[sel].points.length){tier=t;show();}
+  if(dy&&dy.on===WxState.today){daySel=dy.d;drawCharts();}})();
 """
 
 
@@ -3197,7 +3218,7 @@ function setView(v){
   var fc=v==='fc';camsEl.hidden=fc;document.querySelector('#hood-cc .cc-charts').hidden=!fc;tiers.hidden=!fc;
   if(!fc)camsView.show(HCAMS,Math.min(cam,n-1),function(j){cam=j;});
 }
-window.hoodPick=function(i){if(i!==undefined)sel=i;draw();};
+window.hoodPick=function(i){if(i!==undefined)sel=i;WxState.set('hood',sel);draw();};
 (function(){   // the video poster: Mt Hood with the weather at the base right now
   var b=document.getElementById('yt-badge'),h=HP[0]&&HP[0].h24[0];if(!b||!h||!window.wxArt)return;
   var w=window.wxArt(h),ic=b.querySelector('svg');
@@ -3210,6 +3231,7 @@ window.hoodPick=function(i){if(i!==undefined)sel=i;draw();};
 [tiers].concat([].slice.call(document.querySelectorAll('#page3 .hood-pick'))).forEach(function(g){
   g.addEventListener('click',function(ev){var b=ev.target.closest('[data-t]');if(b)window.hoodPick(+b.dataset.t);});});
 document.getElementById('hood-view').addEventListener('click',function(ev){var b=ev.target.closest('[data-view]');if(b)setView(b.dataset.view);});
+(function(){var h=WxState.get('hood');if(typeof h==='number'&&HP[h])sel=h;})();
 draw();setView('fc');
 """
 
@@ -4433,6 +4455,7 @@ def build_dashboard() -> str:
     window.runLazy=function(k){{LAZY.done[k]=true;var q=LAZY.q[k]||[];LAZY.q[k]=[];
       q.forEach(function(f){{try{{f();}}catch(e){{console.error(e);}}}});}};
     function showTab(idx) {{
+      if(window.WxState)WxState.set('tab',idx);
       var was=document.getElementById('page'+idx);if(was&&was.style.display==='none')window.scrollTo(0,0);
       for(var i=0;i<document.querySelectorAll('.page-section').length;i++) {{
         var p=document.getElementById('page'+i);
@@ -4456,6 +4479,7 @@ def build_dashboard() -> str:
         exports = '\n'.join('window.' + fn + '=' + fn + ';' for fn in toggle_fns)
         return '(function(){\n' + script_str + '\n' + exports + '\n})();'
 
+    combined += '<script>' + STATE_JS + '</script>\n'   # where you are in the page, kept through a refresh
     combined += '<script>' + CHARTS_LIB_JS + '</script>\n'   # the 24-hour chart panel, used by Cities, Trails and Mt Hood
     combined += '<script>' + CAMS_LIB_JS + '</script>\n'     # the camera view, used by Trails and Mt Hood
     combined += '<script>' + TERRAIN_LAYERS_JS + '</script>\n'   # terrain layers on a 3D map, Mt Hood and the trail page
@@ -4474,6 +4498,8 @@ def build_dashboard() -> str:
                               .replace("__SMOKE__", json.dumps(smoke_data, separators=(",", ":")))) + '</script>\n'
 
     combined += '<script>' + RELOAD_JS.replace("__BUILD__", str(BUILD_ID)) + '</script>\n'
+    combined += ('<script>(function(){var t=window.WxState&&WxState.get("tab");'
+                 'if(typeof t==="number"&&t>0&&!location.hash&&document.getElementById("page"+t))showTab(t);})();</script>\n')
     combined += '</body></html>'
     return combined
 
@@ -4482,6 +4508,17 @@ def build_dashboard() -> str:
 # that file every 5 minutes: a newer build reloads a tab in the background, and shows a small notice
 # in a tab you're looking at (so a reload never pulls the page out from under you).
 BUILD_ID = int(time.time())
+# Where you are in the page (owner, 2026-10-13): the tab, the city / searched town, the day clicked, the
+# volcano + elevation, the Mt Hood lift, the Map tab's layer and view. Kept in sessionStorage: it survives a
+# refresh and the hourly auto-reload, but a fresh open of the app starts clean. Restored by each page's script.
+STATE_JS = r"""
+window.WxState=(function(){var K='wx-view',o={};
+  try{o=JSON.parse(sessionStorage.getItem(K)||'{}')||{};}catch(e){o={};}
+  return{get:function(k){return o[k];},has:function(k){return k in o;},
+    set:function(k,v){if(v===undefined||v===null)delete o[k];else o[k]=v;try{sessionStorage.setItem(K,JSON.stringify(o));}catch(e){}}};})();
+// a day clicked in a table is only kept on the same date (index 2 means something else tomorrow)
+window.WxState.today=new Date().toDateString();
+"""
 WIDGET = {}   # home-screen widgets (widgets.py): Portland's days, Meadows Base past + forecast snow
 RELOAD_JS = r"""
 (function(){

@@ -193,6 +193,11 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- KEEPS YOUR PLACE THROUGH A REFRESH (owner, 2026-10-13): `window.WxState` (STATE_JS, sessionStorage 'wx-view')
+  - tab; Cities city / searched-or-located town (re-fetched quietly) / clicked day (same date only); Volcanos
+  mountain + tier + day; Mt Hood lift; Map tab layer + view (restored in RegionLayers' load handler, Map tab
+  only). Survives refresh + the hourly auto-reload; a fresh app open starts clean (and may locate you; a
+  restore skips the location lookup). A #trail=/#save= link wins over the saved tab.
 - OPENS WHERE YOU ARE (owner, 2026-10-13, installed phone app ONLY: display-mode standalone; never a browser
   tab): CITY_JS asks for the location on open (Android asks permission once; maximumAge 15 min). Within 10 mi
   (16.1 km) of a city -> that city; elsewhere in the OR/WA box -> `showTown({..., here:true})`, a live forecast
