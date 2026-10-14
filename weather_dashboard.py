@@ -1577,11 +1577,24 @@ function compass(d){return['N','NE','E','SE','S','SW','W','NW'][Math.round((((d%
 function nice(v){var s=[1,1.5,2,2.5,3,4,5,6,8,10],m=Math.pow(10,Math.floor(Math.log10(v||1)));for(var k=0;k<s.length;k++)if(s[k]*m>=v)return s[k]*m;return 10*m;}
 function bar(x,y,w,h,r){if(h<=0)return'';r=Math.min(r,w/2,h);return'M'+x+','+(y+h)+'V'+(y+r)+'Q'+x+','+y+' '+(x+r)+','+y+'H'+(x+w-r)+'Q'+(x+w)+','+y+' '+(x+w)+','+(y+r)+'V'+(y+h)+'Z';}
 function hr(t){var p=t.split(' '),h=p[1].toLowerCase().replace('m','');return h==='12a'?p[0]:h;}
+// several days in one chart (owner): the hour labels thin out with the span (3 h for a day, then 6 / 12 h,
+// then just day names), and a line marks each midnight - dashed where the selected days aren't consecutive
+function hourOf(t){var m=/(\d+)(AM|PM)/.exec(t||'');return m?(+m[1]%12+(m[2]==='PM'?12:0)):0;}
+function xlab(d,i){var n=d.length,st=n<=30?3:n<=54?6:n<=100?12:24,h=d[i];
+  if(st===3)return i%3===0?hr(h.t):'';
+  var nd=i===0||(h.date&&d[i-1].date!==h.date),hh=hourOf(h.t);
+  if(st===24)return nd?h.t.split(' ')[0]:'';
+  return nd?h.t.split(' ')[0]:(hh%st===0?hr(h.t):'');}
+function divs(d,x0,bw,y1,y2){var s='';
+  for(var i=1;i<d.length;i++){var a=d[i-1].date,b=d[i].date;if(!a||!b||a===b)continue;
+    var gap=(Date.parse(b)-Date.parse(a))>864e5*1.5,x=(x0+bw*i).toFixed(1);
+    s+='<line x1="'+x+'" x2="'+x+'" y1="'+y1+'" y2="'+y2+'" stroke="'+(gap?'#8A8F9C':'#D5D9E0')+'" stroke-width="'+(gap?1.2:1)+'"'+(gap?' stroke-dasharray="3 3"':'')+'/>';}
+  return s;}
 function inch(v){return v>=0.1?v.toFixed(1):v.toFixed(2);}
 function when(t){return t.replace(/(\d)([AP])M/,'$1 $2M');}
 function ft(v){return Math.round(v).toLocaleString('en-US')+'′';}
 function chart(title,sum,keys,d,W,PH,o){
-  var pw=W-L-4,bw=pw/d.length,w=Math.max(3,Math.min(11,bw*0.6)),y0=PT_+PH,lo=o.lo,hi=o.hi;
+  var pw=W-L-4,bw=pw/d.length,w=Math.min(11,Math.max(bw*0.6,Math.min(3,bw*0.9))),y0=PT_+PH,lo=o.lo,hi=o.hi;
   var Y=function(v){return y0-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*PH;};
   var lines=o.lines||[],SH=Math.round(PH*(lines.length>1?0.4:0.5));
   var xl=(lines.length?y0+16+lines.length*SH+(lines.length-1)*12:y0)+13;   // hour labels sit under the running-total strips
@@ -1589,6 +1602,7 @@ function chart(title,sum,keys,d,W,PH,o){
   o.ticks.forEach(function(t){s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="'+(t===lo?'#DDE0E6':'#F0F1F4')+'" stroke-width="1"/>'
     +'<text x="'+(L-6)+'" y="'+(Y(t)+3.5)+'" text-anchor="end">'+o.fmt(t)+'</text>';});
   var dirs=o.dirs&&d.some(function(h){return h.dir!=null;});
+  s+=divs(d,L,bw,PT_-4,y0);
   d.forEach(function(h,i){
     var cx=L+bw*i+bw/2,x=cx-w/2,v=o.val(h),top=v==null?y0:Y(v);
     if(v!=null&&!o.line)s+='<path d="'+bar(x,top,w,y0-top,4)+'" fill="'+o.col(h)+'"/>';
@@ -1600,9 +1614,9 @@ function chart(title,sum,keys,d,W,PH,o){
     if(v!=null&&Math.abs(g-top)>=1)s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#fff" stroke-width="3" stroke-opacity=".7"/>'
       +'<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.25"/><line x1="'+(cx-3)+'" x2="'+(cx+3)+'" y1="'+g+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.5" stroke-linecap="round"/>';
     if(o.label&&o.label(h,i))s+='<text x="'+cx+'" y="'+(Math.min(top,g)-4)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+o.label(h,i)+'</text>';
-    if(i%3===0)s+='<text x="'+cx+'" y="'+xl+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';
-    // wind direction: an arrow pointing where the wind blows (every hour, or every other when tight)
-    if(dirs&&h.dir!=null&&(bw>=13||i%2===0))s+='<path d="M0,-4.5L3,2.5L0,1L-3,2.5Z" transform="translate('+cx.toFixed(1)+' '+(xl+11)+') rotate('+Math.round(h.dir+180)+')" fill="#5A5F6B"/>';
+    var xt=xlab(d,i);if(xt)s+='<text x="'+cx+'" y="'+xl+'" text-anchor="middle"'+(xt.length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+xt+'</text>';
+    // wind direction: an arrow pointing where the wind blows (every hour, or fewer when tight)
+    if(dirs&&h.dir!=null&&(bw>=13||i%Math.ceil(13/bw)===0))s+='<path d="M0,-4.5L3,2.5L0,1L-3,2.5Z" transform="translate('+cx.toFixed(1)+' '+(xl+11)+') rotate('+Math.round(h.dir+180)+')" fill="#5A5F6B"/>';
   });
   // o.line: a line through the hours instead of bars, each segment in its starting hour's colour
   if(o.line)d.forEach(function(h,i){var a=o.val(h),n=d[i+1],b=n?o.val(n):null;if(a==null)return;var x1=L+bw*i+bw/2;
@@ -1687,7 +1701,8 @@ function cloudChart(d,W,PH,sky,elev){
           :'<line x1="'+(x0+0.8).toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x0-0.4).toFixed(1)+'" y2="'+Math.min(y0-1,y+3.6).toFixed(1)+'" stroke="'+PT.rain+'" stroke-width="1" stroke-linecap="round"/>';}});
   s+='<g clip-path="url(#k'+u+')"><g filter="url(#f'+u+')">'+cl+'</g><g opacity=".85">'+pr+'</g></g>'
     +'<rect class="cc-band" x="0" y="'+PT_+'" width="'+bw+'" height="'+BH+'" fill="#fff" fill-opacity=".22" visibility="hidden"/>';
-  d.forEach(function(h,i){if(i%3===0)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(hr(h.t).length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+hr(h.t)+'</text>';});
+  s+=divs(d,L,bw,PT_,y0);
+  d.forEach(function(h,i){var xt=xlab(d,i);if(xt)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(xt.length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+xt+'</text>';});
   // band names at the top of each band, white on the sky with a faint navy halo so they hold over cloud
   ['Low','Mid','High'].forEach(function(n,k){s+='<text x="'+(L+4)+'" y="'+(y0-band*(k+1)+11).toFixed(1)+'" style="font-size:9.5px;font-weight:600;fill:#fff;paint-order:stroke;stroke:#2E5A85;stroke-opacity:.45;stroke-width:2px;stroke-linejoin:round">'+n+'</text>';});
   // the forecast point (Volcanos / Mt Hood): a dotted line at its elevation, so you see whether it's in the cloud
@@ -1824,20 +1839,58 @@ window.WxCharts.hours=function(c){
   }
   return out;
 };
-// the charts' hours: the next 24 (di null), or the di-th day of the forecast table (today = from now on)
-window.WxCharts.day=function(hours,di){
-  if(di==null)return hours.slice(0,24);
+// the charts' hours: the next 24 (sel null), the sel-th day of the forecast table (today = from now on),
+// or several days (sel = [indexes], owner: ctrl-click / shift-click / long-press) one after another
+window.WxCharts.day=function(hours,sel){
+  if(sel==null)return hours.slice(0,24);
   var ds=[];hours.forEach(function(h){if(ds.indexOf(h.date)<0)ds.push(h.date);});
-  return hours.filter(function(h){return h.date===ds[di];});
+  var want=(Array.isArray(sel)?sel:[sel]).map(function(i){return ds[i];});
+  return hours.filter(function(h){return want.indexOf(h.date)>=0;});
 };
-window.WxCharts.dayName=function(hours,di){
-  var h=window.WxCharts.day(hours,di)[0];if(!h)return'';
-  var dt=new Date(h.date+'T12:00:00Z');
-  return['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dt.getUTCDay()]+', '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getUTCMonth()]+' '+dt.getUTCDate();
+var DN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+window.WxCharts.dayName=function(hours,sel){
+  var hs=window.WxCharts.day(hours,sel);if(!hs.length)return'';
+  var dates=[];hs.forEach(function(h){if(dates.indexOf(h.date)<0)dates.push(h.date);});
+  var D=function(s){return new Date(s+'T12:00:00Z');},one=function(s,long){var t=D(s);return(long?DN[t.getUTCDay()]+', ':DN[t.getUTCDay()].slice(0,3)+' ')+MN[t.getUTCMonth()]+' '+t.getUTCDate();};
+  if(dates.length===1)return one(dates[0],true);
+  var run=dates.every(function(s,k){return!k||D(s)-D(dates[k-1])<864e5*1.5;});
+  return(run?one(dates[0])+' \u2013 '+one(dates[dates.length-1]):dates.map(function(s){var t=D(s);return DN[t.getUTCDay()].slice(0,3)+' '+t.getUTCDate();}).join(', '))+' \u00b7 '+dates.length+' days';
 };
-// a click on a forecast table's day: wxDay(uid, index) goes to whichever page's handler owns that table
+// the new selection after a click: plain = that day alone (again: back to the next 24 h); add = toggle it in
+// or out of the set; range = every day from the last one clicked to this one; di < 0 = clear
+var ANCH={};
+window.WxCharts.pick=function(cur,di,mode,key){
+  if(di<0)return null;
+  var arr=cur==null?[]:(Array.isArray(cur)?cur.slice():[cur]);
+  if(mode==='range'&&ANCH[key]!=null){var a=ANCH[key],out=[];for(var k=Math.min(a,di);k<=Math.max(a,di);k++)out.push(k);return out.length===1?out[0]:out;}
+  ANCH[key]=di;
+  if(mode==='add'){var j=arr.indexOf(di);if(j>=0)arr.splice(j,1);else arr.push(di);arr.sort(function(a,b){return a-b;});
+    return arr.length?(arr.length===1?arr[0]:arr):null;}
+  return arr.length===1&&arr[0]===di?null:di;};
+window.WxCharts.has=function(sel,d){if(sel==null||d==null||d==='')return false;d=+d;return Array.isArray(sel)?sel.indexOf(d)>=0:sel===d;};
+// the chart heading: "Next 24 hours", the day, or the days - with a clear button once there are several
+window.WxCharts.kick=function(el,hours,sel,uid){if(!el)return;
+  if(sel==null){el.textContent='Next 24 hours';return;}
+  el.innerHTML=window.WxCharts.dayName(hours,sel)+(Array.isArray(sel)?' <button type="button" class="cc-clr" onclick="wxDay(\''+uid+'\',-1)">\u00d7 clear</button>':'');};
+// a click on a forecast table's day: wxDay(uid, index) goes to whichever page's handler owns that table,
+// with how it was clicked: ctrl / cmd (or a long press on a phone) adds a day, shift picks a range
 window.WxDayH=window.WxDayH||[];
-window.wxDay=function(uid,di){window.WxDayH.some(function(f){return f(uid,di);});};
+var ADD_NEXT=false;
+window.wxDay=function(uid,di,ev){ev=ev||window.event;
+  var mode=(ev&&(ev.ctrlKey||ev.metaKey))||ADD_NEXT?'add':(ev&&ev.shiftKey?'range':'');ADD_NEXT=false;
+  if(ev&&ev.shiftKey&&window.getSelection)try{window.getSelection().removeAllRanges();}catch(e){}
+  window.WxDayH.some(function(f){return f(uid,di,mode);});};
+// phones: a long press (half a second) on a day adds it to the selection; the click that follows is eaten
+(function(){var tm=null,eat=false,sx=0,sy=0;
+  function cell(e){return e.target.closest?e.target.closest('td[onclick*="wxDay"]'):null;}
+  document.addEventListener('pointerdown',function(e){eat=false;if(e.pointerType==='mouse')return;var c=cell(e);if(!c)return;sx=e.clientX;sy=e.clientY;
+    tm=setTimeout(function(){tm=null;eat=true;ADD_NEXT=true;if(navigator.vibrate)try{navigator.vibrate(12);}catch(x){}c.click();},500);},true);
+  document.addEventListener('pointermove',function(e){if(tm&&Math.hypot(e.clientX-sx,e.clientY-sy)>10){clearTimeout(tm);tm=null;}},true);
+  ['pointerup','pointercancel'].forEach(function(t){document.addEventListener(t,function(){if(tm){clearTimeout(tm);tm=null;}},true);});
+  document.addEventListener('click',function(e){if(eat&&cell(e)&&!ADD_NEXT){eat=false;e.stopPropagation();e.preventDefault();}},true);
+  document.addEventListener('contextmenu',function(e){if(cell(e))e.preventDefault();},true);
+  var st=document.createElement('style');st.textContent='.cc-clr{margin-left:8px;border:1px solid #DDE0E6;border-radius:999px;background:#fff;padding:1px 8px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:#5A5F6B;cursor:pointer;vertical-align:1px}.cc-clr:hover{border-color:#FE5000;color:#FE5000}td[onclick*="wxDay"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
+  document.head.appendChild(st);})();
 })();
 """
 
@@ -1908,10 +1961,10 @@ var HRS=__HRS__.map(function(c){return WxCharts.hours(c);}), SUN=__SUN__, MOON=_
 var charts=WxCharts(document.getElementById('city-cc'),{grid:['temp','cloud','wind','pop','aqi','precip']});
 // the charts: the next 24 hours, or the day clicked in the forecast table (click it again for the next 24)
 function drawCharts(){var hs=HRS[ccSel]||[];charts.set(WxCharts.day(hs,daySel));
-  document.getElementById('cc-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(hs,daySel);
+  WxCharts.kick(document.getElementById('cc-kicker'),hs,daySel,ccSel===S?'search':'city'+ccSel);
   var d=document.getElementById('city_detail_'+ccSel);
-  if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&(c.classList.contains('d'+daySel)||c.dataset.d===String(daySel)));});}
-WxDayH.push(function(uid,di){if(uid!=='city'+ccSel&&!(uid==='search'&&ccSel===S))return false;daySel=daySel===di?null:di;drawCharts();
+  if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',WxCharts.has(daySel,c.dataset.d!=null?c.dataset.d:(c.className.match(/\bd(\d+)\b/)||[])[1]));});}
+WxDayH.push(function(uid,di,mode){if(uid!=='city'+ccSel&&!(uid==='search'&&ccSel===S))return false;daySel=WxCharts.pick(daySel,di,mode,'city');drawCharts();
   WxState.set('cday',daySel==null?null:{d:daySel,on:WxState.today});return true;});
 // the page header: the selected city's sunrise, sunset and daylight, and the moon
 function sunLine(i){var el=document.getElementById('city-sun'),s=SUN[i];if(!el||!s)return;
@@ -2626,10 +2679,10 @@ MT.forEach(function(m){m.points.forEach(function(p){p.hours=WxCharts.hours(p.hrs
 var charts=WxCharts(document.getElementById('mtn-cc'),{grid:['temp','cloud','wind','pop','sl','precip']}), tiers=document.getElementById('mtn-tiers');
 // the charts: the next 24 hours, or the day clicked in the table (again: back to the next 24), at the chosen elevation
 function drawCharts(){var p=MT[sel].points[tier];charts.set(WxCharts.day(p.hours,daySel),{elev:p.elev_ft});
-  document.getElementById('mtn-kicker').textContent=daySel==null?'Next 24 hours':WxCharts.dayName(p.hours,daySel);
+  WxCharts.kick(document.getElementById('mtn-kicker'),p.hours,daySel,UIDS[sel]);
   var d=document.getElementById('mtn_'+sel);
-  if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&c.classList.contains('d'+daySel));});}
-WxDayH.push(function(uid,di){if(uid!==UIDS[sel])return false;daySel=daySel===di?null:di;drawCharts();
+  if(d)d.querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',WxCharts.has(daySel,(c.className.match(/\bd(\d+)\b/)||[])[1]));});}
+WxDayH.push(function(uid,di,mode){if(uid!==UIDS[sel])return false;daySel=WxCharts.pick(daySel,di,mode,'mtn');drawCharts();
   WxState.set('mday',daySel==null?null:{d:daySel,on:WxState.today});return true;});
 
 // ---- current weather drawn onto the selected mountain's pin, in the icon's own 32x22 units:
@@ -3209,8 +3262,8 @@ function draw(){
   document.querySelectorAll('#page3 [data-p]').forEach(function(el){el.hidden=+el.dataset.p!==sel;});
   document.querySelectorAll('#page3 .hood-pick [data-t]').forEach(function(b){b.classList.toggle('active',+b.dataset.t===sel);});
   charts.set(WxCharts.day(HP[sel].hrs,daySel),{elev:HP[sel].elev_ft});
-  var k=document.querySelector('#hood-cc .cc-kicker');if(k)k.textContent=daySel==null?'Next 24 hours':WxCharts.dayName(HP[sel].hrs,daySel);
-  document.querySelectorAll('#page3 .ski-tbl td.dsum').forEach(function(c){c.classList.toggle('dsel',daySel!=null&&c.dataset.d===String(daySel));});
+  WxCharts.kick(document.querySelector('#hood-cc .cc-kicker'),HP[sel].hrs,daySel,'hood');
+  document.querySelectorAll('#page3 .ski-tbl td.dsum').forEach(function(c){c.classList.toggle('dsel',WxCharts.has(daySel,c.dataset.d));});
 }
 function setView(v){
   var n=HCAMS.length;if(v==='cams'&&!n)v='fc';view=v;
@@ -3221,7 +3274,7 @@ function setView(v){
   if(!fc)camsView.show(HCAMS,Math.min(cam,n-1),function(j){cam=j;});
 }
 window.hoodPick=function(i){if(i!==undefined)sel=i;WxState.set('hood',sel);draw();};
-WxDayH.push(function(uid,di){if(uid!=='hood')return false;daySel=daySel===di?null:di;
+WxDayH.push(function(uid,di,mode){if(uid!=='hood')return false;daySel=WxCharts.pick(daySel,di,mode,'hood');
   WxState.set('hday',daySel==null?null:{d:daySel,on:WxState.today});draw();return true;});
 (function(){   // the video poster: Mt Hood with the weather at the base right now
   var b=document.getElementById('yt-badge'),h=HP[0]&&HP[0].hrs[0];if(!b||!h||!window.wxArt)return;

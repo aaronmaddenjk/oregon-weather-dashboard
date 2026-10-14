@@ -193,6 +193,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- SEVERAL DAYS IN THE CHARTS (owner, 2026-10-13), every page with detail charts: click = one day (again:
+  next 24 h); ctrl/cmd-click (phone: long-press 0.5 s) toggles a day in/out; shift-click = a range from the
+  last day clicked; "× clear" in the heading. A selection is a number or an array of day indexes:
+  `WxCharts.pick(cur, di, mode, key)`, `WxCharts.day(hours, sel)` concatenates the days, `WxCharts.has`,
+  `WxCharts.kick(el, hours, sel, uid)` writes the heading. wxDay(uid, di, ev) reads ctrl/meta/shift from the
+  event (window.event fallback) and passes mode to the WxDayH handlers; di < 0 clears. Charts: `xlab()` thins
+  hour labels by span (3 h / 6 h / 12 h / day names), `divs()` draws a line at each midnight (dashed where
+  days aren't consecutive). Running totals (precip/snow) and summaries span the whole selection.
 - Mt Hood's 10-day table works like Cities (owner, 2026-10-13): no 3-hourly expansion; a day click ->
   `wxDay('hood', di)` -> that day's hours in the Mt Hood charts for the selected lift (again: next 24 h),
   column highlighted (.dsel), kept through a refresh ('hday'). HP[i].hrs = every hour of the 10 days per lift

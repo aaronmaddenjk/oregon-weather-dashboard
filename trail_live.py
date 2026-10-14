@@ -383,9 +383,9 @@ function pick(i){
   root.querySelectorAll('.tl-pin').forEach(function(el,j){el.classList.toggle('active',j===i);});}
 // the charts: the next 24 hours, or the day clicked in the table (click it again for the next 24)
 function trailCharts(){var pt=st.P[st.sel];st.charts.set(WxCharts.day(pt.all,st.day));
-  root.querySelector('#tl-cc .cc-kicker').textContent=st.day==null?'Next 24 hours':WxCharts.dayName(pt.all,st.day);
-  $('tl-10').querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',st.day!=null&&c.dataset.d===String(st.day));});}
-(window.WxDayH=window.WxDayH||[]).push(function(uid,di){if(uid!=='trail'||!st.P)return false;st.day=st.day===di?null:di;trailCharts();return true;});
+  WxCharts.kick(root.querySelector('#tl-cc .cc-kicker'),pt.all,st.day,'trail');
+  $('tl-10').querySelectorAll('td.dsum').forEach(function(c){c.classList.toggle('dsel',WxCharts.has(st.day,c.dataset.d));});}
+(window.WxDayH=window.WxDayH||[]).push(function(uid,di,mode){if(uid!=='trail'||!st.P)return false;st.day=WxCharts.pick(st.day,di,mode,'trail');trailCharts();return true;});
 function render(){
   var s=st.stats,P=st.P;status('');
   $('tl-load').hidden=true;$('tl-out').hidden=false;
