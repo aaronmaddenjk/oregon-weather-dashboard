@@ -130,12 +130,12 @@ def week(name, days, path, today):
     lo = min(x["lo"] for x in days) - 3
     hi = max(x["hi"] for x in days) + 3
     cw = (W - 24) / len(days)
-    top, bot = 272, 384
+    top, bot = 258, 390
     for i, x in enumerate(days):
         cx = 12 + cw * i + cw / 2
         dd = date.fromisoformat(x["dk"])
         _text(d, (cx, 84), "TODAY" if dd == today else DOW[dd.weekday()], 30, ORANGE if dd == today else INK, True, "mm")
-        _art(d, cx - 66, 100, 3.3, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
+        _art(d, cx - 80, 92, 4.0, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
         y1 = top + (hi - x["hi"]) / (hi - lo) * (bot - top)
         y2 = bot - (x["lo"] - lo) / (hi - lo) * (bot - top)
         d.rounded_rectangle([(cx - 8) * SS, top * SS, (cx + 8) * SS, bot * SS], radius=8 * SS, fill=LINE)
@@ -149,7 +149,7 @@ def week(name, days, path, today):
         _text(d, (cx, y1 - 24), f"{x['hi']:.0f}°", 40, INK, True, "mm")
         _text(d, (cx, y1 + bh / SS + 22), f"{x['lo']:.0f}°", 32, MUT, False, "mm")
         p = round(x["mp"] or 0)
-        _text(d, (cx, 452), f"{p}%", 30, RAIN if p >= 10 else (194, 198, 206), True, "mm")
+        _text(d, (cx, 452), f"{p}%", 33, RAIN if p >= 10 else (194, 198, 206), True, "mm")
     _save(im, path)
 
 
