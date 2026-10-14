@@ -23,29 +23,54 @@ ORANGE, SNOW, SNOW2, RAIN, PAST = (254, 80, 0), (90, 79, 207), (185, 179, 240), 
 SNOTEL = "651:OR:SNTL"   # Mt Hood Test Site, 5,370 ft - at Meadows' base area
 AWDB = "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1"
 DOW = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+# card looks (owner is choosing): bg = card fill (None = sky gradient from today's weather, 0 = no card);
+# ink / mut = text, track = the empty temperature bar, pop / pop0 = rain chance (>= 10% / below), shadow on text
+THEMES = {
+    "white":   {"bg": CARD, "ink": INK, "mut": MUT, "track": LINE + (255,), "pop": RAIN, "pop0": (194, 198, 206), "today": ORANGE, "shadow": False},
+    "frosted": {"bg": (255, 255, 255, 150), "ink": INK, "mut": (66, 72, 84), "track": (255, 255, 255, 170), "pop": (8, 92, 104), "pop0": (110, 118, 130), "today": (214, 64, 0), "shadow": False},
+    "dark":    {"bg": (20, 25, 34, 200), "ink": (255, 255, 255), "mut": (186, 194, 206), "track": (64, 70, 82, 200), "pop": (110, 214, 228), "pop0": (120, 128, 142), "today": (255, 138, 76), "shadow": False},
+    "sky":     {"bg": None, "ink": (255, 255, 255), "mut": (232, 240, 250), "track": (255, 255, 255, 70), "pop": (255, 255, 255), "pop0": (214, 228, 242), "today": (255, 226, 160), "shadow": True},
+    "none":    {"bg": 0, "ink": (255, 255, 255), "mut": (236, 240, 246), "track": (255, 255, 255, 80), "pop": (255, 255, 255), "pop0": (226, 232, 240), "today": (255, 196, 150), "shadow": True},
+}
 
 
 def _font(px):
     return ImageFont.load_default(size=px * SS)
 
 
+SHADOW = False   # set per drawing from the theme: a soft dark offset under light text on a picture
+
+
 def _text(d, xy, s, px, fill, bold=False, anchor="la"):
-    d.text((xy[0] * SS, xy[1] * SS), s, font=_font(px), fill=fill, anchor=anchor,
-           stroke_width=(1 if px < 24 else 2) if bold else 0, stroke_fill=fill)
+    sw = (1 if px < 24 else 2) if bold else 0
+    if SHADOW:
+        d.text(((xy[0] + 1.6) * SS, (xy[1] + 1.8) * SS), s, font=_font(px), fill=(0, 0, 0, 110), anchor=anchor, stroke_width=sw, stroke_fill=(0, 0, 0, 110))
+    d.text((xy[0] * SS, xy[1] * SS), s, font=_font(px), fill=fill, anchor=anchor, stroke_width=sw, stroke_fill=fill)
 
 
-def _card():
+def _card(theme=None, sky=None):
+    """The card: a flat fill, the day's sky as a gradient (blue clear -> grey overcast / wet), or nothing."""
     im = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle([0, 0, W * SS - 1, H * SS - 1], radius=44 * SS, fill=CARD)
-    return im, d
+    bg = (theme or THEMES["white"])["bg"]
+    if bg is None:
+        t = min(1.0, max(0.0, ((sky or 0) - 15) / 75))
+        top = tuple(round(a + (b - a) * t) for a, b in zip((62, 128, 196), (104, 116, 134)))
+        bot = tuple(round(a + (b - a) * t) for a, b in zip((132, 184, 230), (156, 166, 180)))
+        g = Image.new("RGBA", (1, 2)); g.putpixel((0, 0), top + (235,)); g.putpixel((0, 1), bot + (235,))
+        g = g.resize((W * SS, H * SS), Image.BILINEAR)
+        mask = Image.new("L", g.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle([0, 0, W * SS - 1, H * SS - 1], radius=44 * SS, fill=255)
+        im.paste(g, (0, 0), mask)
+    elif bg:
+        ImageDraw.Draw(im).rounded_rectangle([0, 0, W * SS - 1, H * SS - 1], radius=44 * SS, fill=bg)
+    return im, ImageDraw.Draw(im)
 
 
-def _header(d, label, dot, right=""):
+def _header(d, label, dot, right="", mut=MUT):
     d.ellipse([30 * SS, 27 * SS, 46 * SS, 43 * SS], fill=dot)
-    _text(d, (56, 35), label.upper(), 26, MUT, True, "lm")
+    _text(d, (56, 35), label.upper(), 26, mut, True, "lm")
     if right:
-        _text(d, (W - 30, 35), right, 24, MUT, False, "rm")
+        _text(d, (W - 30, 35), right, 24, mut, False, "rm")
 
 
 def _save(im, path):
@@ -122,11 +147,15 @@ def _temp_col(t):
     return (237, 30, 41) if t >= 80 else (250, 162, 27) if t >= 70 else (107, 191, 104) if t >= 50 else (79, 177, 190) if t >= 35 else (54, 137, 148)
 
 
-def week(name, days, path, today):
+def week(name, days, path, today, theme="dark"):
     """days: the Cities table's per-day dicts (dk, hi, lo, mp, rt, st, mg, sky), from today on."""
+    global SHADOW
+    T = THEMES[theme]
+    SHADOW = T["shadow"]
     days = [x for x in days if date.fromisoformat(x["dk"]) >= today][:6]   # (a cached forecast can start yesterday)
-    im, d = _card()
-    _header(d, name, ORANGE, "6 days")
+    sky0 = days[0]["sky"] + (40 if days[0]["rt"] >= 0.01 and (days[0]["mp"] or 0) >= 30 else 0)
+    im, d = _card(T, sky0)
+    _header(d, name, T["today"] if theme in ("sky", "none") else ORANGE, "6 days", T["mut"])
     lo = min(x["lo"] for x in days) - 3
     hi = max(x["hi"] for x in days) + 3
     cw = (W - 24) / len(days)
@@ -134,11 +163,11 @@ def week(name, days, path, today):
     for i, x in enumerate(days):
         cx = 12 + cw * i + cw / 2
         dd = date.fromisoformat(x["dk"])
-        _text(d, (cx, 84), "TODAY" if dd == today else DOW[dd.weekday()], 30, ORANGE if dd == today else INK, True, "mm")
+        _text(d, (cx, 84), "TODAY" if dd == today else DOW[dd.weekday()], 30, T["today"] if dd == today else T["ink"], True, "mm")
         _art(d, cx - 90, 102, 4.5, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
         y1 = top + (hi - x["hi"]) / (hi - lo) * (bot - top)
         y2 = bot - (x["lo"] - lo) / (hi - lo) * (bot - top)
-        d.rounded_rectangle([(cx - 8) * SS, top * SS, (cx + 8) * SS, bot * SS], radius=8 * SS, fill=LINE)
+        d.rounded_rectangle([(cx - 8) * SS, top * SS, (cx + 8) * SS, bot * SS], radius=8 * SS, fill=T["track"])
         bar = Image.new("RGBA", (1, 2))
         bar.putpixel((0, 0), _temp_col(x["hi"]) + (255,)); bar.putpixel((0, 1), _temp_col(x["lo"]) + (255,))
         bh = max(16, int((y2 - y1) * SS))
@@ -146,10 +175,11 @@ def week(name, days, path, today):
         mask = Image.new("L", grad.size, 0)
         ImageDraw.Draw(mask).rounded_rectangle([0, 0, grad.size[0] - 1, grad.size[1] - 1], radius=8 * SS, fill=255)
         im.paste(grad, (int((cx - 8) * SS), int(y1 * SS)), mask)
-        _text(d, (cx, y1 - 24), f"{x['hi']:.0f}°", 40, INK, True, "mm")
-        _text(d, (cx, y1 + bh / SS + 22), f"{x['lo']:.0f}°", 32, MUT, False, "mm")
+        _text(d, (cx, y1 - 24), f"{x['hi']:.0f}°", 40, T["ink"], True, "mm")
+        _text(d, (cx, y1 + bh / SS + 22), f"{x['lo']:.0f}°", 32, T["mut"], False, "mm")
         p = round(x["mp"] or 0)
-        _text(d, (cx, 452), f"{p}%", 33, RAIN if p >= 10 else (194, 198, 206), True, "mm")
+        _text(d, (cx, 452), f"{p}%", 33, T["pop"] if p >= 10 else T["pop0"], True, "mm")
+    SHADOW = False
     _save(im, path)
 
 
@@ -175,32 +205,34 @@ def snotel_gain(today, n=7):
 
 def snow_timeline(past, fut, path, today, measured=True):
     """past: [(date, in)] x7 before today; fut: [(date, in)] today + 6 days of forecast new snow."""
-    im, d = _card()
-    _header(d, "Meadows Base snow", SNOW, "5,361 ft")
+    T = THEMES["dark"]   # dark glass (owner): violet lifted so it reads on the dark card
+    SN, SN2, PS = (162, 152, 255), (112, 104, 188), (128, 137, 152)
+    im, d = _card(T)
+    _header(d, "Meadows Base snow", SN, "5,361 ft", T["mut"])
     vals = [v for _, v in past] + [v for _, v in fut]
     mx = max([4.0] + vals)
     n, x0, x1, base, top = len(vals), 22, W - 22, 318, 108
     bw = (x1 - x0) / n
     for i, (dd, v) in enumerate(past + fut):
         f = i >= len(past)
-        col = (SNOW2 if i >= len(past) + 5 else SNOW) if f else PAST
+        col = (SN2 if i >= len(past) + 5 else SN) if f else PS
         h = v / mx * (base - top)
         bx = x0 + i * bw + 5
         d.rounded_rectangle([bx * SS, (base - max(4, h)) * SS, (bx + bw - 10) * SS, base * SS], radius=8 * SS, fill=col)
         if v >= 0.5:
-            _text(d, (bx + (bw - 10) / 2, base - h - 20), f"{v:.0f}" if v >= 1.5 else f"{v:.1f}", 28, SNOW if f else MUT, True, "mm")
-        _text(d, (bx + (bw - 10) / 2, base + 28), DOW[dd.weekday()][0], 26, (154, 160, 172), True, "mm")
+            _text(d, (bx + (bw - 10) / 2, base - h - 20), f"{v:.0f}" if v >= 1.5 else f"{v:.1f}", 28, SN if f else T["mut"], True, "mm")
+        _text(d, (bx + (bw - 10) / 2, base + 28), DOW[dd.weekday()][0], 26, (150, 158, 172), True, "mm")
     tx = x0 + len(past) * bw
     for y in range(int(top) - 6, base + 4, 10):   # today: a dashed orange line
-        d.line([(tx * SS, y * SS), (tx * SS, (y + 5) * SS)], fill=ORANGE, width=3 * SS // 2)
-    _text(d, (tx + 7, top - 8), "TODAY", 24, ORANGE, True, "lm")
+        d.line([(tx * SS, y * SS), (tx * SS, (y + 5) * SS)], fill=T["today"], width=3 * SS // 2)
+    _text(d, (tx + 7, top - 8), "TODAY", 24, T["today"], True, "lm")
     ps, fs = sum(v for _, v in past), sum(v for _, v in fut)
-    _text(d, (30, 384), "LAST 7 DAYS", 24, MUT, True)
+    _text(d, (30, 384), "LAST 7 DAYS", 24, T["mut"], True)
     big = f'{ps:.0f}"' if ps >= 1 or ps < 0.05 else f'{ps:.1f}"'
-    _text(d, (30, 414), big, 50, (90, 95, 107), True)
-    _text(d, (30 + _font(50).getlength(big) / SS + 12, 436), "depth gained" if measured else "estimated", 26, MUT)
-    _text(d, (W - 30, 384), "NEXT 7 DAYS", 24, MUT, True, "ra")
-    _text(d, (W - 30, 414), f'{fs:.0f}" forecast' if fs >= 1 or fs < 0.05 else f'{fs:.1f}" forecast', 50, SNOW, True, "ra")
+    _text(d, (30, 414), big, 50, (226, 230, 236), True)
+    _text(d, (30 + _font(50).getlength(big) / SS + 12, 436), "depth gained" if measured else "estimated", 26, T["mut"])
+    _text(d, (W - 30, 384), "NEXT 7 DAYS", 24, T["mut"], True, "ra")
+    _text(d, (W - 30, 414), f'{fs:.0f}" forecast' if fs >= 1 or fs < 0.05 else f'{fs:.1f}" forecast', 50, SN, True, "ra")
     _save(im, path)
 
 

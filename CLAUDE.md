@@ -201,6 +201,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Cities table's `cd`) and Meadows Base's past/future from snow_summary_html. Pillow's built-in font
   (no ′ glyph: write "ft"; bold = same-colour stroke). The phone shows them with KWGT (free) image
   elements pointed at the URLs, refreshed hourly. Owner declined KWGT-from-JSON (too fiddly).
+  Look = "dark glass" (owner picked it from 4 themes in `THEMES`: white / frosted / dark / sky / none):
+  translucent slate card, white text, violet lifted to (162,152,255) on the snow widget. ImageDraw REPLACES
+  pixels (no blending): anything drawn on the card (e.g. the temp track) must be an opaque-looking colour at
+  the card's alpha, never a low-alpha overlay (that punches a hole to the wallpaper). Sizes were tuned with
+  the owner (icons scale 4.5, bars 266-392, highs 40 px, rain % 33 px); `python widgets.py` redraws from
+  .cache/widget_data.json in seconds. Early-publish a widget: clone gh-pages --depth 1, copy the PNG, push.
 - Forecast lengths (owner, 2026-10-12): Cities + Volcanos tables 7 days (the NWS range; render_hike_forecast
   forecast_days 7, nbm_overlay 7), same as searched towns (7, WxPoint `days()`); the coastal tide strip 7 days.
   Mt Hood alone keeps 10 days (days 8-10 = ECMWF + NBM, never raw GFS). Icons 68x54 so 7 columns fit.
