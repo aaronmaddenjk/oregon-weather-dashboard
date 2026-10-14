@@ -130,12 +130,12 @@ def week(name, days, path, today):
     lo = min(x["lo"] for x in days) - 3
     hi = max(x["hi"] for x in days) + 3
     cw = (W - 24) / len(days)
-    top, bot = 258, 390
+    top, bot = 266, 392
     for i, x in enumerate(days):
         cx = 12 + cw * i + cw / 2
         dd = date.fromisoformat(x["dk"])
         _text(d, (cx, 84), "TODAY" if dd == today else DOW[dd.weekday()], 30, ORANGE if dd == today else INK, True, "mm")
-        _art(d, cx - 80, 92, 4.0, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
+        _art(d, cx - 90, 102, 4.5, {"sky": x["sky"], "r": x["rt"], "s": x["st"], "pop": x["mp"] or 0, "g": x["mg"] or 0})
         y1 = top + (hi - x["hi"]) / (hi - lo) * (bot - top)
         y2 = bot - (x["lo"] - lo) / (hi - lo) * (bot - top)
         d.rounded_rectangle([(cx - 8) * SS, top * SS, (cx + 8) * SS, bot * SS], radius=8 * SS, fill=LINE)
