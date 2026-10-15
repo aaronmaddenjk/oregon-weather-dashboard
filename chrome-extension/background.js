@@ -218,7 +218,7 @@ chrome.tabs.onUpdated.addListener(async (id, info, tab) => {
 });
 
 function badge(tabId, text, title, color) {
-  chrome.action.setBadgeBackgroundColor({ tabId, color: color || "#FE5000" });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: color || "#525D45" });
   chrome.action.setBadgeText({ tabId, text });
   if (title) chrome.action.setTitle({ tabId, title });
 }
