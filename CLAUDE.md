@@ -193,6 +193,14 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   mapbox-gl-js (cache first). Bump CACHE ('wx-v1') if the caching rules change. The app's built-in
   Browser pane refuses service workers ("unknown error fetching the script") - test SW on a phone/Chrome.
   Owner installs from Chrome on Android: menu -> Install app.
+- RADAR FORECAST (owner, 2026-10-14: "falls off the tracks" past the live frames): the HRRR frames were hourly
+  only (first one up to 60 min after "now") and the run time was fetched once (a failed fetch set HR=null ->
+  straight to the 3-hourly model frames). Now: IEM HRRR `hrrr::REFP-F<min>-<init>` tiles every 15 min for the
+  first 6 h (IEM has 15-min steps for all 18 h), then hourly; `hrrrFresh()` re-checks the latest run when Radar
+  is picked + every 10 min + on tab focus, keeps the old run if a check fails, drops the old run's layers when
+  a new one arrives. Checked 2026-10-14 that HRRR tiles are placed right (vs NEXRAD; night-time NEXRAD shows
+  bird/insect rings around radar sites that HRRR won't have). IEM's tile list also has hrrr-refd(-t)/hrrr-refp(-t)
+  layers (time syntax unknown; the hrrr:: form works).
 - SEVERAL DAYS IN THE CHARTS (owner, 2026-10-13), every page with detail charts: click = one day (again:
   next 24 h); ctrl/cmd-click (phone: long-press 0.5 s) toggles a day in/out; shift-click = a range from the
   last day clicked; "× clear" in the heading. A selection is a number or an array of day indexes:

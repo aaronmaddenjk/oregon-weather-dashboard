@@ -546,7 +546,11 @@ function buildTL(){
     return out;}
   if(st.l==='radar'){
     obsFresh();for(var o=50;o>=0;o-=5)out.push({kind:'obs',off:o,t:now-o*60000});
-    if(HR)for(var k=0;k<=18;k++){var t=HR.init+k*3600000;if(t>now)out.push({kind:'hrrr',min:k*60,t:t});}
+    // forecast radar right after "now" (owner: it fell apart past the live frames - HRRR was hourly only, so
+    // the first forecast frame was up to an hour away): 15-minute HRRR frames for the first 6 hours, then hourly
+    if(HR){var m=Math.max(15,Math.ceil((now-HR.init)/900000)*15);
+      while(m<=1080){var t=HR.init+m*60000;if(t>now)out.push({kind:'hrrr',min:m,t:t});
+        if(t-now<6*3600000)m+=15;else m=Math.floor(m/60)*60+60;}}
     var last=out.length?out[out.length-1].t:now-2*3600000;
     for(var d=0;d<D;d++)for(var f=0;f<NF;f++)if(R.frame_ts[d][f]>last)out.push({kind:'model',d:d,h:f,t:R.frame_ts[d][f]});
   }else if(mode==='daily'){
@@ -636,9 +640,14 @@ async function drawSmoke(){
 // First 18 h: NOAA HRRR simulated radar with precipitation type (REFP: rain / mix / snow),
 // live tiles from the Iowa Environmental Mesonet for the latest HRRR run.
 var HRRR_META='https://mesonet.agron.iastate.edu/data/gis/images/4326/hrrr/refd_1080.json',sym=null;
-function hrrrInit(){return fetch(HRRR_META).then(function(r){return r.json();}).then(function(j){
+function hrrrInit(){return fetch(HRRR_META,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
   var t=Date.parse(j.model_init_utc);if(isNaN(t))return;
-  HR={init:t,stamp:j.model_init_utc.replace(/[-:TZ]/g,'').slice(0,12)};}).catch(function(){HR=null;});}
+  var stamp=j.model_init_utc.replace(/[-:TZ]/g,'').slice(0,12);
+  if(HR&&HR.stamp!==stamp&&map)map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)==='hr'){map.removeLayer(l.id);map.removeSource(l.id);}});   // a newer run: its own tiles
+  HR={init:t,stamp:stamp,checked:Date.now()};}).catch(function(){if(HR)HR.checked=Date.now()-8*60000;});}   // (keep the run we have; try again soon)
+function hrrrFresh(){   // radar on: make sure we're on the latest run (checked within 10 min)
+  if(HR&&Date.now()-HR.checked<10*60000)return;
+  var was=HR&&HR.stamp;hrrrInit().then(function(){if(st.l==='radar'&&(!was||(HR&&HR.stamp!==was))){retime();apply();}});}
 function hrrrEnsure(min){
   var id='hr'+min;if(!HR||map.getLayer(id))return;
   map.addSource(id,{type:'raster',tileSize:256,attribution:'Forecast radar: NOAA HRRR via Iowa Environmental Mesonet',
@@ -647,7 +656,7 @@ function hrrrEnsure(min){
 function hrrrShow(frame){   // frame: the timeline entry to show, or null to hide all
   if(!map)return;
   var want=frame&&frame.kind==='hrrr'?frame.min:-1;
-  if(want>=0){hrrrEnsure(want);hrrrEnsure(want+60);hrrrEnsure(want-60);}   // neighbours preload for smooth playback
+  if(want>=0){hrrrEnsure(want);[TL[ti+1],TL[ti+2],TL[ti-1]].forEach(function(n){if(n&&n.kind==='hrrr')hrrrEnsure(n.min);});}   // neighbours preload for smooth playback
   map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)!=='hr')return;var m=+l.id.slice(2);
     map.setLayoutProperty(l.id,'visibility',want>=0&&Math.abs(m-want)<=60?'visible':'none');
     map.setPaintProperty(l.id,'raster-opacity',m===want?0.82:0);});}
@@ -774,7 +783,7 @@ function legend(){
       +'<div class="lyr-pt"><span>Mix</span><div class="lyr-bar" style="background:'+grad(MIXR)+'"></div></div>'
       +'<div class="lyr-pt"><span>Snow</span><div class="lyr-bar" style="background:'+grad(SNOWR)+'"></div></div>'
       +'<div class="lyr-ticks"><span></span><span>Light</span><span>Heavy</span></div>'
-      +'<div class="lyr-note">'+(hrrr?'NOAA HRRR simulated radar, run of '+when(HR.init,true)
+      +'<div class="lyr-note">'+(hrrr?'NOAA HRRR simulated radar, every 15 min for 6 h then hourly \u00b7 run of '+when(HR.init,true)
         :'Model precipitation blend, 3-hourly'+(HR?' (HRRR radar covers the first 18 h)':''))+'</div>';
     leg.hidden=false;return;}
   if(st.l==='smoke'){
@@ -902,6 +911,8 @@ function hover(e){
     }
     retime();apply();
     hrrrInit().then(function(){if(st.l==='radar'){retime();apply();}});   // HRRR run time, for the radar timeline
+    setInterval(function(){if(st.l==='radar'&&!document.hidden)hrrrFresh();},10*60000);
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&st.l==='radar')hrrrFresh();});
     if(opt.onLoad)opt.onLoad(map);
     // the Map tab (the one with the trail panel) opens with your trails on - hikes first (owner)
     if(opt.trailPanel&&!trlOn){var tb=ctl.querySelector('[data-trails]');if(tb)tb.click();}
@@ -924,7 +935,7 @@ function hover(e){
       if(window.TrailsLayer){trl=trl||window.TrailsLayer(map,{panel:opt.trailPanel,tip:tip,beforeId:sym});trl.show(trlOn);}return;}
     if(b.dataset.fires!==undefined){fireOn=!fireOn;b.classList.toggle('active',fireOn);b.setAttribute('aria-pressed',fireOn);
       ['fire-fill','fire-line','fire-dot','fire-name'].forEach(function(id){if(map.getLayer(id))map.setLayoutProperty(id,'visibility',fireOn?'visible':'none');});return;}
-    if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')play(false);retime();if(opt.trailPanel)WxState.set('mlayer',st.l);}
+    if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')play(false);if(st.l==='radar')hrrrFresh();retime();if(opt.trailPanel)WxState.set('mlayer',st.l);}
     if(b.dataset.mode){mode=b.dataset.mode;total=false;retime();}
     if(b.dataset.total!==undefined){total=!total;play(false);}
     if(b.dataset.smode){smode=b.dataset.smode;}
