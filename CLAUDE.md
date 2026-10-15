@@ -226,6 +226,15 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   = quietly nothing. A pick made before the fix wins (locPicked / ccSel / a search). Nothing stored.
   Test from the console: `wxLocateAt(lat, lon)`. Don't end a JS line in CITY_JS with a // comment that
   precedes more code on the same line (twice now that ate the rest of the line).
+- DAILY MT HOOD EMAIL (owner, 2026-10-14): `newsletter.py` builds it from `.cache/newsletter_data.json`,
+  which each build writes from the global NEWS dict (each lift's 10 days from the Mt Hood table loop, the
+  past 15 days' estimated snow per lift from snow_summary_html, Temira's snow-forecast section, Chris
+  Tomer's latest video). Headline / summary / "best day to go" are written from the numbers (story(),
+  best_day()). tools/publish.sh sends it after the 6 AM build (`newsletter.py --send`, once a day via
+  .cache/newsletter_sent.txt). Gmail SMTP (465) with an app password: GMAIL_USER, GMAIL_APP_PASSWORD,
+  optional NEWSLETTER_TO in the server's .env - the OWNER adds them; never handle the password.
+  Without them it logs "not configured". Preview: `python newsletter.py --out x.html`; resend today:
+  `--send --force`. Email-safe HTML only (tables, inline styles; a video = thumbnail link).
 - HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
   index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
   `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site

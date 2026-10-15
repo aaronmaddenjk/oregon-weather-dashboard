@@ -69,6 +69,10 @@ if ( cd "$TMP" && git init -q -b gh-pages \
               commit -q -m "Dashboard build $(date '+%Y-%m-%d %H:%M')" \
        && git push -q -f "$REMOTE" gh-pages ) >> "$LOG" 2>&1; then
     log "=== published"
+    # the daily Mt Hood email (newsletter.py) after the 6 AM build; once a day, Gmail settings in .env
+    if [ "$((10#$(date +%H)))" = 6 ] && [ "${1:-}" != "--no-build" ]; then
+        .venv/bin/python newsletter.py --send >> "$LOG" 2>&1 || log "(newsletter not sent)"
+    fi
 else
     log "=== push FAILED"
     rm -rf "$TMP"

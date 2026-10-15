@@ -3172,6 +3172,7 @@ def snow_summary_html(pi, lat, lon, ev, now, entries):
         if dd > today:
             fut[dd] = fut.get(dd, 0.0) + e["snow_in"]
     days_fut = list(fut.items())[:10]
+    NEWS.setdefault("past", {})[SKI_POINTS[pi]["name"]] = [(d.isoformat(), round(v, 2)) for d, v in days_past]
     if SKI_POINTS[pi]["name"] == "Meadows Base":   # the snow-timeline widget: today + the next 6 days, and the past
         f7 = OrderedDict()
         for e in entries:
@@ -3630,6 +3631,8 @@ def build_ski_page():
             mv = min((e["vis_mi"] for e in ents if e["vis_mi"] is not None), default=None)
             sn = sum(e["snow_in"] for e in ents)
             mp = max(e["precip"] for e in ents)
+            NEWS.setdefault("hood", {}).setdefault(pt["name"], []).append(
+                {"d": ents[0]["date_key"], "snow": round(sn, 2), "hi": round(hi2), "lo": round(lo2), "gust": round(mg), "pop": round(mp or 0)})
             bases = [e["cb"] for e in ents if e["cb"] not in ("Clear", "Few", "Scattered", "Cloudy", "--")]
             cb = bases[0] if len(set(bases)) <= 1 and bases else ("Clear" if not bases else f'{bases[0]}–{bases[-1]}')
             ci = condition_icon(ents)
@@ -3870,6 +3873,7 @@ def build_ski_page():
 
     # the word on the mountain: Temira's forecast + the Meadows report
     gorge_html, gorge_status, gorge_posted = fetch_gorge_snow_forecast()
+    NEWS["temira"] = {"html": gorge_html, "status": gorge_status, "posted": gorge_posted}
     if gorge_status == 'current' and gorge_html:
         gorge_card = (
             '<div class="ski-card gorge-card">'
@@ -3938,6 +3942,7 @@ def build_ski_page():
 
     # Latest YouTube video from The Christomer
     yt_vid, yt_title, yt_pub = fetch_latest_youtube("@TheChristomer")
+    NEWS["video"] = {"id": yt_vid, "title": yt_title, "published": yt_pub}
     # ODOT TripCheck traffic cameras along Hwy 26 & 35
     TRAFFIC_CAMS = [
         {"name": "Brightwood", "lat": 45.3756, "lon": -121.9382, "img": "https://www.tripcheck.com/roadcams/cams/Brightwood2_pid1381.jpg"},
@@ -4582,6 +4587,7 @@ window.WxState=(function(){var K='wx-view',o={};
 window.WxState.today=new Date().toDateString();
 """
 WIDGET = {}   # home-screen widgets (widgets.py): Portland's days, Meadows Base past + forecast snow
+NEWS = {}     # the daily Mt Hood email (newsletter.py): each lift's days, past snow, Temira, Chris's video
 RELOAD_JS = r"""
 (function(){
 var BUILD=__BUILD__,note=null;
@@ -4638,6 +4644,10 @@ def main():
     if WIDGET.get("city_days") and WIDGET.get("hood_fut"):
         widgets.render(os.path.dirname(OUTPUT_PATH), WIDGET["city_days"], WIDGET.get("hood_past", []), WIDGET["hood_fut"],
                        datetime.now(ZoneInfo("America/Los_Angeles")).date())
+    if NEWS.get("hood"):   # what newsletter.py sends (after the 6 AM build, tools/publish.sh)
+        os.makedirs(".cache", exist_ok=True)
+        with open(os.path.join(".cache", "newsletter_data.json"), "w", encoding="utf-8") as f:
+            json.dump(NEWS, f)
     print(f"Wrote {OUTPUT_PATH} ({len(html_out) / 1024:.0f} KB)")
     print(f"API usage: {http_cache.summary()}")
 
