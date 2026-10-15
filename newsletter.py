@@ -97,7 +97,7 @@ def best_day(top):
 
 
 def td(s, extra=""):
-    return f'<td align="center" style="padding:7px 2px;{extra}">{s}</td>'
+    return f'<td align="center" style="padding:7px 1px;{extra}">{s}</td>'
 
 
 def build(D):
@@ -131,15 +131,15 @@ def build(D):
                    f'{day_name(d)[0]}</td>')
 
     # the 7-day table
-    hdr = "".join(td(f'<b>{"Today" if date.fromisoformat(x["d"]) == today else day_name(x["d"])}</b>',
-                     "background:#EEF0F3;" if date.fromisoformat(x["d"]).weekday() >= 5 else "") for x in top)
+    hdr = "".join(td(f'<b>{day_name(x["d"])}</b>', ("color:" + GREEN + ";" if date.fromisoformat(x["d"]) == today else "")
+                     + ("background:#EEF0F3;" if date.fromisoformat(x["d"]).weekday() >= 5 else "")) for x in top)
     def snow_row(xs):
         return "".join(td(inch(x["snow"]) if x["snow"] >= 0.05 else "0",
                           f"color:{PLUM};font-weight:{800 if x['snow'] >= 1 else 700};" if x["snow"] >= 0.05 else "color:#C9CDD5;") for x in xs)
     hl = "".join(td(f'<b>{x["hi"]}°</b> <span style="color:{FAINT};">{x["lo"]}°</span>') for x in top)
     gu = "".join(td(str(x["gust"]), "color:#D11A24;font-weight:800;" if x["gust"] >= 45 else "color:#D9730D;font-weight:700;" if x["gust"] >= 30 else "") for x in top)
     po = "".join(td(f'{x["pop"]}%', "color:#B8BDC6;" if x["pop"] < 10 else f"color:#0B6F7C;font-weight:{800 if x['pop'] >= 50 else 400};") for x in top)
-    row = lambda name, cells: (f'<tr style="border-top:1px solid {RULE};"><td style="padding:7px 6px;font-weight:700;color:{MUT};">{name}</td>{cells}</tr>')
+    row = lambda name, cells: (f'<tr style="border-top:1px solid {RULE};"><td style="padding:7px 4px;font-size:11px;line-height:1.25;font-weight:700;color:{MUT};">{name}</td>{cells}</tr>')
 
     # Temira's Mt Hood snow forecast (her whole section of the day's post), or a note when she isn't posting
     T = D.get("temira") or {}
@@ -156,7 +156,7 @@ def build(D):
     video = ""
     if V.get("id"):
         url = f"https://www.youtube.com/watch?v={V['id']}"
-        video = f'''<tr><td style="padding:22px 24px 6px;">
+        video = f'''<tr><td class="px" style="padding:22px 24px 6px;">
     <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:#7D8592;text-transform:uppercase;margin-bottom:8px;">Latest from Chris Tomer</div>
     <a href="{url}" style="text-decoration:none;color:{INK};display:block;">
       <img src="https://i.ytimg.com/vi/{V['id']}/hqdefault.jpg" width="552" alt="Play: {html.escape(V.get('title') or 'latest video')}" style="display:block;width:100%;max-width:552px;height:auto;border-radius:12px;border:0;">
@@ -165,59 +165,67 @@ def build(D):
     </a></td></tr>'''
 
     when = datetime.now(tz)
-    doc = f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mt Hood · {html.escape(head)}</title></head>
+    doc = f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mt Hood · {html.escape(head)}</title>
+<style>
+@media only screen and (max-width:480px) {{
+  .wrap {{ padding:8px 4px !important; }}
+  .px {{ padding-left:14px !important; padding-right:14px !important; }}
+  .h1 {{ font-size:22px !important; }}
+  .big {{ font-size:24px !important; }}
+}}
+</style></head>
 <body style="margin:0;padding:0;background:#EEF0F3;">
 <div style="display:none;max-height:0;overflow:hidden;">{html.escape(sub)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF0F3;"><tr><td align="center" style="padding:20px 10px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF0F3;"><tr><td class="wrap" align="center" style="padding:20px 10px;">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:14px;overflow:hidden;{F}color:{INK};">
   <tr><td style="background:{GREEN};padding:18px 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
       <td style="font-size:12px;font-weight:800;letter-spacing:1.5px;color:{GREEN_T};text-transform:uppercase;">Mt Hood Meadows · Daily</td>
       <td align="right" style="font-size:12px;font-weight:700;color:{GREEN_T};">{DOW[when.weekday()]}, {when:%b} {when.day}</td></tr></table>
-    <div style="font-size:26px;line-height:1.2;font-weight:800;color:#FFFFFF;margin-top:8px;">{html.escape(head)}</div>
+    <div class="h1" style="font-size:26px;line-height:1.2;font-weight:800;color:#FFFFFF;margin-top:8px;">{html.escape(head)}</div>
     <div style="font-size:14px;line-height:1.5;color:#EEF3EA;margin-top:6px;">{html.escape(sub)}</div>
   </td></tr>
-  <tr><td style="padding:18px 24px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-    <td width="33%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
-      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">Next 7 days · Cascade</div>
-      <div style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(tot) if tot >= 0.05 else "0″"}</div>
+  <tr><td class="px" style="padding:18px 24px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td width="50%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
+      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">7 days · Cascade</div>
+      <div class="big" style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(tot) if tot >= 0.05 else "0″"}</div>
       <div style="font-size:12px;color:{MUT};">{"most on " + day_name(big["d"]) + " " + str(date.fromisoformat(big["d"]).day) if big["snow"] >= 0.5 else "7,343 ft"}</div></td>
     <td width="8"></td>
-    <td width="33%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
-      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">Next 7 days · Base</div>
-      <div style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(btot) if btot >= 0.05 else "0″"}</div>
+    <td width="50%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
+      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">7 days · Base</div>
+      <div class="big" style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(btot) if btot >= 0.05 else "0″"}</div>
       <div style="font-size:12px;color:{MUT};">5,361 ft</div></td>
-    <td width="8"></td>
-    <td width="33%" style="padding:10px 12px;background:{GREEN_PALE};border-radius:10px;">
-      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">Best day to go</div>
-      <div style="font-size:28px;font-weight:800;color:{GREEN};margin-top:2px;">{bd}</div>
-      <div style="font-size:12px;color:{MUT};">{bd_sub}</div></td>
+  </tr><tr><td colspan="3" height="8" style="font-size:0;line-height:0;">&nbsp;</td></tr><tr>
+    <td colspan="3" style="padding:10px 12px;background:{GREEN_PALE};border-radius:10px;">
+      <span style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">Best day to go</span><br>
+      <span style="font-size:20px;font-weight:800;color:{GREEN};">{bd}</span>
+      <span style="font-size:13px;color:{MUT};">&nbsp;·&nbsp;{bd_sub}</span></td>
   </tr></table></td></tr>
-  <tr><td style="padding:16px 24px 4px;"><div style="font-size:13px;font-weight:800;">Snow at Top of Cascade <span style="font-weight:600;color:{FAINT};">· the past week, then the next 7 days</span></div></td></tr>
-  <tr><td style="padding:6px 24px 0;">
+  <tr><td class="px" style="padding:16px 24px 4px;"><div style="font-size:13px;font-weight:800;">Snow at Top of Cascade <span style="font-weight:600;color:{FAINT};">· the past week, then the next 7 days</span></div></td></tr>
+  <tr><td class="px" style="padding:6px 24px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;"><tr style="height:96px;">{bars}</tr><tr>{labels}</tr></table>
     <div style="font-size:11px;color:{FAINT};margin-top:6px;">Grey = the past week (estimated at Cascade's elevation) · plum = forecast new snow (paler: less sure) · dashed = today</div>
   </td></tr>
-  <tr><td style="padding:22px 24px 6px;"><div style="font-size:13px;font-weight:800;">The next 7 days</div></td></tr>
+  <tr><td class="px" style="padding:22px 24px 6px;"><div style="font-size:13px;font-weight:800;">The next 7 days <span style="font-weight:600;color:{FAINT};">· temps and gusts at Top of Cascade</span></div></td></tr>
   <tr><td style="padding:0 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;border-collapse:collapse;table-layout:fixed;">
-      <tr style="background:#F7F8FA;"><td width="92" style="padding:7px 6px;"></td>{hdr}</tr>
-      {row("Snow · Cascade", snow_row(top))}
-      {row("Snow · Base", snow_row(base))}
-      {row("High / low · top", hl)}
-      {row("Gusts · top", gu)}
+      <tr style="background:#F7F8FA;"><td width="64" style="padding:7px 4px;"></td>{hdr}</tr>
+      {row("Snow<br>Cascade", snow_row(top))}
+      {row("Snow<br>Base", snow_row(base))}
+      {row("High / low", hl)}
+      {row("Gusts", gu)}
       {row("Chance", po)}
     </table></td></tr>
-  <tr><td style="padding:26px 24px 6px;">
+  <tr><td class="px" style="padding:26px 24px 6px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid {GREEN};background:#FBFBFC;border-radius:0 10px 10px 0;"><tr><td style="padding:14px 16px;">
       <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{GREEN};text-transform:uppercase;">The meteorologist's forecast</div>
       <div style="font-size:17px;font-weight:800;margin-top:4px;">Temira · The Gorge Is My Gym</div>
       {temira}
     </td></tr></table></td></tr>
   {video}
-  <tr><td align="center" style="padding:26px 24px 8px;">
+  <tr><td class="px" align="center" style="padding:26px 24px 8px;">
     <a href="{SITE}" style="display:inline-block;background:{GREEN};color:#fff;font-size:14px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px;">Open the full Mt Hood forecast</a></td></tr>
-  <tr><td style="padding:14px 24px 22px;font-size:11px;line-height:1.5;color:#9AA0AC;text-align:center;">
+  <tr><td class="px" style="padding:14px 24px 22px;font-size:11px;line-height:1.5;color:#9AA0AC;text-align:center;">
     NWS forecast moved to each lift's elevation · snow from the dashboard's rain/snow model · built {when:%a %b} {when.day}, {when.hour % 12 or 12}:{when:%M} {"AM" if when.hour < 12 else "PM"}<br>
     Sent every morning by your Oregon Weather server</td></tr>
 </table></td></tr></table></body></html>'''
