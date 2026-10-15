@@ -509,7 +509,7 @@ TRAILS_CSS = r"""
 .ex-filt label, .ex-listhead label { display:flex; flex-direction:column; gap:2px; font-size:10.5px; font-weight:600; color:#8A8F9C; text-transform:uppercase; letter-spacing:.04em; }
 .ex-listhead label { flex-direction:row; align-items:center; gap:6px; }
 .ex-side select { padding:5px 7px; border:1px solid #DDE0E6; border-radius:7px; font:inherit; font-size:12.5px; background:#fff; color:#111; text-transform:none; letter-spacing:0; }
-.ex-side input:focus, .ex-side select:focus { outline:2px solid #FE5000; outline-offset:1px; border-color:transparent; }
+.ex-side input:focus, .ex-side select:focus { outline:2px solid #525D45; outline-offset:1px; border-color:transparent; }
 .ex-chips { display:flex; flex-wrap:wrap; gap:5px; }
 .ex-chips button { border:1px solid #DDE0E6; background:#fff; border-radius:999px; padding:4px 10px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }
 .ex-chips button[aria-pressed=true] { background:#111; border-color:#111; color:#fff; }
@@ -530,7 +530,7 @@ TRAILS_CSS = r"""
 .ex-sync .ex-keyrow button { padding:5px 10px; border-radius:6px; background:#6B3FA8; color:#fff; }
 .ex-sync .ex-keyrow button:hover { text-decoration:none; background:#58328C; }
 .ex-msg { margin-top:4px; color:#5A5F6B; }
-.ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #FE5000; }
+.ex-card { background:#fff; border-radius:10px; padding:12px 13px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-top:3px solid #525D45; }
 .ex-card.mine { border-top-color:var(--mc,#B0457E); }
 .ex-card { position:relative; }
 .ex-x { position:absolute; top:6px; right:6px; width:26px; height:26px; border:0; border-radius:6px; background:none; font-size:18px; line-height:1; color:#8A8F9C; cursor:pointer; }
@@ -556,15 +556,15 @@ TRAILS_CSS = r"""
 .ex-uses { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
 .ex-uses span { font-size:11px; font-weight:600; color:#5A5F6B; background:#F2F3F6; border-radius:999px; padding:2px 8px; }
 .ex-acts { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.ex-go { border:0; background:#FE5000; color:#fff; border-radius:8px; padding:7px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
-.ex-go:hover { background:#E24700; }
+.ex-go { border:0; background:#525D45; color:#fff; border-radius:8px; padding:7px 12px; font:inherit; font-size:12.5px; font-weight:700; cursor:pointer; }
+.ex-go:hover { background:#434D38; }
 .ex-acts a, .ex-acts .ex-del { font-size:12px; font-weight:600; color:#5A5F6B; background:none; border:0; padding:0; font-family:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
 .ex-listhead { display:flex; justify-content:space-between; align-items:center; }
 .ex-list { list-style:none; margin:0; padding:0; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); flex:1 0 auto; }
 .ex-list li { padding:8px 11px; border-top:1px solid #F0F1F4; cursor:pointer; }
 .ex-list li:first-child { border-top:0; }
 .ex-list li:hover { background:#FAFAFB; }
-.ex-list li.sel { background:#FFF4EE; box-shadow:inset 3px 0 0 #FE5000; }
+.ex-list li.sel { background:#F0F4EC; box-shadow:inset 3px 0 0 #525D45; }
 .ex-list li.mine .n::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--mc,#B0457E); margin-right:6px; vertical-align:1px; }
 .ex-list .n { font-size:13px; font-weight:700; color:#111; }
 .ex-list .n span, .ex-list .m { font-size:11.5px; font-weight:400; color:#8A8F9C; font-variant-numeric:tabular-nums; }
@@ -707,16 +707,16 @@ window.TrailsLayer=function(map,opt){
       paint:{'line-color':['case',['all',mine,['==',['get','act'],'mtb']],['match',['get','dif'],'green',DIF.green.c,'blue',DIF.blue.c,'black',DIF.black.c,'dblack',DIF.dblack.c,'access',DIF.access.c,MTB_C],
         mine,HIKE_C,'#1F3A52'],'line-width':w,'line-opacity':0.85}},before);   // your MTB trails by difficulty, your hikes raspberry
     map.addLayer({id:'trl-hover',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
-      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
+      paint:{'line-color':'#525D45','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
     map.addLayer({id:'trl-sel-case',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
       paint:{'line-color':'#fff','line-width':['interpolate',['linear'],['zoom'],5,4,14,9]}},before);
     map.addLayer({id:'trl-sel',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
-      paint:{'line-color':'#FE5000','line-width':['interpolate',['linear'],['zoom'],5,2.5,14,5.5]}},before);
+      paint:{'line-color':'#525D45','line-width':['interpolate',['linear'],['zoom'],5,2.5,14,5.5]}},before);
     map.addLayer({id:'trl-hit',type:'line',source:'trl',layout:{visibility:'none'},paint:{'line-color':'#000','line-opacity':0,'line-width':14}},before);
     // the spot under the pointer on the selected trail's elevation profile
     map.addSource('trl-pt',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
     map.addLayer({id:'trl-pt',type:'circle',source:'trl-pt',layout:{visibility:'none'},
-      paint:{'circle-radius':6,'circle-color':'#FE5000','circle-stroke-color':'#fff','circle-stroke-width':2}});
+      paint:{'circle-radius':6,'circle-color':'#525D45','circle-stroke-color':'#fff','circle-stroke-width':2}});
     // a click on a trail selects it; a click on empty map clears the selection
     map.on('click',function(e){if(!on)return;var f=map.queryRenderedFeatures(e.point,{layers:['trl-hit']})[0];
       if(f)select(f.properties.i,false);else deselect();});
@@ -809,7 +809,7 @@ window.TrailsLayer=function(map,opt){
       '<text class="ax" x="'+(pl-4)+'" y="'+(Y(lo)+3).toFixed(1)+'" text-anchor="end">'+fmt(lo)+'′</text>'+
       '<text class="ax" x="'+pl+'" y="'+(H-3)+'">0</text><text class="ax" x="'+(W-pr)+'" y="'+(H-3)+'" text-anchor="end">'+L.toFixed(1)+' mi</text>'+
       '<line class="cur" x1="0" x2="0" y1="'+pt+'" y2="'+(H-pb)+'" stroke="#111" stroke-width="1" visibility="hidden"/>'+
-      '<circle class="cur" r="3.5" fill="#FE5000" stroke="#fff" stroke-width="1.5" visibility="hidden"/>'+
+      '<circle class="cur" r="3.5" fill="#525D45" stroke="#fff" stroke-width="1.5" visibility="hidden"/>'+
       '<rect x="'+pl+'" y="0" width="'+(W-pl-pr)+'" height="'+H+'" fill="transparent"/>';
     el.innerHTML='<div class="ex-prof-t">Elevation profile <span>from the low end · grade per mile of climb</span></div>'+
       '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Elevation profile of '+esc(t.name)+'">'+svg+'</svg>'+

@@ -1,5 +1,5 @@
 """Draws the installed app's icons into app/ (run once; the PNGs are committed):
-an orange tile with a snowy peak and a low sun - the dashboard's accent colour and its mountain art.
+a Launch Green tile with a snowy peak and a low sun - the dashboard's accent colour and its mountain art.
 
   icon-192.png / icon-512.png    rounded tile on transparent (the "any" icon: tabs, app switcher)
   icon-maskable-512.png          full-bleed tile, art inside the 80% safe circle (Android's adaptive icon)
@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "app")
-ORANGE, CREAM, SUN, SHADE, RIDGE = "#FE5000", "#FFFFFF", "#FFE7A3", "#FFD6C0", "#C43E00"
+ORANGE, CREAM, SUN, SHADE, RIDGE = "#525D45", "#FFFFFF", "#FFE7A3", "#D5DECF", "#363F2E"   # (Launch Green tile since 2026-10-14)
 SS = 4   # supersampling, for smooth edges
 
 

@@ -336,7 +336,13 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
 ## Owner's preferences
 - NWS is the base forecast everywhere; our model blend runs in the background. The
   model-vs-NWS comparison stays background data, not a UI feature.
-- Visual language: accent orange `#FE5000`; snow violet `#5A4FCF`, rain `#0E9AAE`, mix
+- ACCENT IS NOW RIVIAN "LAUNCH GREEN" `#525D45` (owner, 2026-10-14; sampled from the owner's photo, the
+  paint's mid-tone): hover `#434D38`; tints `#EBF0E6` (selected day), `#E0E8D9`, `#F5F7F2`, `#F0F4EC`;
+  dark-widget "today" `#B0CC96`; app icon = green tile (tools/make_icons.py). It replaced orange `#FE5000`
+  everywhere it was the accent (UI chrome, selection, TODAY, pins, links, the newsletter). Data colours
+  were left alone (temps, rain/snow/mix, gust warnings, AQI, trail-grade ramp). The chrome-extension/ pages
+  still use the old orange. Mentions of "orange" below mean this accent now.
+- Visual language: accent (was orange `#FE5000`, now Launch Green above); snow violet `#5A4FCF`, rain `#0E9AAE`, mix
   `#DE6A52` (palette-validated); temperatures via `temp_bg`; clean, quiet chrome; no
   heavy color blocks. Follow the dataviz rules (one axis per chart, legends, hover layers).
 - Likes: OpenSnow-style features, mountain icons with weather art, layouts consistent

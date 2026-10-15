@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H, SS = 1000, 480, 2
 INK, MUT, LINE, CARD = (17, 17, 17), (125, 133, 146), (238, 240, 243), (255, 255, 255, 246)
-ORANGE, SNOW, SNOW2, RAIN, PAST = (254, 80, 0), (90, 79, 207), (185, 179, 240), (11, 111, 124), (169, 178, 191)
+ORANGE, SNOW, SNOW2, RAIN, PAST = (82, 93, 69), (90, 79, 207), (185, 179, 240), (11, 111, 124), (169, 178, 191)
 SNOTEL = "651:OR:SNTL"   # Mt Hood Test Site, 5,370 ft - at Meadows' base area
 AWDB = "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1"
 DOW = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
@@ -27,10 +27,10 @@ DOW = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
 # ink / mut = text, track = the empty temperature bar, pop / pop0 = rain chance (>= 10% / below), shadow on text
 THEMES = {
     "white":   {"bg": CARD, "ink": INK, "mut": MUT, "track": LINE + (255,), "pop": RAIN, "pop0": (194, 198, 206), "today": ORANGE, "shadow": False},
-    "frosted": {"bg": (255, 255, 255, 150), "ink": INK, "mut": (66, 72, 84), "track": (255, 255, 255, 170), "pop": (8, 92, 104), "pop0": (110, 118, 130), "today": (214, 64, 0), "shadow": False},
-    "dark":    {"bg": (20, 25, 34, 200), "ink": (255, 255, 255), "mut": (186, 194, 206), "track": (64, 70, 82, 200), "pop": (110, 214, 228), "pop0": (120, 128, 142), "today": (255, 138, 76), "shadow": False},
-    "sky":     {"bg": None, "ink": (255, 255, 255), "mut": (232, 240, 250), "track": (255, 255, 255, 70), "pop": (255, 255, 255), "pop0": (214, 228, 242), "today": (255, 226, 160), "shadow": True},
-    "none":    {"bg": 0, "ink": (255, 255, 255), "mut": (236, 240, 246), "track": (255, 255, 255, 80), "pop": (255, 255, 255), "pop0": (226, 232, 240), "today": (255, 196, 150), "shadow": True},
+    "frosted": {"bg": (255, 255, 255, 150), "ink": INK, "mut": (66, 72, 84), "track": (255, 255, 255, 170), "pop": (8, 92, 104), "pop0": (110, 118, 130), "today": (62, 74, 52), "shadow": False},
+    "dark":    {"bg": (20, 25, 34, 200), "ink": (255, 255, 255), "mut": (186, 194, 206), "track": (64, 70, 82, 200), "pop": (110, 214, 228), "pop0": (120, 128, 142), "today": (176, 204, 150), "shadow": False},
+    "sky":     {"bg": None, "ink": (255, 255, 255), "mut": (232, 240, 250), "track": (255, 255, 255, 70), "pop": (255, 255, 255), "pop0": (214, 228, 242), "today": (214, 236, 196), "shadow": True},
+    "none":    {"bg": 0, "ink": (255, 255, 255), "mut": (236, 240, 246), "track": (255, 255, 255, 80), "pop": (255, 255, 255), "pop0": (226, 232, 240), "today": (206, 228, 188), "shadow": True},
 }
 
 

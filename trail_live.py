@@ -58,14 +58,14 @@ TRAIL_CSS = r"""
 [hidden] { display:none !important; }
 .tl-load { display:flex; flex-direction:column; gap:10px; max-width:760px; margin-bottom:24px; }
 .tl-drop { display:flex; flex-direction:column; align-items:center; gap:6px; padding:34px 20px; border:2px dashed #C9CDD5; border-radius:12px; background:#fff; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; }
-.tl-drop:hover, .tl-drop.over { border-color:#FE5000; background:#FFF8F4; }
-.tl-drop:focus-within { outline:2px solid #FE5000; outline-offset:2px; }
-.tl-drop-ic { width:34px; height:34px; color:#FE5000; }
+.tl-drop:hover, .tl-drop.over { border-color:#525D45; background:#F5F7F2; }
+.tl-drop:focus-within { outline:2px solid #525D45; outline-offset:2px; }
+.tl-drop-ic { width:34px; height:34px; color:#525D45; }
 .tl-drop-t { font-size:15px; color:#111; }
-.tl-drop-t u { color:#FE5000; text-decoration-thickness:1.5px; text-underline-offset:3px; }
+.tl-drop-t u { color:#525D45; text-decoration-thickness:1.5px; text-underline-offset:3px; }
 .tl-drop-s { font-size:12px; color:#8A8F9C; }
 .tl-linkrow input { width:100%; padding:9px 12px; border:1px solid #DDE0E6; border-radius:8px; font:inherit; font-size:13px; background:#fff; }
-.tl-linkrow input:focus { outline:2px solid #FE5000; outline-offset:1px; border-color:transparent; }
+.tl-linkrow input:focus { outline:2px solid #525D45; outline-offset:1px; border-color:transparent; }
 .tl-status { margin:0 0 20px; padding:12px 14px; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); font-size:13px; color:#5A5F6B; }
 .tl-status.err { color:#9B1C1C; background:#FDF1F1; box-shadow:inset 0 0 0 1px #F3C7C7; }
 .tl-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
@@ -75,7 +75,7 @@ TRAIL_CSS = r"""
 .tl-head-r { display:flex; align-items:center; gap:10px; }
 .tl-head-r a { font-size:13px; font-weight:600; color:#5A5F6B; }
 .tl-new { border:1px solid #DDE0E6; background:#fff; border-radius:8px; padding:7px 12px; font:inherit; font-size:13px; font-weight:600; color:#111; cursor:pointer; }
-.tl-new:hover { border-color:#FE5000; color:#FE5000; }
+.tl-new:hover { border-color:#525D45; color:#525D45; }
 .tl-sec { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
 .tl-sec h3 { margin:0; font-size:15px; font-weight:700; color:#111; }
 .tl-pick { margin-top:0 !important; }
@@ -90,8 +90,8 @@ TRAIL_CSS = r"""
 .tl-foot { margin:14px 0 0; font-size:11px; color:#9A9FAB; line-height:1.5; }
 .tl-pin { background:#fff; border-radius:6px; padding:4px 9px; font-size:12px; font-weight:700; color:#111; box-shadow:0 2px 6px rgba(0,0,0,.25); border-left:3px solid #6BBF68; white-space:nowrap; cursor:pointer; }
 .tl-pin small { font-weight:500; color:#8A8F9C; margin-left:4px; }
-.tl-pin.peak { border-left-color:#FE5000; }
-.tl-pin.active { box-shadow:0 0 0 2px #FE5000, 0 2px 6px rgba(0,0,0,.25); }
+.tl-pin.peak { border-left-color:#525D45; }
+.tl-pin.active { box-shadow:0 0 0 2px #525D45, 0 2px 6px rgba(0,0,0,.25); }
 @media (max-width:1000px) { .tl-row1 { grid-template-columns:minmax(0,1fr); } #tlmap { height:460px; } }
 """
 
@@ -105,7 +105,7 @@ TABLE_CSS = r"""
 .tl-tbl td.wkd { background:#F7F8FA; }
 .tl-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
 .tl-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
-.tl-tbl .dh .tt { background:#FE5000; color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
+.tl-tbl .dh .tt { background:#525D45; color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
 .tl-tbl .ds-ci { font-size:18px; margin-top:2px; }
 .tl-tbl .snow-day { font-size:14px; font-weight:800; color:#5A4FCF; }
 .tl-tbl .snow-none { color:#C9CDD5; }
@@ -118,11 +118,11 @@ TABLE_CSS = r"""
 .tl-tbl .gust { font-size:10.5px; color:#8A8F9C; margin-left:3px; }
 .tl-tbl .vis { font-size:11px; }
 .tl-tbl td.dsum { cursor:pointer; }
-.tl-tbl td.dsum:hover { background:#FFF8F4; }
-.tl-tbl td.dsum.dsel { background:#FFF1E8; }
+.tl-tbl td.dsum:hover { background:#F5F7F2; }
+.tl-tbl td.dsum.dsel { background:#EBF0E6; }
 .tl-tbl td[hidden] { display:none !important; }
 .tl-tbl td.dsum { cursor:pointer; }
-.tl-tbl td.dsum:hover { background:#FFF8F4; }
+.tl-tbl td.dsum:hover { background:#F5F7F2; }
 .tl-tbl td.ddet { cursor:pointer; min-width:56px; padding:7px 6px; border-left-color:#F0F1F4; }
 .tl-tbl td.ddet.d0 { border-left-color:#DDE0E6; }
 .tl-tbl .d3t { font-size:11px; font-weight:600; color:#8A8F9C; }
@@ -370,8 +370,8 @@ function profile(){   // elevation vs distance, base and peak marked
   var d='M'+X(0).toFixed(1)+','+Y(zs[0]).toFixed(1);for(var k=step;k<p.length;k+=step)d+='L'+X(k).toFixed(1)+','+Y(zs[k]).toFixed(1);
   var area=d+'L'+X(p.length-1).toFixed(1)+','+(H-B)+'L'+L+','+(H-B)+'Z',ticks=[z0+pad,(z0+z1)/2,z1-pad];
   var o='<svg viewBox="0 0 '+W+' '+H+'" height="'+H+'">'+ticks.map(function(z){return'<line x1="'+L+'" x2="'+(W-6)+'" y1="'+Y(z)+'" y2="'+Y(z)+'" stroke="#F0F1F4"/><text x="'+(L-6)+'" y="'+(Y(z)+3.5)+'" text-anchor="end">'+Math.round(z/10)*10+'′</text>';}).join('')
-    +'<path d="'+area+'" fill="#FE5000" fill-opacity=".1"/><path d="'+d+'" fill="none" stroke="#FE5000" stroke-width="2" stroke-linejoin="round"/>'
-    +[[s.lo,'#6BBF68','Base'],[s.hi,'#FE5000','Peak']].map(function(m){return'<circle cx="'+X(m[0])+'" cy="'+Y(zs[m[0]])+'" r="4.5" fill="'+m[1]+'" stroke="#fff" stroke-width="1.5"/><text x="'+X(m[0])+'" y="'+(Y(zs[m[0]])-9)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+m[2]+'</text>';}).join('')
+    +'<path d="'+area+'" fill="#525D45" fill-opacity=".1"/><path d="'+d+'" fill="none" stroke="#525D45" stroke-width="2" stroke-linejoin="round"/>'
+    +[[s.lo,'#6BBF68','Base'],[s.hi,'#525D45','Peak']].map(function(m){return'<circle cx="'+X(m[0])+'" cy="'+Y(zs[m[0]])+'" r="4.5" fill="'+m[1]+'" stroke="#fff" stroke-width="1.5"/><text x="'+X(m[0])+'" y="'+(Y(zs[m[0]])-9)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+m[2]+'</text>';}).join('')
     +'<text x="'+L+'" y="'+(H-4)+'">0 mi</text><text x="'+(W-6)+'" y="'+(H-4)+'" text-anchor="end">'+mi.toFixed(1)+' mi</text></svg>';
   $('tl-profile').innerHTML=o;}
 function pick(i){
@@ -412,7 +412,7 @@ function drawMap(){
     onLoad:function(map){
       map.addSource('tl-line',{type:'geojson',data:line});
       map.addLayer({id:'tl-casing',type:'line',source:'tl-line',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#fff','line-width':6,'line-opacity':0.9}});
-      map.addLayer({id:'tl-route',type:'line',source:'tl-line',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#FE5000','line-width':3.5}});
+      map.addLayer({id:'tl-route',type:'line',source:'tl-line',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#525D45','line-width':3.5}});
       st.P.forEach(function(pt,j){var el=document.createElement('div');el.className='tl-pin'+(j?' peak':'')+(j===st.sel?' active':'');
         el.innerHTML=pt.name+'<small>'+ft(pt.p.ele)+'</small>';el.addEventListener('click',function(){pick(j);});
         new mapboxgl.Marker({element:el,anchor:'bottom',offset:[0,-4]}).setLngLat([pt.p.lon,pt.p.lat]).addTo(map);});

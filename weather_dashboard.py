@@ -1213,7 +1213,7 @@ CY_CSS = r"""
 .cy-tbl td.dsum { min-width:70px; padding:9px 5px; vertical-align:middle; border-left:1px solid #EEF0F3; }
 .cy-tbl tr + tr td.dsum, .cy-tbl tr + tr th { border-top:1px solid #F0F1F4; }
 .cy-tbl td.wkd { background:#F7F8FA; }
-.cy-tbl td.dsel { background:#FFF1E8; }
+.cy-tbl td.dsel { background:#EBF0E6; }
 .cy-tbl .dh { white-space:nowrap; }
 .cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
 .cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
@@ -1463,11 +1463,11 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
         # waypoint switcher; mirrors the 3D map markers (and works when the map can't load)
         tbl_html+='<div class="wp-chips">'+''.join(
             f'<button class="wp-chip{" active" if fi==0 else ""}" data-wp="{uid}" onclick="showWp_{uid}({fi})">'
-            f'<span class="wp-dot" style="background:{["#FE5000","#FAA21B","#6BBF68"][fi%3]}"></span>{html.escape(fc["name"])}'
+            f'<span class="wp-dot" style="background:{["#525D45","#FAA21B","#6BBF68"][fi%3]}"></span>{html.escape(fc["name"])}'
             f'<span class="wp-chip-el">{fc["elev_ft"]:,.0f}′</span></button>' for fi,fc in enumerate(all_fc))+'</div>'
     tcls=' class="cy-tbl"' if city else ''
     for fi,fc in enumerate(all_fc):
-        col=['#FE5000','#FAA21B','#6BBF68'][fi%3]
+        col=['#525D45','#FAA21B','#6BBF68'][fi%3]
         fc_display='' if fi==0 else 'display:none;'
         actual_rows=""
         for key,label in (city_labels() if city else [("time",""),("temp",ri("temp")+'Temp'),("ch",ri("cloud")+'High <span class="alt">20-40k</span>'),("cm",ri("cloud")+'Mid <span class="alt">6-20k</span>'),("cl",ri("cloud")+'Low <span class="alt">&lt;6k</span>'),("cb",ri("base")+'Base'),("wind",ri("wind")+'Wind (Gust)'),("precip",ri("chance")+'Chance'),("pa",ri("drop")+'Rain/Snow'),("sd",'<span title="This season\'s snow on the ground at the end of each day: measured depths at SNOTEL stations within 35 km, carried forward with the forecast (new snow, melt, settling). Glaciers and old snowfields are not included.">'+ri("depth")+'Snow depth</span>'),("aqi",ri("aqi")+'AQI')]):
@@ -1495,11 +1495,11 @@ th {{ position:sticky; left:0; z-index:2; background:#fff; text-align:left; padd
 th .ri {{ font-size:14px; margin-right:3px; }}
 td {{ text-align:center; padding:3px 6px; min-width:50px; }}
 .dsum {{ cursor:pointer; min-width:80px; border-left:1px solid #DDE0E6; }}
-.dsum:hover {{ background:rgba(254,80,0,0.04); }}
+.dsum:hover {{ background:rgba(82,93,69,0.04); }}
 .ddet {{ cursor:pointer; }}
 .dl {{ font-size:11px; font-weight:700; color:#111; letter-spacing:.5px; text-transform:uppercase; }}
 .ds-ci {{ font-size:18px; margin-top:2px; }}
-.tt {{ background:#FE5000; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }}
+.tt {{ background:#525D45; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }}
 .tl {{ font-size:11px; color:#999; font-weight:600; }}
 .tp {{ border-radius:5px; color:#fff; font-size:13px; font-weight:700; padding:2px 5px; display:inline-block; }}
 .cb {{ font-size:11px; color:#777; }}
@@ -1512,8 +1512,8 @@ th.cch {{ font-size:9px; min-width:85px; padding:1px 8px 1px 0; }}
 .aqi b {{ color:#111; font-weight:700; }}
 .aqd {{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; vertical-align:1px; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15); }}
 .leg {{ margin-top:8px; font-size:11px; color:#AAA; }}
-.dsum.dsel {{ background:#FFF1E8; }}
-.dsum.dsel:hover {{ background:#FFE9DC; }}
+.dsum.dsel {{ background:#EBF0E6; }}
+.dsum.dsel:hover {{ background:#E0E8D9; }}
 .sdp b {{ font-size:12px; color:#5A4FCF; }}
 .sd0 {{ color:#C9CDD5; }}
 {CY_CSS if city else ''}
@@ -1900,7 +1900,7 @@ window.wxDay=function(uid,di,ev){ev=ev||window.event;
   ['pointerup','pointercancel'].forEach(function(t){document.addEventListener(t,function(){if(tm){clearTimeout(tm);tm=null;}},true);});
   document.addEventListener('click',function(e){if(eat&&cell(e)&&!ADD_NEXT){eat=false;e.stopPropagation();e.preventDefault();}},true);
   document.addEventListener('contextmenu',function(e){if(cell(e))e.preventDefault();},true);
-  var st=document.createElement('style');st.textContent='.cc-clr{margin-left:8px;border:1px solid #DDE0E6;border-radius:999px;background:#fff;padding:1px 8px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:#5A5F6B;cursor:pointer;vertical-align:1px}.cc-clr:hover{border-color:#FE5000;color:#FE5000}td[onclick*="wxDay"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
+  var st=document.createElement('style');st.textContent='.cc-clr{margin-left:8px;border:1px solid #DDE0E6;border-radius:999px;background:#fff;padding:1px 8px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:#5A5F6B;cursor:pointer;vertical-align:1px}.cc-clr:hover{border-color:#525D45;color:#525D45}td[onclick*="wxDay"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
   document.head.appendChild(st);})();
 })();
 """
@@ -2032,7 +2032,7 @@ function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' cur
   s.push('<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+f1(z)+'" y2="'+f1(z)+'" stroke="#8A9AA8" stroke-dasharray="3 3"/><text x="'+(pl-5)+'" y="'+f1(z+3.5)+'" text-anchor="end" class="td-ax">0′</text>'
     +'<text x="'+(pl-5)+'" y="'+f1(Y(top)+3.5)+'" text-anchor="end" class="td-ax">'+top+'′</text>');
   s.push('<path d="'+line+'" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>');
-  if(now>=t0&&now<=t1)s.push('<line x1="'+f1(X(now))+'" x2="'+f1(X(now))+'" y1="'+(pt-4)+'" y2="'+(H-pb)+'" stroke="#FE5000" stroke-width="1.5"/><text x="'+f1(X(now)+3)+'" y="'+(H-pb+13)+'" class="td-now">now</text>');
+  if(now>=t0&&now<=t1)s.push('<line x1="'+f1(X(now))+'" x2="'+f1(X(now))+'" y1="'+(pt-4)+'" y2="'+(H-pb)+'" stroke="#525D45" stroke-width="1.5"/><text x="'+f1(X(now)+3)+'" y="'+(H-pb+13)+'" class="td-now">now</text>');
   ev.forEach(function(e){if(e.t<t0||e.t>t1)return;   // highs and lows: a dot (hover for height and time) and the time
     var x=X(e.t),y=Y(e.ft),minus=!e.hi&&e.ft<0,tip=(e.hi?'High ':'Low ')+e.ft.toFixed(1).replace('-','−')+'′ at '+WD[new Date(e.t).getUTCDay()]+' '+clock(e.t).toUpperCase();
     s.push('<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+(minus?4:3)+'" fill="'+(minus?'#0B7A87':'#1F5F8B')+'" stroke="#fff" stroke-width="1.5"><title>'+tip+'</title></circle>');
@@ -2295,26 +2295,26 @@ def build_cities_page():
         ".dashboard-layout { display:flex; gap:14px; align-items:stretch; margin-bottom:28px; }\n"
         ".map-panel { flex:1.15; min-width:0; }\n"
         ".map-panel .map-wrap { margin-bottom:0; }\n"
-        ".weather-marker.sel { box-shadow:0 0 0 2px #FE5000,0 2px 6px rgba(0,0,0,0.2); }\n"
+        ".weather-marker.sel { box-shadow:0 0 0 2px #525D45,0 2px 6px rgba(0,0,0,0.2); }\n"
         ".cc-panel { flex:1; min-width:0; position:relative; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; display:flex; flex-direction:column; }\n"
         ".cc-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; padding-bottom:10px; border-bottom:1px solid #EEF0F3; }\n"
         ".cc-kicker { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#9A9FAB; }\n"
         ".cy-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; margin:0 0 14px; }\n"
         ".cy-pick { position:relative; display:inline-flex; align-items:center; gap:10px; padding:8px 14px 8px 16px; background:#fff; border:1px solid #DDE0E6; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); font-size:20px; font-weight:800; letter-spacing:-.01em; color:#111; cursor:pointer; }\n"
         ".cy-pick svg { color:#5A5F6B; }\n"
-        ".cy-pick:hover { border-color:#FE5000; }\n"
-        ".cy-pick:hover svg { color:#FE5000; }\n"
+        ".cy-pick:hover { border-color:#525D45; }\n"
+        ".cy-pick:hover svg { color:#525D45; }\n"
         ".cy-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:16px; }\n"
-        ".cy-pick:has(select:focus-visible) { outline:2px solid #FE5000; outline-offset:2px; }\n"
+        ".cy-pick:has(select:focus-visible) { outline:2px solid #525D45; outline-offset:2px; }\n"
         ".cq-bar { display:flex; align-items:center; gap:10px; margin:0 0 8px; font-size:12px; color:#8A8F9C; }\n"
         ".cq-bar .cq-clear { width:auto; height:auto; padding:3px 9px; border:1px solid #DDE0E6; border-radius:999px; background:#fff; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
-        ".cq-bar .cq-clear:hover { border-color:#FE5000; color:#FE5000; }\n"
+        ".cq-bar .cq-clear:hover { border-color:#525D45; color:#525D45; }\n"
         ".cy-meta { font-size:12px; color:#8A8F9C; font-variant-numeric:tabular-nums; }\n"
         ".cc-place { font-size:15px; font-weight:700; color:#111; }\n"
         ".cc-pick { position:relative; display:inline-flex; align-items:center; gap:7px; font-size:19px; font-weight:700; letter-spacing:-.01em; color:#111; cursor:pointer; border-radius:4px; }\n"
-        ".cc-pick:hover #cc-name { color:#FE5000; }\n"
+        ".cc-pick:hover #cc-name { color:#525D45; }\n"
         ".cc-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:14px; }\n"
-        ".cc-pick:has(select:focus-visible) { outline:2px solid #FE5000; outline-offset:2px; }\n"
+        ".cc-pick:has(select:focus-visible) { outline:2px solid #525D45; outline-offset:2px; }\n"
         ".cc-now { font-size:11px; color:#9A9FAB; text-align:right; font-variant-numeric:tabular-nums; }\n"
         ".cc-charts { flex:1 1 0; min-height:0; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; gap:6px; padding-top:8px; }\n"
         ".cc-chart { position:relative; }\n"
@@ -2333,7 +2333,7 @@ def build_cities_page():
         ".weather-marker .wm-ic { font-size:12px; line-height:1; }\n"
         ".weather-marker .wm-name { font-weight:700; color:#111; font-size:11.5px; }\n"
         ".weather-marker .wm-temp { font-weight:700; font-size:11.5px; color:#fff; border-radius:999px; padding:1px 6px; font-variant-numeric:tabular-nums; }\n"
-        ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px #525D45,0 2px 8px rgba(0,0,0,0.25); }\n"
         ".weather-marker:hover { z-index:4; }\n"
         ".city-mapbox { position:relative; }\n"
         ".ph-split { display:flex; justify-content:space-between; align-items:flex-end; gap:12px 24px; flex-wrap:wrap; }\n"
@@ -2361,7 +2361,7 @@ def build_cities_page():
         ".tide-svg .td-hi { fill:#1F5F8B; font-weight:700; }\n"
         ".tide-svg .td-lo { fill:#5A5F6B; }\n"
         ".tide-svg .td-minus { fill:#0B7A87; font-weight:700; }\n"
-        ".tide-svg .td-now { fill:#FE5000; font-weight:700; font-size:10px; }\n"
+        ".tide-svg .td-now { fill:#525D45; font-weight:700; font-size:10px; }\n"
         ".tide-svg circle { cursor:default; }\n"
         ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
         ".city-wash[hidden] { display:none; }\n"
@@ -2375,20 +2375,20 @@ def build_cities_page():
         ".city-search { position:absolute; top:10px; left:10px; z-index:3; width:240px; max-width:calc(100% - 20px); }\n"
         ".city-search > svg { position:absolute; left:10px; top:8px; width:15px; height:15px; color:#8A8F9C; pointer-events:none; }\n"
         ".city-search input { width:100%; padding:6px 10px 6px 31px; border:0; border-radius:9px; background:rgba(255,255,255,.95); box-shadow:0 1px 3px rgba(20,24,35,.18); font:inherit; font-size:12.5px; color:#111; }\n"
-        ".city-search input:focus { outline:2px solid #FE5000; outline-offset:0; }\n"
+        ".city-search input:focus { outline:2px solid #525D45; outline-offset:0; }\n"
         ".city-q-list { margin-top:4px; background:#fff; border-radius:9px; box-shadow:0 4px 14px rgba(20,24,35,.2); overflow:hidden; }\n"
         ".city-q-list button { display:flex; justify-content:space-between; align-items:baseline; gap:8px; width:100%; border:0; background:none; padding:7px 10px; font:inherit; font-size:12.5px; text-align:left; cursor:pointer; }\n"
         ".city-q-list button + button { border-top:1px solid #F0F1F4; }\n"
-        ".city-q-list button:hover, .city-q-list button:focus-visible { background:#FFF4EE; outline:0; }\n"
+        ".city-q-list button:hover, .city-q-list button:focus-visible { background:#F0F4EC; outline:0; }\n"
         ".city-q-list b { color:#111; }\n"
         ".city-q-list span { color:#8A8F9C; font-size:11.5px; white-space:nowrap; }\n"
         ".cq-none { padding:8px 10px; font-size:12px; color:#8A8F9C; }\n"
         ".weather-marker.searched { box-shadow:0 0 0 1.5px #111,0 1px 4px rgba(0,0,0,0.22); }\n"
-        ".weather-marker.searched.sel { box-shadow:0 0 0 2px #FE5000,0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".weather-marker.searched.sel { box-shadow:0 0 0 2px #525D45,0 2px 8px rgba(0,0,0,0.25); }\n"
         ".cq-status { padding:12px 14px; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); font-size:13px; color:#5A5F6B; }\n"
         ".cq-status.err { color:#9B1C1C; background:#FDF1F1; }\n"
         ".cq-clear { margin-left:auto; border:1px solid #DDE0E6; background:#fff; border-radius:7px; width:26px; height:26px; font-size:16px; line-height:1; color:#5A5F6B; cursor:pointer; }\n"
-        ".cq-clear:hover { border-color:#FE5000; color:#FE5000; }\n"
+        ".cq-clear:hover { border-color:#525D45; color:#525D45; }\n"
         ".cq-foot { margin:8px 0 0; font-size:11px; color:#9A9FAB; }\n"
     ) + detail_css
 
@@ -2400,7 +2400,10 @@ def build_cities_page():
         "  center: [-122.5, 45.5], zoom: 5, pitch: 0, bearing: 0, attributionControl: false\n"
         "});\n"
         "// the map is as tall as the table + charts beside it, which change with the city and day\n"
-        "if(window.ResizeObserver)new ResizeObserver(function(){map.resize();}).observe(document.getElementById('citymap'));\n"
+        "// (if the map was made before its box had a size, the fit lands mid-Pacific: re-fit once it has one)\n"
+        "var cityFit=function(){map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: {top: 84, bottom: 40, left: 30, right: 30}, duration:0});};\n"
+        "if(window.ResizeObserver)new ResizeObserver(function(){map.resize();var c=map.getCenter();\n"
+        "  if(c.lat<41||c.lat>50||c.lng<-127||c.lng>-116)cityFit();}).observe(document.getElementById('citymap'));\n"
         "// room at the top for the search box and shading switch, and the bottom for the legend\n"
         "map.fitBounds([[-124.5, 43.8], [-121.0, 48.1]], {padding: {top: 84, bottom: 40, left: 30, right: 30}});\n"
         "map.on('load', function() {\n"
@@ -2885,7 +2888,7 @@ def build_trails_page(aq):
         ".cc-tiers button small { margin-left:6px; font-size:11px; font-weight:500; color:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
         ".cc-tiers button:hover { color:#111; }\n"
         ".cc-tiers button.active { background:#fff; color:#111; box-shadow:0 0 0 1px #E3E5EA, 0 1px 2px rgba(20,24,35,.06); }\n"
-        ".cc-tiers button:focus-visible { outline:2px solid #FE5000; outline-offset:2px; }\n"
+        ".cc-tiers button:focus-visible { outline:2px solid #525D45; outline-offset:2px; }\n"
         ".cc-wp { font-size:11px; color:#9A9FAB; margin-top:3px; }\n"
         # Forecast | Cameras switch and the camera view
         ".cc-head-r { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }\n"
@@ -2894,7 +2897,7 @@ def build_trails_page(aq):
         ".cc-view button { white-space:nowrap; border:none; background:none; padding:4px 11px; border-radius:7px; font:inherit; font-size:12px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
         ".cc-view button:hover { color:#111; }\n"
         ".cc-view button.active { background:#fff; color:#111; box-shadow:0 0 0 1px #E3E5EA, 0 1px 2px rgba(20,24,35,.06); }\n"
-        ".cc-view button:focus-visible { outline:2px solid #FE5000; outline-offset:2px; }\n"
+        ".cc-view button:focus-visible { outline:2px solid #525D45; outline-offset:2px; }\n"
         ".cc-view button span { margin-left:5px; font-size:11px; color:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
         # as tall as the photo + caption + thumbnails: a 0 flex-basis collapsed it to nothing wherever the
         # panel has no fixed height (phones, and the Volcanos tab's stacked layout)
@@ -2910,12 +2913,12 @@ def build_trails_page(aq):
         ".cam-thumbs img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; background:#10131A; transition:opacity .15s; }\n"
         ".cam-thumbs button:hover { color:#111; }\n"
         ".cam-thumbs button:hover img { opacity:.85; }\n"
-        ".cam-thumbs button:focus-visible { outline:2px solid #FE5000; outline-offset:2px; border-radius:6px; }\n"
+        ".cam-thumbs button:focus-visible { outline:2px solid #525D45; outline-offset:2px; border-radius:6px; }\n"
         ".cam-cap { font-size:12px; color:#5A5F6B; line-height:1.5; }\n"
         ".cam-cap b { color:#111; }\n"
         ".cam-cap .cam-when { font-variant-numeric:tabular-nums; }\n"
         ".cam-cap .cam-night { color:#8A5A00; }\n"
-        ".cam-cap button { border:none; background:none; padding:0; font:inherit; font-weight:600; color:#FE5000; cursor:pointer; }\n"
+        ".cam-cap button { border:none; background:none; padding:0; font:inherit; font-weight:600; color:#525D45; cursor:pointer; }\n"
         ".cam-cap a { color:#8A8F9C; }\n"
     )
     map_js = (
@@ -3084,12 +3087,12 @@ def fetch_gorge_snow_forecast():
 SKI_POINTS = [
     {"name":"Meadows Base","lat":45.33144,"lon":-121.66413,"color":"#6BBF68"},
     {"name":"Top of Blue","lat":45.34425,"lon":-121.67252,"color":"#4FB1BE"},
-    {"name":"Top of Cascade","lat":45.34971,"lon":-121.68164,"color":"#FE5000"},
+    {"name":"Top of Cascade","lat":45.34971,"lon":-121.68164,"color":"#525D45"},
 ]
 
 LIFT_LINES = [
     {"name":"Blue","color":"#4FB1BE","dashed":0,"coords":[[-121.66413,45.33144],[-121.67252,45.34425]]},
-    {"name":"Cascade","color":"#FE5000","dashed":0,"coords":[[-121.66413,45.33144],[-121.68164,45.34971]]},
+    {"name":"Cascade","color":"#525D45","dashed":0,"coords":[[-121.66413,45.33144],[-121.68164,45.34971]]},
 ]
 
 
@@ -3742,13 +3745,13 @@ def build_ski_page():
     .yt-card { position:relative; display:flex; align-items:flex-end; min-height:220px; padding:20px 18px 18px; border-radius:8px; overflow:hidden; color:#fff; text-decoration:none;
       background:radial-gradient(120% 90% at 20% 0%, #3E5578 0%, #243249 45%, #141B28 100%); }
     .yt-card.day { background:radial-gradient(120% 90% at 20% 0%, #8DB8DD 0%, #5A86B2 45%, #2E4766 100%); }
-    .yt-card:focus-visible { outline:2px solid #FE5000; outline-offset:2px; }
+    .yt-card:focus-visible { outline:2px solid #525D45; outline-offset:2px; }
     /* a faint far ridge along the bottom, for depth */
     .yt-ridge { position:absolute; left:0; right:0; bottom:0; height:38%; background:rgba(8,12,20,.35);
       clip-path:polygon(0 60%,12% 38%,22% 52%,35% 22%,46% 45%,58% 30%,70% 50%,83% 26%,100% 48%,100% 100%,0 100%); }
     .yt-play { position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); transition:background .15s; }
     .yt-play::after { content:""; position:absolute; left:16px; top:12px; border-style:solid; border-width:9px 0 9px 15px; border-color:transparent transparent transparent #fff; }
-    .yt-card:hover .yt-play { background:#FE5000; box-shadow:none; }
+    .yt-card:hover .yt-play { background:#525D45; box-shadow:none; }
     .yt-foot { position:relative; display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px 18px; width:100%; }
     .yt-badge { position:relative; flex:none; width:130px; height:89px; margin-top:26px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
     .yt-badge svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
@@ -3764,18 +3767,18 @@ def build_ski_page():
     th .ri { font-size:14px; margin-right:3px; }
     td { text-align:center; padding:3px 6px; min-width:58px; }
     .dsum { cursor:pointer; min-width:84px; border-left:1px solid #DDE0E6; }
-    .dsum:hover { background:rgba(254,80,0,0.04); }
+    .dsum:hover { background:rgba(82,93,69,0.04); }
     .ddet { cursor:pointer; }
     .dl { font-size:11px; font-weight:700; color:#111; letter-spacing:.5px; text-transform:uppercase; }
     .ds-ci { font-size:18px; margin-top:2px; }
-    .tt { background:#FE5000; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
+    .tt { background:#525D45; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
     /* 10-day table: day headers, snow bars, temperature range bars, row rules, weekend tint */
     .ski-tbl { border-spacing:0; }
     .ski-tbl td.dsum { padding:7px 10px; min-width:78px; vertical-align:middle; }
     .ski-tbl tr + tr td.dsum, .ski-tbl tr + tr th { border-top:1px solid #F0F1F4; }
     .ski-tbl th { padding:7px 12px 7px 0; vertical-align:middle; }
     .ski-tbl td.wkd { background:#F7F8FA; }
-    .ski-tbl td.dsum.dsel { background:#FFF1E8; }
+    .ski-tbl td.dsum.dsel { background:#EBF0E6; }
     .dh { white-space:nowrap; }
     .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
     .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
@@ -3791,7 +3794,7 @@ def build_ski_page():
     .snow-txt { color:#5A4FCF; font-weight:700; }
     .tl { font-size:11px; color:#999; font-weight:600; }
     .ski-marker { background:#fff; border-radius:6px; padding:5px 10px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.25); white-space:nowrap; border-left:3px solid #6BBF68; cursor:pointer; }
-    .ski-marker.active { box-shadow:0 0 0 2px #FE5000, 0 2px 6px rgba(0,0,0,0.25); }
+    .ski-marker.active { box-shadow:0 0 0 2px #525D45, 0 2px 6px rgba(0,0,0,0.25); }
     .ski-marker .sm-name { font-weight:700; color:#111; font-size:14px; }
     .ski-marker .sm-row { display:flex; gap:6px; align-items:center; margin-top:1px; }
     .ski-marker .sm-fl { font-weight:700; font-size:16px; color:#fff; border-radius:3px; padding:1px 4px; }
@@ -4021,7 +4024,7 @@ def build_ski_page():
         cam_cards += (
             f'<div style="flex:1;min-width:0;text-align:center;">'
             f'<img src="{cam["img"]}" alt="{cam["name"]}" style="width:100%;border-radius:6px;display:block;"/>'
-            f'<div style="font-size:9px;font-weight:700;color:#FE5000;margin-top:3px;">\U0001F4F7{ci2+1}</div>'
+            f'<div style="font-size:9px;font-weight:700;color:#525D45;margin-top:3px;">\U0001F4F7{ci2+1}</div>'
             f'<div style="font-size:9px;font-weight:600;color:#555;">{cam["name"]}</div>'
             f'</div>'
         )
@@ -4059,7 +4062,7 @@ def build_ski_page():
         "      'primary','secondary','tertiary','trunk','motorway'],"
         "    paint:{'line-color':['match',['get','congestion'],"
         "      'low','#6BBF68','moderate','#FAA21B',"
-        "      'heavy','#FE5000','severe','#ED1E29','#999'],"
+        "      'heavy','#525D45','severe','#ED1E29','#999'],"
         "      'line-width':3,'line-opacity':0.7}},"
         "    fl||undefined);\n"
         "  if(routeGeo){\n"
@@ -4076,7 +4079,7 @@ def build_ski_page():
         "  }\n"
         "  cams.forEach(function(c,i){\n"
         "    var el=document.createElement('div');\n"
-        "    el.style.cssText='background:#fff;border:2px solid #FE5000;'"
+        "    el.style.cssText='background:#fff;border:2px solid #525D45;'"
         "      +'border-radius:4px;padding:1px 5px;font-size:10px;'"
         "      +'font-weight:700;color:#111;cursor:pointer;'"
         "      +'box-shadow:0 1px 4px rgba(0,0,0,0.3);';\n"
@@ -4101,7 +4104,7 @@ def build_ski_page():
         "    d.textContent=lbl;\n"
         "    new mapboxgl.Marker(d).setLngLat(ll).addTo(map2);};\n"
         "  mk([-122.8110,45.5250],'A','#6BBF68');\n"
-        "  mk([-121.66413,45.33144],'B','#FE5000');\n"
+        "  mk([-121.66413,45.33144],'B','#525D45');\n"
         "});\n"
         "})();\n"
     ).replace("__CAMS__", cams_json).replace("__ROUTE_GEO__", mb_route_geojson)
@@ -4246,9 +4249,9 @@ def build_dashboard() -> str:
     .tab-btn .nv{width:18px;height:18px;flex:none;color:#8A8F9C;transition:color .15s;}
     .tab-btn:hover{background:#E8EAEF;color:#111;}
     .tab-btn.active{background:#fff;color:#111;box-shadow:0 0 0 1px #E3E5EA,0 1px 2px rgba(20,24,35,.05);}
-    .tab-btn.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#FE5000;}
-    .tab-btn.active .nv{color:#FE5000;}
-    .tab-btn:focus-visible{outline:2px solid #FE5000;outline-offset:2px;}
+    .tab-btn.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#525D45;}
+    .tab-btn.active .nv{color:#525D45;}
+    .tab-btn:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
     .updated{margin-top:auto;padding:0 10px;font-size:10.5px;line-height:1.5;color:#9A9FAB;font-variant-numeric:tabular-nums;}
     .updated b{display:block;font-weight:600;color:#6B7080;}
     .main{flex:1;min-width:0;position:relative;}
@@ -4264,7 +4267,7 @@ def build_dashboard() -> str:
       border-bottom:1px solid #E3E5EA;cursor:pointer;color:#111;}
     .ch-icon{display:flex;font-size:20px;}
     .ch-name{font-size:17px;font-weight:700;letter-spacing:-.01em;transition:color .15s;}
-    .city-detail-header:hover .ch-name{color:#FE5000;}
+    .city-detail-header:hover .ch-name{color:#525D45;}
     .ch-temps{font-size:13px;color:#8A8F9C;font-variant-numeric:tabular-nums;}
     .ch-temps b{color:#111;font-weight:600;}
     .ch-meta{margin-left:auto;font-size:11px;color:#9A9FAB;font-variant-numeric:tabular-nums;}
@@ -4282,7 +4285,7 @@ def build_dashboard() -> str:
       transition:border-color .15s,color .15s;}
     .wp-chip:hover{border-color:#C9CDD6;color:#111;}
     .wp-chip.active{color:#111;border-color:#111;}
-    .wp-chip:focus-visible{outline:2px solid #FE5000;outline-offset:2px;}
+    .wp-chip:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
     .wp-chip-el{font-weight:500;color:#9A9FAB;font-variant-numeric:tabular-nums;}
     .mtn-chips .wp-chip{font-size:13px;padding:7px 14px;}
     /* Map tab */
@@ -4327,7 +4330,7 @@ def build_dashboard() -> str:
     .lyr-ctl .lyr-fire{display:inline-flex;align-items:center;gap:5px;margin-left:5px;position:relative;}
     .lyr-ctl .lyr-fire::before{content:"";position:absolute;left:-4px;top:5px;bottom:5px;width:1px;background:#DDE0E6;}
     .lyr-ctl .lyr-fire.active{background:#FCE3DB;color:#8A1F14;box-shadow:inset 0 0 0 1px #E4572E;}
-    .lyr-ctl button:focus-visible{outline:2px solid #FE5000;outline-offset:1px;}
+    .lyr-ctl button:focus-visible{outline:2px solid #525D45;outline-offset:1px;}
     .lyr-leg{position:absolute;left:10px;bottom:36px;z-index:2;width:240px;max-width:calc(100% - 20px);padding:8px 10px;
       border-radius:9px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);box-shadow:0 1px 3px rgba(20,24,35,.18);
       font-size:11px;color:#333;}
@@ -4345,7 +4348,7 @@ def build_dashboard() -> str:
     .lyr-pt{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:6px;font-size:10.5px;color:#5A5F6B;}
     .lyr-pt .lyr-bar{margin:3px 0;}
     .lyr-go{margin-left:auto;border:none;padding:3px 10px;border-radius:6px;background:#111;color:#fff;font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
-    .lyr-go:focus-visible{outline:2px solid #FE5000;outline-offset:2px;}
+    .lyr-go:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
     .tab-btn .ns{display:none;}
     @media (max-width:760px){
       .shell{flex-direction:column;}
@@ -4359,7 +4362,7 @@ def build_dashboard() -> str:
       .tab-btn .nl{display:none;}
       .tab-btn .ns{display:block;}
       .tab-btn:hover{background:none;}
-      .tab-btn.active{background:none;box-shadow:none;color:#FE5000;}
+      .tab-btn.active{background:none;box-shadow:none;color:#525D45;}
       .tab-btn.active::before{left:30%;right:30%;top:-3px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px;}
       .main{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
       .page-section{padding:18px 16px;}
@@ -4595,7 +4598,7 @@ setInterval(check,5*60000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});
 var st=document.createElement('style');
 st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#111;color:#fff;font:13px/1.3 "Helvetica Neue",Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}'
-  +'.wx-newer button{border:0;border-radius:6px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer;background:#FE5000;color:#fff}'
+  +'.wx-newer button{border:0;border-radius:6px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer;background:#525D45;color:#fff}'
   +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}'
   +'@media (max-width:760px){.wx-newer{right:12px;left:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));justify-content:space-between}}';   // above the tab bar
 document.head.appendChild(st);

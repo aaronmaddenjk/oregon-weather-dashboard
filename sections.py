@@ -119,8 +119,8 @@ CSS = r"""
 #sx-map .box { fill:rgba(31,58,82,.03); stroke:#7C8494; stroke-width:.9; stroke-dasharray:3 2; cursor:pointer; }
 #sx-map .box.mine { fill:rgba(176,69,126,.08); stroke:#B0457E; stroke-dasharray:none; }
 #sx-map .box.done { fill:rgba(47,122,69,.18); stroke:#2F7A45; stroke-dasharray:none; }
-#sx-map .box.hot { stroke:#FE5000; stroke-width:2.4; stroke-dasharray:none; }
-#sx-map .box:focus { outline:none; stroke:#FE5000; stroke-width:2.4; }
+#sx-map .box.hot { stroke:#525D45; stroke-width:2.4; stroke-dasharray:none; }
+#sx-map .box:focus { outline:none; stroke:#525D45; stroke-width:2.4; }
 #sx-map .trl { fill:none; stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
 #sx-map .cnt { font:700 10.5px system-ui,sans-serif; fill:#7A2E58; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; pointer-events:none; }
 .sx-leg { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:11.5px; color:#5A5F6B; }
@@ -136,7 +136,7 @@ CSS = r"""
 .sx-seg button { border:0; background:none; padding:6px 12px; font:inherit; font-size:12.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }
 .sx-seg button+button { border-left:1px solid #DDE0E6; }
 .sx-seg button[aria-pressed=true] { background:#111; color:#fff; }
-.sx-seg button:focus-visible { outline:2px solid #FE5000; outline-offset:-2px; }
+.sx-seg button:focus-visible { outline:2px solid #525D45; outline-offset:-2px; }
 .sx-sync { font-size:11.5px; color:#8A8F9C; }
 .sx-sync.ok { color:#2F7A45; font-weight:600; }
 .sx-st { display:flex; justify-content:space-between; align-items:baseline; margin:20px 0 6px; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#5A5F6B; }
@@ -145,7 +145,7 @@ CSS = r"""
 .sx-list { list-style:none; margin:0; padding:0; background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden; }
 .sx-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:3px 12px; align-items:center; padding:10px 14px; border-top:1px solid #F0F1F4; }
 .sx-row:first-child { border-top:0; }
-.sx-row.hot { background:#FFF4EE; box-shadow:inset 3px 0 0 #FE5000; }
+.sx-row.hot { background:#F0F4EC; box-shadow:inset 3px 0 0 #525D45; }
 .sx-row input { width:17px; height:17px; margin:0; accent-color:#2F7A45; cursor:pointer; }
 .sx-row .nm { font-size:14px; font-weight:700; color:#111; line-height:1.3; }
 .sx-row.done .nm { color:#5A5F6B; }
@@ -154,7 +154,7 @@ CSS = r"""
 .sx-row .chip { display:inline-block; margin-left:8px; padding:0 8px; border-radius:999px; background:#F8E8F0; color:#8E2F63; font-size:11.5px; font-weight:700; line-height:1.75; font-variant-numeric:tabular-nums; vertical-align:1px; }
 .sx-row .at { font-size:12.5px; font-weight:700; color:#6B3FA8; text-decoration:none; white-space:nowrap; }
 .sx-row .at:hover { text-decoration:underline; text-underline-offset:2px; }
-.sx-row .at:focus-visible, .sx-row summary:focus-visible, .sx-tr button:focus-visible { outline:2px solid #FE5000; outline-offset:2px; }
+.sx-row .at:focus-visible, .sx-row summary:focus-visible, .sx-tr button:focus-visible { outline:2px solid #525D45; outline-offset:2px; }
 .sx-row details { grid-column:2/4; }
 .sx-row summary { width:max-content; max-width:100%; cursor:pointer; font-size:12px; font-weight:700; color:#8E2F63; }
 .sx-trs { list-style:none; margin:6px 0 2px; padding:0; columns:2 250px; column-gap:20px; }
@@ -163,7 +163,7 @@ CSS = r"""
 .sx-tr a { color:#111; text-decoration:none; }
 .sx-tr a:hover { text-decoration:underline; }
 .sx-tr span { color:#8A8F9C; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.sx-tr button { border:0; background:none; padding:0; font:inherit; font-size:11.5px; font-weight:700; color:#FE5000; cursor:pointer; white-space:nowrap; }
+.sx-tr button { border:0; background:none; padding:0; font:inherit; font-size:11.5px; font-weight:700; color:#525D45; cursor:pointer; white-space:nowrap; }
 .sx-empty { padding:14px; font-size:13px; color:#8A8F9C; }
 @media (max-width:1000px) {
   .sx-grid { grid-template-columns:minmax(0,1fr); }
