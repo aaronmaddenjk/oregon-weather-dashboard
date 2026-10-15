@@ -1023,7 +1023,7 @@ def _drops(xs, y=18):
 def _flakes(pts):
     out = ""
     for x, y in pts:
-        out += (f'<g stroke="#6BA3D6" stroke-width="1.3" stroke-linecap="round">'
+        out += (f'<g stroke="#7A5A99" stroke-width="1.3" stroke-linecap="round">'
                 f'<line x1="{x-1.5}" y1="{y}" x2="{x+1.5}" y2="{y}"/>'
                 f'<line x1="{x-.8}" y1="{y-1.3}" x2="{x+.8}" y2="{y+1.3}"/>'
                 f'<line x1="{x-.8}" y1="{y+1.3}" x2="{x+.8}" y2="{y-1.3}"/></g>')
@@ -1237,7 +1237,7 @@ CY_CSS = r"""
 .cy-pop.z span { color:#B8BDC6; font-weight:600; }
 .cy-amt { font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
 .cy-amt.rain { color:#0B7A87; }
-.cy-amt.snow { color:#5A4FCF; }
+.cy-amt.snow { color:#7A5A99; }
 .cy-amt small { display:block; font-size:10.5px; font-weight:600; color:#8A8F9C; }
 .cy-amt.none { color:#C9CDD5; font-weight:600; }
 .cy-g { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
@@ -1437,13 +1437,13 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             for ei,e in enumerate(ents):
                 bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
                 R["precip"]+=f'<td class="{D}" style="display:none;{bdr}">{precip_icon(e["precip"])} {e["precip"]}%</td>'
-            if st>0.01:ps=f'<span style="color:#6BA3D6;">\u2744 {st:.1f}"</span>'
+            if st>0.01:ps=f'<span style="color:#7A5A99;">\u2744 {st:.1f}"</span>'
             elif rt>0.005:ps=f'<span style="color:#4FB1BE;">{rt:.2f}"</span>'
             else:ps='<span style="color:#DDD;">\u00b7</span>'
             R["pa"]+=f'<td class="{S} pa" colspan="{nc}" {oc}>{ps}</td>'
             for ei,e in enumerate(ents):
                 bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
-                if e["snow_in"]>0.01:a=f"{e['snow_in']:.1f}" if e["snow_in"]>=0.1 else f"{e['snow_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#6BA3D6;">\u2744{a}"</td>'
+                if e["snow_in"]>0.01:a=f"{e['snow_in']:.1f}" if e["snow_in"]>=0.1 else f"{e['snow_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#7A5A99;">\u2744{a}"</td>'
                 elif e["precip_in"]>0.005:a=f"{e['precip_in']:.1f}" if e["precip_in"]>=0.1 else f"{e['precip_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#4FB1BE;">{a}"</td>'
                 else:R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#DDD;">\u00b7</td>'
             R["aqi"]+=f'<td class="{S} aqi" colspan="{nc}" {oc}>{aqi_html(maq)}</td>'
@@ -1514,7 +1514,7 @@ th.cch {{ font-size:9px; min-width:85px; padding:1px 8px 1px 0; }}
 .leg {{ margin-top:8px; font-size:11px; color:#AAA; }}
 .dsum.dsel {{ background:#EBF0E6; }}
 .dsum.dsel:hover {{ background:#E0E8D9; }}
-.sdp b {{ font-size:12px; color:#5A4FCF; }}
+.sdp b {{ font-size:12px; color:#7A5A99; }}
 .sd0 {{ color:#C9CDD5; }}
 {CY_CSS if city else ''}
 </style></head><body>
@@ -1578,7 +1578,7 @@ CITIES = [
 # Rain/mix/snow colours were run through the dataviz palette validator (CVD-separable, >=3:1 on white).
 CHARTS_LIB_JS = r"""
 (function(){
-var PT={rain:'#0E9AAE',mix:'#DE6A52',snow:'#5A4FCF'}, PTN={rain:'Rain',mix:'Mix',snow:'Snow'}, TOT='#3D4450';
+var PT={rain:'#0E9AAE',mix:'#DE6A52',snow:'#7A5A99'}, PTN={rain:'Rain',mix:'Mix',snow:'Snow'}, TOT='#3D4450';
 var POP='#86C3CF',THUN='#C98A06';
 var L=34,PT_=13,B=17,WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function tcol(t){if(t>=80)return'#ED1E29';if(t>=70)return'#FAA21B';if(t>=50)return'#6BBF68';if(t>=35)return'#4FB1BE';return'#368994';}
@@ -2057,7 +2057,7 @@ function cySun(x,y,r){var o='';for(var k=0;k<8;k++){var a=k*Math.PI/4;o+='<line 
 function cyFall(kind,cols,x0,x1,y0){var o='',n=0;
   for(var c=0;c<cols;c++)for(var row=0;row<3;row++){var x=x0+(x1-x0)*(cols>1?c/(cols-1):0.5)+(row%2?1.1:0),y=y0+row*4.2+(c%2?1.6:0),k=kind==='mix'?(n%2?'snow':'rain'):kind,
     st='style="animation-delay:'+((n*0.37)%1.3).toFixed(2)+'s"';n++;
-    o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r=".95" fill="#fff" stroke="#5A4FCF" stroke-width=".5"/>'
+    o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r=".95" fill="#fff" stroke="#7A5A99" stroke-width=".5"/>'
       :'<line class="wx-fall" '+st+' x1="'+x.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x-0.8).toFixed(1)+'" y2="'+(y+2.5).toFixed(1)+'" stroke="#0E9AAE" stroke-width=".85" stroke-linecap="round"/>';}
   return o;}
 function cyWind(){return'<g fill="none" stroke="#368994" stroke-width=".8" stroke-linecap="round">'
@@ -2710,7 +2710,7 @@ function stars(){return[[5,1.5],[9.5,-0.5],[20.5,0.2],[2.5,5.5]].map(function(p,
 function fall(kind){   // rain streaks / snowflakes dropping from the storm cloud over the peak, three staggered rows
   var o='',pts=[[10,4.2],[13,4.8],[16,4.4],[19,4.9],[22,4.3],[11.5,8],[14.5,8.6],[17.5,8.2],[20.5,8.7],[10,11.8],[13,12.4],[16,12],[19,12.5],[22,11.9]];
   pts.forEach(function(q,i){var k=kind==='mix'?(i%2?'snow':'rain'):kind,x=q[0],y=q[1],st='style="animation-delay:'+((i*0.37)%1.3).toFixed(2)+'s"';
-    o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x+'" cy="'+y+'" r=".85" fill="#fff" stroke="#5A4FCF" stroke-width=".45"/>'
+    o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x+'" cy="'+y+'" r=".85" fill="#fff" stroke="#7A5A99" stroke-width=".45"/>'
       :'<line class="wx-fall" '+st+' x1="'+x+'" y1="'+y+'" x2="'+(x-0.8)+'" y2="'+(y+2.4)+'" stroke="#0E9AAE" stroke-width=".75" stroke-linecap="round"/>';});
   return o;}
 function wind(){return'<g fill="none" stroke="#368994" stroke-width=".7" stroke-linecap="round">'
@@ -3721,7 +3721,7 @@ def build_ski_page():
     .ss-day { grid-row:3; text-align:center; font-variant-numeric:tabular-nums; padding-top:2px; }
     .ss-bar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:74px; border-bottom:1.5px solid #DDE0E6; }
     .ss-bar b { font-size:12px; font-weight:800; color:#111; margin-bottom:3px; }
-    .ss-bar em { display:block; width:62%; max-width:18px; border-radius:3px 3px 0 0; background:#5A4FCF; }
+    .ss-bar em { display:block; width:62%; max-width:18px; border-radius:3px 3px 0 0; background:#7A5A99; }
     .ss-past .ss-bar em { background:#A9A3E8; }
     .ss-zero .ss-bar b { color:#C9CDD5; font-weight:500; }
     .ss-day i { display:block; font-style:normal; font-size:10.5px; line-height:1.3; color:#9A9FAB; margin-top:4px; }
@@ -3731,7 +3731,7 @@ def build_ski_page():
     .ss-when { font-size:11px; color:#5A5F6B; line-height:1.4; }
     .ss-when span { color:#8A8F9C; }
     .ss-foot { margin-top:6px; font-size:11px; color:#9A9FAB; }
-    .ss-key { display:inline-block; width:9px; height:9px; border-radius:2px; background:#5A4FCF; margin-right:5px; vertical-align:-1px; }
+    .ss-key { display:inline-block; width:9px; height:9px; border-radius:2px; background:#7A5A99; margin-right:5px; vertical-align:-1px; }
     .ss-key.ss-key-p { background:#A9A3E8; }
     .sec-h { margin:0 0 10px; font-size:15px; font-weight:700; color:#111; }
     .temp-pill { border-radius:5px; color:#fff; font-size:12px; font-weight:700; padding:2px 5px; display:inline-block; }
@@ -3782,7 +3782,7 @@ def build_ski_page():
     .dh { white-space:nowrap; }
     .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
     .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
-    .snow-day { font-size:14px; font-weight:800; color:#5A4FCF; font-variant-numeric:tabular-nums; }
+    .snow-day { font-size:14px; font-weight:800; color:#7A5A99; font-variant-numeric:tabular-nums; }
     .snow-none { font-size:13px; color:#C9CDD5; }
     .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
     .trange { display:flex; flex-direction:column; align-items:center; gap:3px; }
@@ -3791,7 +3791,7 @@ def build_ski_page():
     .trange .th { font-size:13px; font-weight:700; color:#111; font-variant-numeric:tabular-nums; }
     .trange .tl2 { font-size:12px; color:#8A8F9C; font-variant-numeric:tabular-nums; }
     .wv { font-weight:700; }
-    .snow-txt { color:#5A4FCF; font-weight:700; }
+    .snow-txt { color:#7A5A99; font-weight:700; }
     .tl { font-size:11px; color:#999; font-weight:600; }
     .ski-marker { background:#fff; border-radius:6px; padding:5px 10px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.25); white-space:nowrap; border-left:3px solid #6BBF68; cursor:pointer; }
     .ski-marker.active { box-shadow:0 0 0 2px #525D45, 0 2px 6px rgba(0,0,0,0.25); }

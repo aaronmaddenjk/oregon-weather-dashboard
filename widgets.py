@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 W, H, SS = 1000, 480, 2
 INK, MUT, LINE, CARD = (17, 17, 17), (125, 133, 146), (238, 240, 243), (255, 255, 255, 246)
-ORANGE, SNOW, SNOW2, RAIN, PAST = (82, 93, 69), (90, 79, 207), (185, 179, 240), (11, 111, 124), (169, 178, 191)
+ORANGE, SNOW, SNOW2, RAIN, PAST = (82, 93, 69), (122, 90, 153), (205, 190, 222), (11, 111, 124), (169, 178, 191)
 SNOTEL = "651:OR:SNTL"   # Mt Hood Test Site, 5,370 ft - at Meadows' base area
 AWDB = "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1"
 DOW = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
@@ -205,8 +205,8 @@ def snotel_gain(today, n=7):
 
 def snow_timeline(past, fut, path, today, measured=True):
     """past: [(date, in)] x7 before today; fut: [(date, in)] today + 6 days of forecast new snow."""
-    T = THEMES["dark"]   # dark glass (owner): violet lifted so it reads on the dark card
-    SN, SN2, PS = (162, 152, 255), (112, 104, 188), (128, 137, 152)
+    T = THEMES["dark"]   # dark glass (owner): plum lifted so it reads on the dark card
+    SN, SN2, PS = (196, 168, 224), (134, 108, 164), (128, 137, 152)
     im, d = _card(T)
     _header(d, "Meadows Base snow", SN, "5,361 ft", T["mut"])
     vals = [v for _, v in past] + [v for _, v in fut]

@@ -107,7 +107,7 @@ TABLE_CSS = r"""
 .tl-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
 .tl-tbl .dh .tt { background:#525D45; color:#fff; font-size:9px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
 .tl-tbl .ds-ci { font-size:18px; margin-top:2px; }
-.tl-tbl .snow-day { font-size:14px; font-weight:800; color:#5A4FCF; }
+.tl-tbl .snow-day { font-size:14px; font-weight:800; color:#7A5A99; }
 .tl-tbl .snow-none { color:#C9CDD5; }
 .tl-tbl .trange { display:flex; flex-direction:column; align-items:center; gap:3px; }
 .tl-tbl .tr-track { position:relative; width:8px; height:54px; border-radius:4px; background:#EEF0F3; }

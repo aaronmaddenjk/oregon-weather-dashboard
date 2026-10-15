@@ -342,7 +342,12 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   everywhere it was the accent (UI chrome, selection, TODAY, pins, links, the newsletter). Data colours
   were left alone (temps, rain/snow/mix, gust warnings, AQI, trail-grade ramp). The chrome-extension/ pages
   still use the old orange. Mentions of "orange" below mean this accent now.
-- Visual language: accent (was orange `#FE5000`, now Launch Green above); snow violet `#5A4FCF`, rain `#0E9AAE`, mix
+- SNOW IS NOW DUSTY PLUM `#7A5A99` (owner, 2026-10-14, chosen over slate indigo / glacier blue; violet
+  clashed with the green). Checked: OKLab dE vs rain teal 18.6 (deut 10.3, prot 16.1, trit 18.2), vs mix 22.
+  Pale `#CDBEDC`, panels `#F5F1F8`; dark widgets: bars (196,168,224) / pale (134,108,164). The Map tab's
+  new-snow heat scale and the radar's HRRR snow ramp keep their blues (amount scale / matches HRRR tiles).
+  Mentions of "violet" for snow below mean this plum now.
+- Visual language: accent (was orange `#FE5000`, now Launch Green above); snow (was violet `#5A4FCF`, now plum above), rain `#0E9AAE`, mix
   `#DE6A52` (palette-validated); temperatures via `temp_bg`; clean, quiet chrome; no
   heavy color blocks. Follow the dataviz rules (one axis per chart, legends, hover layers).
 - Likes: OpenSnow-style features, mountain icons with weather art, layouts consistent
