@@ -6,8 +6,9 @@ Chris Tomer's latest video) and sent from the owner's Gmail with an app password
   python newsletter.py --out mail.html    write the email to a file (no sending)
   python newsletter.py --send             send it (once a day: .cache/newsletter_sent.txt)
 
-Sending needs, in .env (never in code or git):  GMAIL_USER, GMAIL_APP_PASSWORD, and optionally
-NEWSLETTER_TO (default: GMAIL_USER). tools/publish.sh sends it after the 6 AM build.
+Sending needs, in .env (never in code or git), either RESEND_API_KEY + NEWSLETTER_TO (Resend's free tier;
+no Gmail 2-Step Verification needed) or GMAIL_USER + GMAIL_APP_PASSWORD (+ optional NEWSLETTER_TO).
+tools/publish.sh sends it after the 6 AM build.
 Email-safe HTML: one 600 px column of tables, inline styles only, no scripts or video (Gmail strips them).
 """
 import html
@@ -233,10 +234,28 @@ def send(subject, doc, text):
         load_dotenv(os.path.join(ROOT, ".env"))
     except ImportError:
         pass
+    # Resend (owner has no 2-Step Verification, so no Gmail app password): an API key; without a domain of
+    # our own it sends from onboarding@resend.dev, and only to the address the Resend account was made with
+    key = os.environ.get("RESEND_API_KEY")
+    if key:
+        to = os.environ.get("NEWSLETTER_TO") or os.environ.get("GMAIL_USER")
+        if not to:
+            print("newsletter: RESEND_API_KEY set but no NEWSLETTER_TO address - not sent")
+            return False
+        import requests
+        r = requests.post("https://api.resend.com/emails", timeout=60,
+                          headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                          json={"from": os.environ.get("NEWSLETTER_FROM") or "Oregon Weather <onboarding@resend.dev>",
+                                "to": [to], "subject": subject, "html": doc, "text": text})
+        if r.status_code >= 300:
+            print(f"newsletter: Resend said {r.status_code}: {r.text[:300]}")
+            return False
+        print(f"newsletter: sent to {to} (Resend)")
+        return True
     user, pw = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
     to = os.environ.get("NEWSLETTER_TO") or user
     if not user or not pw:
-        print("newsletter: not configured (GMAIL_USER / GMAIL_APP_PASSWORD in .env) - not sent")
+        print("newsletter: not configured (RESEND_API_KEY, or GMAIL_USER + GMAIL_APP_PASSWORD, in .env) - not sent")
         return False
     m = MIMEMultipart("alternative")
     m["Subject"], m["From"], m["To"] = subject, f"Oregon Weather <{user}>", to
