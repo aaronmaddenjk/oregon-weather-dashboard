@@ -1116,14 +1116,14 @@ def temp_bg(t):
 def wind_color(w):
     if w>=30: return "#ED1E29"
     if w>=20: return "#FAA21B"
-    return "#111"
+    return "var(--ink)"
 # US EPA AQI categories and their official colors (as used by AirNow / NWS)
 AQI_CATS = [(50, "Good", "#00E400"), (100, "Moderate", "#FFFF00"),
             (150, "Unhealthy for sensitive groups", "#FF7E00"), (200, "Unhealthy", "#FF0000"),
             (300, "Very unhealthy", "#8F3F97"), (float("inf"), "Hazardous", "#7E0023")]
 def aqi_html(val):
     # Category dot + plain number; the number only goes bold once air is actually unhealthy
-    if val is None: return '<span style="color:#DDD;">·</span>'
+    if val is None: return '<span style="color:var(--zero);">·</span>'
     name, col = next((n, c) for top, n, c in AQI_CATS if val <= top)
     num = f"<b>{val:.0f}</b>" if val > 100 else f"{val:.0f}"
     return f'<span title="AQI {val:.0f} · {name}"><span class="aqd" style="background:{col}"></span>{num}</span>'
@@ -1209,45 +1209,45 @@ def hour_cols(h, n, bm, aq, now, elev_m, snow_obs=None):
 # charts. cityTable() in CITY_JS draws the same markup for a searched town. ----------
 CY_CSS = r"""
 .cy-tbl { border-collapse:separate; border-spacing:0; }
-.cy-tbl th { min-width:0; width:84px; white-space:normal; line-height:1.25; padding:9px 10px 9px 0; vertical-align:middle; font-size:12px; color:#5A5F6B; }
-.cy-tbl td.dsum { min-width:70px; padding:9px 5px; vertical-align:middle; border-left:1px solid #EEF0F3; }
-.cy-tbl tr + tr td.dsum, .cy-tbl tr + tr th { border-top:1px solid #F0F1F4; }
-.cy-tbl td.wkd { background:#F7F8FA; }
-.cy-tbl td.dsel { background:#EBF0E6; }
+.cy-tbl th { min-width:0; width:84px; white-space:normal; line-height:1.25; padding:9px 10px 9px 0; vertical-align:middle; font-size:12px; color:var(--mut); }
+.cy-tbl td.dsum { min-width:70px; padding:9px 5px; vertical-align:middle; border-left:1px solid var(--soft); }
+.cy-tbl tr + tr td.dsum, .cy-tbl tr + tr th { border-top:1px solid var(--soft); }
+.cy-tbl td.wkd { background:var(--card2); }
+.cy-tbl td.dsel { background:var(--accbg); }
 .cy-tbl .dh { white-space:nowrap; }
-.cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
-.cy-tbl .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
+.cy-tbl .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink); }
+.cy-tbl .dh span { font-size:12.5px; font-weight:600; color:var(--mut2); }
 .cy-tbl .dh .tt { display:block; width:fit-content; margin:3px auto 0; color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
 .cy-art { display:flex; flex-direction:column; align-items:center; min-height:54px; margin:2px 0 0; }
 .cy-art svg { width:68px; height:54px; overflow:visible; }
-.cy-lab { font-size:10.5px; font-weight:600; color:#5A5F6B; white-space:nowrap; margin-top:1px; }
+.cy-lab { font-size:10.5px; font-weight:600; color:var(--mut); white-space:nowrap; margin-top:1px; }
 .cy-art .wx-fall { animation:wxfall 1.3s linear infinite; }
 .cy-art .wx-blow { stroke-dasharray:14 14; animation:wxblow 2.2s ease-in-out infinite; }
 @media (prefers-reduced-motion:reduce) { .cy-art * { animation:none !important; } }
 .cy-plot { position:relative; height:96px; margin:20px auto 20px; width:44px; }
-.cy-plot::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:10px; margin-left:-5px; border-radius:5px; background:#EEF0F3; }
+.cy-plot::before { content:""; position:absolute; left:50%; top:0; bottom:0; width:10px; margin-left:-5px; border-radius:5px; background:var(--soft); }
 .cy-rng { position:absolute; left:50%; width:10px; margin-left:-5px; border-radius:5px; min-height:6px; }
 .cy-rng b, .cy-rng em { position:absolute; left:50%; transform:translateX(-50%); font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1; }
-.cy-rng b { bottom:calc(100% + 4px); font-size:16px; font-weight:800; color:#111; }
-.cy-rng em { top:calc(100% + 4px); font-style:normal; font-size:13px; font-weight:600; color:#7D8592; }
+.cy-rng b { bottom:calc(100% + 4px); font-size:16px; font-weight:800; color:var(--ink); }
+.cy-rng em { top:calc(100% + 4px); font-style:normal; font-size:13px; font-weight:600; color:var(--mut2); }
 .cy-pop { display:flex; flex-direction:column; align-items:center; gap:4px; }
-.cy-pop span { font-size:13.5px; font-weight:700; color:#0B6F7C; font-variant-numeric:tabular-nums; }
-.cy-pbar { width:52px; height:6px; border-radius:3px; background:#EEF0F3; overflow:hidden; }
+.cy-pop span { font-size:13.5px; font-weight:700; color:var(--rainink); font-variant-numeric:tabular-nums; }
+.cy-pbar { width:52px; height:6px; border-radius:3px; background:var(--soft); overflow:hidden; }
 .cy-pbar i { display:block; height:100%; border-radius:3px; background:#0E9AAE; }
-.cy-pop.z span { color:#B8BDC6; font-weight:600; }
+.cy-pop.z span { color:var(--zero); font-weight:600; }
 .cy-amt { font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
-.cy-amt.rain { color:#0B7A87; }
-.cy-amt.snow { color:#7A5A99; }
-.cy-amt small { display:block; font-size:10.5px; font-weight:600; color:#8A8F9C; }
-.cy-amt.none { color:#C9CDD5; font-weight:600; }
+.cy-amt.rain { color:var(--rainink); }
+.cy-amt.snow { color:var(--snowink); }
+.cy-amt small { display:block; font-size:10.5px; font-weight:600; color:var(--mut2); }
+.cy-amt.none { color:var(--zero); font-weight:600; }
 .cy-g { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
-.cy-u { font-size:10.5px; font-weight:600; color:#8A8F9C; margin-left:2px; }
-.cy-w { font-size:11px; color:#8A8F9C; margin-top:2px; font-variant-numeric:tabular-nums; }
+.cy-u { font-size:10.5px; font-weight:600; color:var(--mut2); margin-left:2px; }
+.cy-w { font-size:11px; color:var(--mut2); margin-top:2px; font-variant-numeric:tabular-nums; }
 """
 
 
 def gust_color(g):
-    return "#D11A24" if g >= 45 else "#D9730D" if g >= 30 else "#111"
+    return "#D11A24" if g >= 45 else "#D9730D" if g >= 30 else "var(--ink)"
 
 
 def cy_temp(hi, lo, t_lo, t_hi):
@@ -1412,43 +1412,43 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
             S,D=f'd{di} dsum',f'd{di} ddet';oc=f'onclick="wxDay(\'{uid}\',{di})"'
             R["time"]+=f'<td class="{S}" colspan="{nc}" {oc}><div class="dl">{dk}{tt}</div><div class="ds-ci">{ci}</div></td>'
             for ei,e in enumerate(ents):
-                dl=f'<div class="dl">{dk}{tt}</div>' if ei==0 else '';bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                dl=f'<div class="dl">{dk}{tt}</div>' if ei==0 else '';bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["time"]+=f'<td class="{D}" style="display:none;{bdr}">{dl}<div class="tl">{e["time"]}</div></td>'
             R["temp"]+=f'<td class="{S}" colspan="{nc}" {oc}><span class="tp" style="background:{temp_bg(hi2)}">{hi2:.0f}\u00B0</span> <span class="tp" style="background:{temp_bg(lo2)};opacity:0.7">{lo2:.0f}\u00B0</span></td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["temp"]+=f'<td class="{D}" style="display:none;{bdr}"><div class="tp" style="background:{temp_bg(e["temp"])}">{e["temp"]:.0f}\u00B0</div></td>'
             for band,key,avg,nm in [("ch","c_high",sum(e["c_high"] for e in ents)/nc,"High"),("cm","c_mid",sum(e["c_mid"] for e in ents)/nc,"Mid"),("cl","c_low",sum(e["c_low"] for e in ents)/nc,"Low")]:
                 R[band]+=f'<td class="{S} cc" colspan="{nc}" {oc} title="{nm} cloud {avg:.0f}%">{cloud_puff(avg)}</td>'
                 for ix,e in enumerate(ents):
-                    bdr='border-left:1px solid #DDE0E6;' if ix==0 else ''
+                    bdr='border-left:1px solid var(--line);' if ix==0 else ''
                     R[band]+=f'<td class="{D} cc" style="display:none;{bdr}" title="{nm} cloud {e[key]:.0f}%">{cloud_puff(e[key])}</td>'
             bases=[e["cb"] for e in ents if e["cb"] not in ("Clear","Few","Scattered","Cloudy","--")]
             cbs=bases[0] if len(set(bases))<=1 and bases else ("Clear" if not bases else f"{bases[0]}\u2013{bases[-1]}")
             R["cb"]+=f'<td class="{S} cb" colspan="{nc}" {oc}>{html.escape(cbs)}</td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["cb"]+=f'<td class="{D} cb" style="display:none;{bdr}">{html.escape(e["cb"])}</td>'
             R["wind"]+=f'<td class="{S}" colspan="{nc}" {oc}><span style="color:{wind_color(mw)}">{mw:.0f}</span><span class="gs">({mg:.0f})</span></td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["wind"]+=f'<td class="{D}" style="display:none;{bdr}"><span style="color:{wind_color(e["wind"])}">{e["wind"]:.0f}</span><span class="gs">({e["gust"]:.0f})</span></td>'
             R["precip"]+=f'<td class="{S}" colspan="{nc}" {oc}>{precip_icon(mp)} {mp}%</td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["precip"]+=f'<td class="{D}" style="display:none;{bdr}">{precip_icon(e["precip"])} {e["precip"]}%</td>'
-            if st>0.01:ps=f'<span style="color:#7A5A99;">\u2744 {st:.1f}"</span>'
+            if st>0.01:ps=f'<span style="color:var(--snowink);">\u2744 {st:.1f}"</span>'
             elif rt>0.005:ps=f'<span style="color:#4FB1BE;">{rt:.2f}"</span>'
-            else:ps='<span style="color:#DDD;">\u00b7</span>'
+            else:ps='<span style="color:var(--zero);">\u00b7</span>'
             R["pa"]+=f'<td class="{S} pa" colspan="{nc}" {oc}>{ps}</td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
-                if e["snow_in"]>0.01:a=f"{e['snow_in']:.1f}" if e["snow_in"]>=0.1 else f"{e['snow_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#7A5A99;">\u2744{a}"</td>'
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
+                if e["snow_in"]>0.01:a=f"{e['snow_in']:.1f}" if e["snow_in"]>=0.1 else f"{e['snow_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:var(--snowink);">\u2744{a}"</td>'
                 elif e["precip_in"]>0.005:a=f"{e['precip_in']:.1f}" if e["precip_in"]>=0.1 else f"{e['precip_in']:.2f}";R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#4FB1BE;">{a}"</td>'
-                else:R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:#DDD;">\u00b7</td>'
+                else:R["pa"]+=f'<td class="{D} pa" style="display:none;{bdr}color:var(--zero);">\u00b7</td>'
             R["aqi"]+=f'<td class="{S} aqi" colspan="{nc}" {oc}>{aqi_html(maq)}</td>'
             for ei,e in enumerate(ents):
-                bdr='border-left:1px solid #DDE0E6;' if ei==0 else ''
+                bdr='border-left:1px solid var(--line);' if ei==0 else ''
                 R["aqi"]+=f'<td class="{D} aqi" style="display:none;{bdr}">{aqi_html(e["aqi"])}</td>'
             if day_sd:   # estimated snow on the ground at the end of the day
                 v=day_sd.get(ents[0]["date_key"])
@@ -1486,36 +1486,36 @@ def render_hike_forecast(waypoints, hike_name, uid, profile=None, qpf=None, nws_
     full_html=f"""
 <html><head><style>
 * {{ box-sizing:border-box; }}
-body {{ font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:#FAFAFA; }}
+body {{ font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:var(--page); }}
 .hike-layout {{ display:flex; gap:16px; align-items:flex-start; }}
 .hike-fc-panel {{ flex:1; min-width:0; }}
-.scroll-wrap {{ overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-bottom:4px; }}
+.scroll-wrap {{ overflow-x:auto; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-bottom:4px; }}
 table {{ border-collapse:separate; border-spacing:4px 0; white-space:nowrap; font-size:13px; }}
-th {{ position:sticky; left:0; z-index:2; background:#fff; text-align:left; padding:3px 10px 3px 0; font-size:12px; color:#555; font-weight:600; white-space:nowrap; min-width:85px; }}
+th {{ position:sticky; left:0; z-index:2; background:var(--card); text-align:left; padding:3px 10px 3px 0; font-size:12px; color:var(--mut); font-weight:600; white-space:nowrap; min-width:85px; }}
 th .ri {{ font-size:14px; margin-right:3px; }}
 td {{ text-align:center; padding:3px 6px; min-width:50px; }}
-.dsum {{ cursor:pointer; min-width:80px; border-left:1px solid #DDE0E6; }}
+.dsum {{ cursor:pointer; min-width:80px; border-left:1px solid var(--line); }}
 .dsum:hover {{ background:rgba(82,93,69,0.04); }}
 .ddet {{ cursor:pointer; }}
-.dl {{ font-size:11px; font-weight:700; color:#111; letter-spacing:.5px; text-transform:uppercase; }}
+.dl {{ font-size:11px; font-weight:700; color:var(--ink); letter-spacing:.5px; text-transform:uppercase; }}
 .ds-ci {{ font-size:18px; margin-top:2px; }}
 .tt {{ background:#525D45; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }}
-.tl {{ font-size:11px; color:#999; font-weight:600; }}
+.tl {{ font-size:11px; color:var(--faint); font-weight:600; }}
 .tp {{ border-radius:5px; color:#fff; font-size:13px; font-weight:700; padding:2px 5px; display:inline-block; }}
-.cb {{ font-size:11px; color:#777; }}
+.cb {{ font-size:11px; color:var(--mut2); }}
 .gs {{ font-size:10px; color:#368994; margin-left:2px; }}
 .cc {{ height:20px; font-size:10px; padding:0 3px; text-align:center; vertical-align:middle; line-height:20px; }}
 th.cch {{ font-size:9px; min-width:85px; padding:1px 8px 1px 0; }}
-.alt {{ font-size:8px; color:#AAA; font-weight:400; }}
+.alt {{ font-size:8px; color:var(--faint); font-weight:400; }}
 .pa {{ font-size:10px; }}
-.aqi {{ font-size:11px; color:#666; }}
-.aqi b {{ color:#111; font-weight:700; }}
+.aqi {{ font-size:11px; color:var(--mut2); }}
+.aqi b {{ color:var(--ink); font-weight:700; }}
 .aqd {{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; vertical-align:1px; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15); }}
-.leg {{ margin-top:8px; font-size:11px; color:#AAA; }}
-.dsum.dsel {{ background:#EBF0E6; }}
-.dsum.dsel:hover {{ background:#E0E8D9; }}
-.sdp b {{ font-size:12px; color:#7A5A99; }}
-.sd0 {{ color:#C9CDD5; }}
+.leg {{ margin-top:8px; font-size:11px; color:var(--faint); }}
+.dsum.dsel {{ background:var(--accbg); }}
+.dsum.dsel:hover {{ background:var(--accbg2); }}
+.sdp b {{ font-size:12px; color:var(--snowink); }}
+.sd0 {{ color:var(--zero); }}
 {CY_CSS if city else ''}
 </style></head><body>
 <div class="hike-layout">
@@ -1609,8 +1609,8 @@ function chart(title,sum,keys,d,W,PH,o){
   var Y=function(v){return y0-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*PH;};
   var lines=o.lines||[],SH=Math.round(PH*(lines.length>1?0.4:0.5));
   var xl=(lines.length?y0+16+lines.length*SH+(lines.length-1)*12:y0)+13;   // hour labels sit under the running-total strips
-  var s='<rect class="cc-band" x="0" y="'+(PT_-6)+'" width="'+bw+'" height="'+(PH+6)+'" rx="3" fill="#F1F2F5" visibility="hidden"/>';
-  o.ticks.forEach(function(t){s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="'+(t===lo?'#DDE0E6':'#F0F1F4')+'" stroke-width="1"/>'
+  var s='<rect class="cc-band" x="0" y="'+(PT_-6)+'" width="'+bw+'" height="'+(PH+6)+'" rx="3" fill="var(--soft)" visibility="hidden"/>';
+  o.ticks.forEach(function(t){s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="'+(t===lo?'var(--line)':'var(--soft)')+'" stroke-width="1"/>'
     +'<text x="'+(L-6)+'" y="'+(Y(t)+3.5)+'" text-anchor="end">'+o.fmt(t)+'</text>';});
   var dirs=o.dirs&&d.some(function(h){return h.dir!=null;});
   s+=divs(d,L,bw,PT_-4,y0);
@@ -1622,35 +1622,35 @@ function chart(title,sum,keys,d,W,PH,o){
     // whisker from the bar's top to a second value: up (gusts) or down into the bar (feels-like below
     // the temperature), with a cap and a white casing so it reads over any bar colour
     var wv=o.whisker?o.whisker(h):null,g=wv==null?top:Y(wv);
-    if(v!=null&&Math.abs(g-top)>=1)s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#fff" stroke-width="3" stroke-opacity=".7"/>'
-      +'<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.25"/><line x1="'+(cx-3)+'" x2="'+(cx+3)+'" y1="'+g+'" y2="'+g+'" stroke="#3F4450" stroke-width="1.5" stroke-linecap="round"/>';
-    if(o.label&&o.label(h,i))s+='<text x="'+cx+'" y="'+(Math.min(top,g)-4)+'" text-anchor="middle" style="fill:#111;font-weight:700">'+o.label(h,i)+'</text>';
-    var xt=xlab(d,i);if(xt)s+='<text x="'+cx+'" y="'+xl+'" text-anchor="middle"'+(xt.length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+xt+'</text>';
+    if(v!=null&&Math.abs(g-top)>=1)s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="var(--card)" stroke-width="3" stroke-opacity=".7"/>'
+      +'<line x1="'+cx+'" x2="'+cx+'" y1="'+top+'" y2="'+g+'" stroke="var(--ink2)" stroke-width="1.25"/><line x1="'+(cx-3)+'" x2="'+(cx+3)+'" y1="'+g+'" y2="'+g+'" stroke="var(--ink2)" stroke-width="1.5" stroke-linecap="round"/>';
+    if(o.label&&o.label(h,i))s+='<text x="'+cx+'" y="'+(Math.min(top,g)-4)+'" text-anchor="middle" style="fill:var(--ink);font-weight:700">'+o.label(h,i)+'</text>';
+    var xt=xlab(d,i);if(xt)s+='<text x="'+cx+'" y="'+xl+'" text-anchor="middle"'+(xt.length>3?' style="fill:var(--mut);font-weight:700"':'')+'>'+xt+'</text>';
     // wind direction: an arrow pointing where the wind blows (every hour, or fewer when tight)
-    if(dirs&&h.dir!=null&&(bw>=13||i%Math.ceil(13/bw)===0))s+='<path d="M0,-4.5L3,2.5L0,1L-3,2.5Z" transform="translate('+cx.toFixed(1)+' '+(xl+11)+') rotate('+Math.round(h.dir+180)+')" fill="#5A5F6B"/>';
+    if(dirs&&h.dir!=null&&(bw>=13||i%Math.ceil(13/bw)===0))s+='<path d="M0,-4.5L3,2.5L0,1L-3,2.5Z" transform="translate('+cx.toFixed(1)+' '+(xl+11)+') rotate('+Math.round(h.dir+180)+')" fill="var(--mut)"/>';
   });
   // o.line: a line through the hours instead of bars, each segment in its starting hour's colour
   if(o.line)d.forEach(function(h,i){var a=o.val(h),n=d[i+1],b=n?o.val(n):null;if(a==null)return;var x1=L+bw*i+bw/2;
     if(b!=null)s+='<line x1="'+x1.toFixed(1)+'" y1="'+Y(a).toFixed(1)+'" x2="'+(x1+bw).toFixed(1)+'" y2="'+Y(b).toFixed(1)+'" stroke="'+o.col(h)+'" stroke-width="2.5" stroke-linecap="round"/>';
     else if(!d[i-1]||o.val(d[i-1])==null)s+='<circle cx="'+x1.toFixed(1)+'" cy="'+Y(a).toFixed(1)+'" r="2.5" fill="'+o.col(h)+'"/>';});
   // a reference line across the plot (the selected elevation on the snow-level chart)
-  if(o.ref&&o.ref.v>lo&&o.ref.v<hi)s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(o.ref.v)+'" y2="'+Y(o.ref.v)+'" stroke="#3F4450" stroke-width="1.25" stroke-dasharray="4 3"/>'
-    +'<text x="'+(W-6)+'" y="'+(Y(o.ref.v)-4)+'" text-anchor="end" style="fill:#3F4450;font-weight:700">'+o.ref.lab+'</text>';
+  if(o.ref&&o.ref.v>lo&&o.ref.v<hi)s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+Y(o.ref.v)+'" y2="'+Y(o.ref.v)+'" stroke="var(--ink2)" stroke-width="1.25" stroke-dasharray="4 3"/>'
+    +'<text x="'+(W-6)+'" y="'+(Y(o.ref.v)-4)+'" text-anchor="end" style="fill:var(--ink2);font-weight:700">'+o.ref.lab+'</text>';
   var H=y0+B;
   // running totals: each gets its own strip under the bars (same hours, its own inch scale) -
   // snow runs ~10x the water, so on one scale the water line would lie flat
   lines.forEach(function(ln,k){
     var s0=y0+16+k*(SH+12),s1=s0+SH,tot=ln.v[ln.v.length-1],sm=nice(tot);
     var SY=function(v){return s1-v/sm*SH;};
-    s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+s1+'" y2="'+s1+'" stroke="#DDE0E6"/><line x1="'+L+'" x2="'+(W-4)+'" y1="'+s0+'" y2="'+s0+'" stroke="#F0F1F4"/>'
+    s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+s1+'" y2="'+s1+'" stroke="var(--line)"/><line x1="'+L+'" x2="'+(W-4)+'" y1="'+s0+'" y2="'+s0+'" stroke="var(--soft)"/>'
       +'<text x="'+(L-6)+'" y="'+(s0+3.5)+'" text-anchor="end">'+(sm<0.1?sm.toFixed(2):sm<10?sm.toFixed(1):sm.toFixed(0))+'″</text><text x="'+(L-6)+'" y="'+(s1+3.5)+'" text-anchor="end">0</text>'
       +'<text x="'+(L+4)+'" y="'+(s0+10)+'" style="font-weight:600;fill:'+ln.c+'">'+ln.lab+'</text>'
-      +'<rect class="cc-band" x="0" y="'+(s0-3)+'" width="'+bw+'" height="'+(SH+6)+'" rx="3" fill="#F1F2F5" visibility="hidden"/>';
+      +'<rect class="cc-band" x="0" y="'+(s0-3)+'" width="'+bw+'" height="'+(SH+6)+'" rx="3" fill="var(--soft)" visibility="hidden"/>';
     var pts=[[L,s1]].concat(ln.v.map(function(v,i){return[L+bw*(i+1),SY(v)];})),dp='M'+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join('L');
     var e=pts[pts.length-1];
     s+='<path d="'+dp+'L'+e[0]+','+s1+'Z" fill="'+ln.c+'" fill-opacity=".08"/><path d="'+dp+'" fill="none" stroke="'+ln.c+'" stroke-width="2" stroke-linejoin="round"/>'
-      +'<circle cx="'+e[0]+'" cy="'+e[1]+'" r="3" fill="'+ln.c+'" stroke="#fff" stroke-width="1.5"/>'
-      +'<text x="'+(e[0]-6)+'" y="'+(e[1]-5)+'" text-anchor="end" style="fill:#111;font-weight:700">'+(ln.snow?tot.toFixed(1):inch(tot))+'″</text>';
+      +'<circle cx="'+e[0]+'" cy="'+e[1]+'" r="3" fill="'+ln.c+'" stroke="var(--card)" stroke-width="1.5"/>'
+      +'<text x="'+(e[0]-6)+'" y="'+(e[1]-5)+'" text-anchor="end" style="fill:var(--ink);font-weight:700">'+(ln.snow?tot.toFixed(1):inch(tot))+'″</text>';
   });
   if(lines.length)H=xl+4;
   if(dirs)H=Math.max(H,xl+19);
@@ -1680,7 +1680,7 @@ function cloudChart(d,W,PH,sky,elev){
     +'<clipPath id="k'+u+'"><rect x="'+L+'" y="'+PT_+'" width="'+pw+'" height="'+BH+'" rx="4"/></clipPath></defs>'
     +'<rect x="'+L+'" y="'+PT_+'" width="'+pw+'" height="'+BH+'" rx="4" fill="url(#s'+u+')"/>';
   [0,6500,20000].forEach(function(f,k){var y=Y(f).toFixed(1);
-    if(k)s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+y+'" y2="'+y+'" stroke="#fff" stroke-opacity=".3"/>';
+    if(k)s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+y+'" y2="'+y+'" stroke="var(--card)" stroke-opacity=".3"/>';
     s+='<text x="'+(L-6)+'" y="'+(+y+3.5)+'" text-anchor="end">'+(f?(f/1000)+'k':'0')+'</text>';});
   var bot=[];
   d.forEach(function(h,i){var x=L+bw*i,w=bw;
@@ -1713,13 +1713,13 @@ function cloudChart(d,W,PH,sky,elev){
   s+='<g clip-path="url(#k'+u+')"><g filter="url(#f'+u+')">'+cl+'</g><g opacity=".85">'+pr+'</g></g>'
     +'<rect class="cc-band" x="0" y="'+PT_+'" width="'+bw+'" height="'+BH+'" fill="#fff" fill-opacity=".22" visibility="hidden"/>';
   s+=divs(d,L,bw,PT_,y0);
-  d.forEach(function(h,i){var xt=xlab(d,i);if(xt)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(xt.length>3?' style="fill:#5A5F6B;font-weight:700"':'')+'>'+xt+'</text>';});
+  d.forEach(function(h,i){var xt=xlab(d,i);if(xt)s+='<text x="'+(L+bw*i+bw/2)+'" y="'+(y0+13)+'" text-anchor="middle"'+(xt.length>3?' style="fill:var(--mut);font-weight:700"':'')+'>'+xt+'</text>';});
   // band names at the top of each band, white on the sky with a faint navy halo so they hold over cloud
   ['Low','Mid','High'].forEach(function(n,k){s+='<text x="'+(L+4)+'" y="'+(y0-band*(k+1)+11).toFixed(1)+'" style="font-size:9.5px;font-weight:600;fill:#fff;paint-order:stroke;stroke:#2E5A85;stroke-opacity:.45;stroke-width:2px;stroke-linejoin:round">'+n+'</text>';});
   // the forecast point (Volcanos / Mt Hood): a dotted line at its elevation, so you see whether it's in the cloud
   if(elev){var ye=Y(elev).toFixed(1);
     s+='<line x1="'+L+'" x2="'+(W-4)+'" y1="'+ye+'" y2="'+ye+'" stroke="#13304D" stroke-width="1.3" stroke-dasharray="1.5 2.5" stroke-linecap="round"/>'
-      +'<text x="'+(W-7)+'" y="'+(+ye-3.5)+'" text-anchor="end" style="font-size:9px;font-weight:600;fill:#13304D;paint-order:stroke;stroke:#fff;stroke-opacity:.75;stroke-width:2.5px;stroke-linejoin:round">This spot '+ft(elev)+'</text>';}
+      +'<text x="'+(W-7)+'" y="'+(+ye-3.5)+'" text-anchor="end" style="font-size:9px;font-weight:600;fill:#13304D;paint-order:stroke;stroke:var(--card);stroke-opacity:.75;stroke-width:2.5px;stroke-linejoin:round">This spot '+ft(elev)+'</text>';}
   var bs=d.map(function(h){return h.cb;}).filter(function(v){return v!=null;}),lo=bs.length?Math.min.apply(null,bs):null,hi=bs.length?Math.max.apply(null,bs):null;
   var bft=function(v){return v<100?'fog':ft(v);};   // a base at the ground is fog
   var sum='Avg '+sky+'%'+(lo==null?' \u00b7 no low base':' \u00b7 base '+(lo===hi?bft(lo):bft(lo)+'\u2013'+ft(hi)));
@@ -1741,7 +1741,7 @@ window.WxCharts=function(panel,opt){
   var C={
     wind:function(W,PH){
       var gmax=Math.max.apply(null,d.map(function(h){return h.gust;})),wmax=Math.max.apply(null,d.map(function(h){return h.wind;})),wt=nice(Math.max(10,gmax)/2);
-      return chart('Wind','Max '+wmax+' mph · gusts '+gmax,[['#368994','Wind'],['#3F4450','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
+      return chart('Wind','Max '+wmax+' mph · gusts '+gmax,[['#368994','Wind'],['var(--ink2)','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
         val:function(h){return h.wind;},col:function(){return'#368994';},whisker:function(h){return h.gust;},dirs:true});},
     temp:function(W,PH){   // temperature bars, with a whisker to "feels like" (wind chill / heat index) where it differs
       var tv=d.map(function(h){return h.temp;}),tx=Math.max.apply(null,tv),tn=Math.min.apply(null,tv);
@@ -1750,7 +1750,7 @@ window.WxCharts=function(panel,opt){
       var flo=Math.floor((Math.min(tn,fn)-6)/10)*10,fhi=Math.ceil((Math.max(tx,fx)+3)/10)*10,ix=tv.indexOf(tx),in_=tv.indexOf(tn);
       var tt=[flo];for(var t=flo+10;t<fhi;t+=10)if((fhi-flo)<=40||(t-flo)%20===0)tt.push(t);tt.push(fhi);
       var tsum='High '+tx+'° · low '+tn+'°'+(fn<=tn-1?' · feels '+fn+'°':fx>=tx+1?' · feels '+fx+'°':'');
-      return chart('Temperature',tsum,feel?[['#3F4450','Feels like',1]]:[],d,W,PH,{lo:flo,hi:fhi,ticks:tt,fmt:function(v){return v+'°';},
+      return chart('Temperature',tsum,feel?[['var(--ink2)','Feels like',1]]:[],d,W,PH,{lo:flo,hi:fhi,ticks:tt,fmt:function(v){return v+'°';},
         val:function(h){return h.temp;},col:function(h){return tcol(h.temp);},label:function(h,i){return(i===ix||i===in_)?h.temp+'°':'';},
         whisker:feel?function(h){return h.feels==null?h.temp:h.feels;}:null});},
     vis:function(W,PH){   // visibility, 0-10+ mi: short bars are the trouble, so those carry the colour
@@ -1900,7 +1900,7 @@ window.wxDay=function(uid,di,ev){ev=ev||window.event;
   ['pointerup','pointercancel'].forEach(function(t){document.addEventListener(t,function(){if(tm){clearTimeout(tm);tm=null;}},true);});
   document.addEventListener('click',function(e){if(eat&&cell(e)&&!ADD_NEXT){eat=false;e.stopPropagation();e.preventDefault();}},true);
   document.addEventListener('contextmenu',function(e){if(cell(e))e.preventDefault();},true);
-  var st=document.createElement('style');st.textContent='.cc-clr{margin-left:8px;border:1px solid #DDE0E6;border-radius:999px;background:#fff;padding:1px 8px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:#5A5F6B;cursor:pointer;vertical-align:1px}.cc-clr:hover{border-color:#525D45;color:#525D45}td[onclick*="wxDay"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
+  var st=document.createElement('style');st.textContent='.cc-clr{margin-left:8px;border:1px solid var(--line);border-radius:999px;background:var(--card);padding:1px 8px;font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--mut);cursor:pointer;vertical-align:1px}.cc-clr:hover{border-color:var(--acc);color:var(--acc)}td[onclick*="wxDay"]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}';
   document.head.appendChild(st);})();
 })();
 """
@@ -2020,22 +2020,22 @@ function tideSVG(ev,lat,lon,off,id){   // ev: [{t, ft, hi}] -> the six days' cur
   var line='M'+P.map(function(p){return f1(p[0])+','+f1(p[1]);}).join('L'),base=Y(lo),z=Y(0),s=[];
   for(var k=-1;k<7;k++){   // nights (sunset to sunrise): tide-pooling wants daylight
     var a=Math.max(t0,sunUTC(lat,lon,t0+k*DAY)[1]+off*1000),b=Math.min(t1,sunUTC(lat,lon,t0+(k+1)*DAY)[0]+off*1000);
-    if(b>a)s.push('<rect x="'+f1(X(a))+'" y="'+(pt-4)+'" width="'+f1(X(b)-X(a))+'" height="'+(H-pt-pb+4)+'" fill="#EEF0F5"/>');}
+    if(b>a)s.push('<rect x="'+f1(X(a))+'" y="'+(pt-4)+'" width="'+f1(X(b)-X(a))+'" height="'+(H-pt-pb+4)+'" fill="var(--soft)"/>');}
   for(k=0;k<7;k++){var d=t0+k*DAY,dt=new Date(d);   // a hairline at each midnight and the day's name
-    s.push('<line x1="'+f1(X(d))+'" x2="'+f1(X(d))+'" y1="'+(pt-18)+'" y2="'+(H-pb)+'" stroke="#DDE0E6"/><text x="'+f1(X(d)+5)+'" y="'+(pt-9)+'" class="td-day">'+WD[dt.getUTCDay()].toUpperCase()+' '+dt.getUTCDate()+'</text>');}
+    s.push('<line x1="'+f1(X(d))+'" x2="'+f1(X(d))+'" y1="'+(pt-18)+'" y2="'+(H-pb)+'" stroke="var(--line)"/><text x="'+f1(X(d)+5)+'" y="'+(pt-9)+'" class="td-day">'+WD[dt.getUTCDay()].toUpperCase()+' '+dt.getUTCDate()+'</text>');}
   // water, and teal only between the curve and the 0 ft line where it dips below (minus tides)
   var last=P[P.length-1][0],first=P[0][0];
   s.push('<clipPath id="tclip'+id+'"><rect x="'+pl+'" y="'+f1(z)+'" width="'+(W-pl-pr)+'" height="'+f1(base-z)+'"/></clipPath>');
-  s.push('<path d="'+line+'L'+f1(last)+','+f1(base)+'L'+f1(first)+','+f1(base)+'Z" fill="#CFE6F2" fill-opacity=".75"/>');
-  s.push('<path d="'+line+'L'+f1(last)+','+f1(z)+'L'+f1(first)+','+f1(z)+'Z" fill="#0B7A87" fill-opacity=".6" clip-path="url(#tclip'+id+')"/>');
+  s.push('<path d="'+line+'L'+f1(last)+','+f1(base)+'L'+f1(first)+','+f1(base)+'Z" fill="var(--tide)" fill-opacity=".75"/>');
+  s.push('<path d="'+line+'L'+f1(last)+','+f1(z)+'L'+f1(first)+','+f1(z)+'Z" fill="var(--rainink)" fill-opacity=".6" clip-path="url(#tclip'+id+')"/>');
   var top=Math.floor(hi-1.8);
   s.push('<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+f1(z)+'" y2="'+f1(z)+'" stroke="#8A9AA8" stroke-dasharray="3 3"/><text x="'+(pl-5)+'" y="'+f1(z+3.5)+'" text-anchor="end" class="td-ax">0′</text>'
     +'<text x="'+(pl-5)+'" y="'+f1(Y(top)+3.5)+'" text-anchor="end" class="td-ax">'+top+'′</text>');
   s.push('<path d="'+line+'" fill="none" stroke="#1F5F8B" stroke-width="1.8" stroke-linejoin="round"/>');
-  if(now>=t0&&now<=t1)s.push('<line x1="'+f1(X(now))+'" x2="'+f1(X(now))+'" y1="'+(pt-4)+'" y2="'+(H-pb)+'" stroke="#525D45" stroke-width="1.5"/><text x="'+f1(X(now)+3)+'" y="'+(H-pb+13)+'" class="td-now">now</text>');
+  if(now>=t0&&now<=t1)s.push('<line x1="'+f1(X(now))+'" x2="'+f1(X(now))+'" y1="'+(pt-4)+'" y2="'+(H-pb)+'" stroke="var(--acc)" stroke-width="1.5"/><text x="'+f1(X(now)+3)+'" y="'+(H-pb+13)+'" class="td-now">now</text>');
   ev.forEach(function(e){if(e.t<t0||e.t>t1)return;   // highs and lows: a dot (hover for height and time) and the time
     var x=X(e.t),y=Y(e.ft),minus=!e.hi&&e.ft<0,tip=(e.hi?'High ':'Low ')+e.ft.toFixed(1).replace('-','−')+'′ at '+WD[new Date(e.t).getUTCDay()]+' '+clock(e.t).toUpperCase();
-    s.push('<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+(minus?4:3)+'" fill="'+(minus?'#0B7A87':'#1F5F8B')+'" stroke="#fff" stroke-width="1.5"><title>'+tip+'</title></circle>');
+    s.push('<circle cx="'+f1(x)+'" cy="'+f1(y)+'" r="'+(minus?4:3)+'" fill="'+(minus?'#0B7A87':'#1F5F8B')+'" stroke="var(--card)" stroke-width="1.5"><title>'+tip+'</title></circle>');
     s.push(e.hi?'<text x="'+f1(x)+'" y="'+f1(y-7)+'" text-anchor="middle" class="td-hi">'+clock(e.t,1)+'</text>'
       :'<text x="'+f1(x)+'" y="'+f1(y+15)+'" text-anchor="middle" class="td-lo'+(minus?' td-minus':'')+'">'+clock(e.t,1)+'</text>');});
   return'<svg class="tide-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Tides, next seven days">'+s.join('')+'</svg>';}
@@ -2101,7 +2101,7 @@ function cityTable(pt,uid){
     row.temp+=td+'<div class="cy-plot"><div class="cy-rng" style="top:'+((hi-tx)/(hi-lo)*100).toFixed(1)+'%;bottom:'+((tn-lo)/(hi-lo)*100).toFixed(1)+'%;background:linear-gradient('+TB(tx)+','+TB(tn)+')"><b>'+tx+'°</b><em>'+tn+'°</em></div></div></td>';
     row.pop+=td+'<div class="cy-pop'+(p?'':' z')+'"><div class="cy-pbar"><i style="width:'+p+'%;opacity:'+(0.35+0.65*p/100).toFixed(2)+'"></i></div><span>'+p+'%</span></div></td>';
     row.amt+=td+(snow>=0.05?'<div class="cy-amt snow">'+snow.toFixed(1)+'″<small>snow</small></div>':rain>=0.005?'<div class="cy-amt rain">'+rain.toFixed(2)+'″</div>':'<div class="cy-amt none">—</div>')+'</td>';
-    row.gust+=td+'<span class="cy-g" style="color:'+(g>=45?'#D11A24':g>=30?'#D9730D':'#111')+'">'+Math.round(g)+'</span><span class="cy-u">mph</span><div class="cy-w">wind '+Math.round(w)+'</div></td>';});
+    row.gust+=td+'<span class="cy-g" style="color:'+(g>=45?'#D11A24':g>=30?'#D9730D':'var(--ink)')+'">'+Math.round(g)+'</span><span class="cy-u">mph</span><div class="cy-w">wind '+Math.round(w)+'</div></td>';});
   var ri=function(n){return'<svg class="rl" aria-hidden="true"><use href="#ri-'+n+'"/></svg>';};
   return'<table class="cy-tbl"><tr><th></th>'+row.time+'</tr><tr><th>'+ri('temp')+'High / low</th>'+row.temp+'</tr><tr><th>'+ri('chance')+'Chance of rain</th>'+row.pop+'</tr>'
     +'<tr><th>'+ri('drop')+'Rain / snow</th>'+row.amt+'</tr><tr><th>'+ri('wind')+'Wind gusts</th>'+row.gust+'</tr></table>';}
@@ -2228,11 +2228,11 @@ LAYOUT_CSS = """
 .lay-a .cc-panel { flex:none; }
 .lay-a .scroll-wrap table, .lay-a .tl-tbl { width:100%; }
 .cc-charts.cc-grid { flex:none; overflow:visible; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; align-items:stretch; padding-top:12px; }
-.cc-grid .cc-chart { background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; padding:9px 10px 4px; }
-.cc-grid .cc-ct { padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid #EEF0F3; font-size:12.5px; flex-wrap:wrap; row-gap:2px; }
-.cc-grid .cc-band { fill:#EDEFF3; }
+.cc-grid .cc-chart { background:var(--card2); border:1px solid var(--line); border-radius:9px; padding:9px 10px 4px; }
+.cc-grid .cc-ct { padding-bottom:6px; margin-bottom:2px; border-bottom:1px solid var(--soft); font-size:12.5px; flex-wrap:wrap; row-gap:2px; }
+.cc-grid .cc-band { fill:var(--soft); }
 .cc-extra:empty { display:none; }
-.cc-extra .tide-box { box-shadow:none; background:#FAFBFC; border:1px solid #E9ECF1; border-radius:9px; margin:14px 0 0; }
+.cc-extra .tide-box { box-shadow:none; background:var(--card2); border:1px solid var(--line); border-radius:9px; margin:14px 0 0; }
 .cc-charts.cc-grid.one { grid-template-columns:minmax(0,1fr); }
 .cc-charts.cc-grid[hidden] { display:none; }
 .cc-chart svg { touch-action:pan-y; }   /* a sideways drag scrubs the hours; up/down still scrolls the page */   /* (the grid's display would beat [hidden]: Volcanos' camera view) */
@@ -2280,116 +2280,116 @@ def build_cities_page():
 
     dashboard_css = (
         "* { box-sizing:border-box; }\n"
-        "body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:#FAFAFA; }\n"
-        ".map-wrap { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-bottom:12px; }\n"
+        "body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:var(--page); }\n"
+        ".map-wrap { background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-bottom:12px; }\n"
         "#citymap { width:100%; height:600px; border-radius:8px; }\n"
-        ".city-popup { background:#fff; border-radius:6px; padding:6px 10px; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.15); white-space:nowrap; }\n"
-        ".city-popup .pn { font-weight:700; font-size:14px; color:#111; margin-bottom:2px; }\n"
+        ".city-popup { background:var(--card); border-radius:6px; padding:6px 10px; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,0.15); white-space:nowrap; }\n"
+        ".city-popup .pn { font-weight:700; font-size:14px; color:var(--ink); margin-bottom:2px; }\n"
         ".city-popup .pr { display:flex; gap:12px; align-items:center; }\n"
         ".city-popup .pt { font-size:18px; font-weight:700; }\n"
         ".city-popup .pw { color:#368994; }\n"
         ".city-popup .pp { color:#4FB1BE; }\n"
         ".city-popup .pi { font-size:16px; }\n"
-        ".legend { font-size:11px; color:#AAA; margin-top:8px; }\n"
+        ".legend { font-size:11px; color:var(--faint); margin-top:8px; }\n"
         ".city-detail-body { margin-top:4px; }\n"
         ".dashboard-layout { display:flex; gap:14px; align-items:stretch; margin-bottom:28px; }\n"
         ".map-panel { flex:1.15; min-width:0; }\n"
         ".map-panel .map-wrap { margin-bottom:0; }\n"
-        ".weather-marker.sel { box-shadow:0 0 0 2px #525D45,0 2px 6px rgba(0,0,0,0.2); }\n"
-        ".cc-panel { flex:1; min-width:0; position:relative; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; display:flex; flex-direction:column; }\n"
-        ".cc-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; padding-bottom:10px; border-bottom:1px solid #EEF0F3; }\n"
-        ".cc-kicker { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#9A9FAB; }\n"
+        ".weather-marker.sel { box-shadow:0 0 0 2px var(--acc),0 2px 6px rgba(0,0,0,0.2); }\n"
+        ".cc-panel { flex:1; min-width:0; position:relative; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; display:flex; flex-direction:column; }\n"
+        ".cc-head { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; padding-bottom:10px; border-bottom:1px solid var(--soft); }\n"
+        ".cc-kicker { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); }\n"
         ".cy-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px 14px; margin:0 0 14px; }\n"
-        ".cy-pick { position:relative; display:inline-flex; align-items:center; gap:10px; padding:8px 14px 8px 16px; background:#fff; border:1px solid #DDE0E6; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); font-size:20px; font-weight:800; letter-spacing:-.01em; color:#111; cursor:pointer; }\n"
-        ".cy-pick svg { color:#5A5F6B; }\n"
-        ".cy-pick:hover { border-color:#525D45; }\n"
-        ".cy-pick:hover svg { color:#525D45; }\n"
+        ".cy-pick { position:relative; display:inline-flex; align-items:center; gap:10px; padding:8px 14px 8px 16px; background:var(--card); border:1px solid var(--line); border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.05); font-size:20px; font-weight:800; letter-spacing:-.01em; color:var(--ink); cursor:pointer; }\n"
+        ".cy-pick svg { color:var(--mut); }\n"
+        ".cy-pick:hover { border-color:var(--acc); }\n"
+        ".cy-pick:hover svg { color:var(--acc); }\n"
         ".cy-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:16px; }\n"
-        ".cy-pick:has(select:focus-visible) { outline:2px solid #525D45; outline-offset:2px; }\n"
-        ".cq-bar { display:flex; align-items:center; gap:10px; margin:0 0 8px; font-size:12px; color:#8A8F9C; }\n"
-        ".cq-bar .cq-clear { width:auto; height:auto; padding:3px 9px; border:1px solid #DDE0E6; border-radius:999px; background:#fff; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
-        ".cq-bar .cq-clear:hover { border-color:#525D45; color:#525D45; }\n"
-        ".cy-meta { font-size:12px; color:#8A8F9C; font-variant-numeric:tabular-nums; }\n"
-        ".cc-place { font-size:15px; font-weight:700; color:#111; }\n"
-        ".cc-pick { position:relative; display:inline-flex; align-items:center; gap:7px; font-size:19px; font-weight:700; letter-spacing:-.01em; color:#111; cursor:pointer; border-radius:4px; }\n"
-        ".cc-pick:hover #cc-name { color:#525D45; }\n"
+        ".cy-pick:has(select:focus-visible) { outline:2px solid var(--acc); outline-offset:2px; }\n"
+        ".cq-bar { display:flex; align-items:center; gap:10px; margin:0 0 8px; font-size:12px; color:var(--mut2); }\n"
+        ".cq-bar .cq-clear { width:auto; height:auto; padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--card); font:inherit; font-size:11.5px; font-weight:600; color:var(--mut); cursor:pointer; }\n"
+        ".cq-bar .cq-clear:hover { border-color:var(--acc); color:var(--acc); }\n"
+        ".cy-meta { font-size:12px; color:var(--mut2); font-variant-numeric:tabular-nums; }\n"
+        ".cc-place { font-size:15px; font-weight:700; color:var(--ink); }\n"
+        ".cc-pick { position:relative; display:inline-flex; align-items:center; gap:7px; font-size:19px; font-weight:700; letter-spacing:-.01em; color:var(--ink); cursor:pointer; border-radius:4px; }\n"
+        ".cc-pick:hover #cc-name { color:var(--acc); }\n"
         ".cc-pick select { position:absolute; inset:0; width:100%; opacity:0; cursor:pointer; font-size:14px; }\n"
-        ".cc-pick:has(select:focus-visible) { outline:2px solid #525D45; outline-offset:2px; }\n"
-        ".cc-now { font-size:11px; color:#9A9FAB; text-align:right; font-variant-numeric:tabular-nums; }\n"
+        ".cc-pick:has(select:focus-visible) { outline:2px solid var(--acc); outline-offset:2px; }\n"
+        ".cc-now { font-size:11px; color:var(--faint); text-align:right; font-variant-numeric:tabular-nums; }\n"
         ".cc-charts { flex:1 1 0; min-height:0; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; gap:6px; padding-top:8px; }\n"
         ".cc-chart { position:relative; }\n"
-        ".cc-ct { display:flex; align-items:baseline; gap:8px; font-size:12px; font-weight:700; color:#111; }\n"
-        ".cc-ct .cc-sum { margin-left:auto; white-space:nowrap; font-weight:500; color:#5A5F6B; font-variant-numeric:tabular-nums; }\n"
-        ".cc-key { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:500; color:#8A8F9C; }\n"
+        ".cc-ct { display:flex; align-items:baseline; gap:8px; font-size:12px; font-weight:700; color:var(--ink); }\n"
+        ".cc-ct .cc-sum { margin-left:auto; white-space:nowrap; font-weight:500; color:var(--mut); font-variant-numeric:tabular-nums; }\n"
+        ".cc-key { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:500; color:var(--mut2); }\n"
         ".cc-key i { display:inline-block; width:8px; height:8px; border-radius:2px; }\n"
         ".cc-chart svg { display:block; width:100%; overflow:visible; }\n"
-        ".cc-chart svg text { font-family:inherit; font-size:10px; fill:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
-        ".cc-tip { position:absolute; pointer-events:none; background:#111; color:#fff; border-radius:6px; padding:7px 9px; font-size:11.5px; line-height:1.55; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.18); z-index:5; font-variant-numeric:tabular-nums; }\n"
+        ".cc-chart svg text { font-family:inherit; font-size:10px; fill:var(--faint); font-variant-numeric:tabular-nums; }\n"
+        ".cc-tip { position:absolute; pointer-events:none; background:var(--solid); color:var(--solid-ink); border-radius:6px; padding:7px 9px; font-size:11.5px; line-height:1.55; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.18); z-index:5; font-variant-numeric:tabular-nums; }\n"
         ".cc-tip b { font-weight:700; }\n"
         ".cc-tip i { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; }\n"
         "@media (max-width:1000px) { .dashboard-layout { flex-direction:column; } #citymap { height:440px; } .cc-charts { flex:none; overflow:visible; } }\n"
-        ".weather-marker { display:flex; align-items:center; gap:4px; background:rgba(255,255,255,.94); border-radius:999px; padding:2px 3px 2px 7px; font-size:11px; box-shadow:0 1px 4px rgba(0,0,0,0.22); cursor:pointer; white-space:nowrap; }\n"
+        ".weather-marker { display:flex; align-items:center; gap:4px; background:var(--glass); border-radius:999px; padding:2px 3px 2px 7px; font-size:11px; box-shadow:0 1px 4px rgba(0,0,0,0.22); cursor:pointer; white-space:nowrap; }\n"
         ".weather-marker.west { flex-direction:row-reverse; padding:2px 7px 2px 3px; }\n"
         ".weather-marker .wm-ic { font-size:12px; line-height:1; }\n"
-        ".weather-marker .wm-name { font-weight:700; color:#111; font-size:11.5px; }\n"
+        ".weather-marker .wm-name { font-weight:700; color:var(--ink); font-size:11.5px; }\n"
         ".weather-marker .wm-temp { font-weight:700; font-size:11.5px; color:#fff; border-radius:999px; padding:1px 6px; font-variant-numeric:tabular-nums; }\n"
-        ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px #525D45,0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".weather-marker.sel { z-index:3; box-shadow:0 0 0 2px var(--acc),0 2px 8px rgba(0,0,0,0.25); }\n"
         ".weather-marker:hover { z-index:4; }\n"
         ".city-mapbox { position:relative; }\n"
         ".ph-split { display:flex; justify-content:space-between; align-items:flex-end; gap:12px 24px; flex-wrap:wrap; }\n"
-        ".city-sun { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; font-size:12.5px; color:#5A5F6B; font-variant-numeric:tabular-nums; }\n"
+        ".city-sun { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; font-size:12.5px; color:var(--mut); font-variant-numeric:tabular-nums; }\n"
         ".city-sun span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }\n"
-        ".city-sun b { color:#111; }\n"
-        ".city-sun em { font-style:normal; color:#9A9FAB; }\n"
+        ".city-sun b { color:var(--ink); }\n"
+        ".city-sun em { font-style:normal; color:var(--faint); }\n"
         ".city-sun svg { width:17px; height:17px; }\n"
-        ".city-sun .cs-city { font-weight:700; color:#111; font-size:12px; letter-spacing:.02em; }\n"
-        ".tide-box { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px 14px 12px; margin:10px 0 6px; }\n"
-        ".tide-h { font-size:13px; font-weight:700; color:#111; margin-bottom:8px; }\n"
-        ".tide-h span { font-weight:400; font-size:11.5px; color:#8A8F9C; margin-left:6px; }\n"
-        ".tide-h i.minus { font-style:normal; color:#0B7A87; font-weight:700; }\n"
+        ".city-sun .cs-city { font-weight:700; color:var(--ink); font-size:12px; letter-spacing:.02em; }\n"
+        ".tide-box { background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:10px 14px 12px; margin:10px 0 6px; }\n"
+        ".tide-h { font-size:13px; font-weight:700; color:var(--ink); margin-bottom:8px; }\n"
+        ".tide-h span { font-weight:400; font-size:11.5px; color:var(--mut2); margin-left:6px; }\n"
+        ".tide-h i.minus { font-style:normal; color:var(--rainink); font-weight:700; }\n"
         ".tide-days { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; }\n"
-        ".tide-day { display:flex; flex-direction:column; gap:2px; font-size:12px; color:#3F4450; font-variant-numeric:tabular-nums; }\n"
-        ".tide-day b { font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#111; margin-bottom:2px; }\n"
-        ".tide-day em { font-style:normal; color:#8A8F9C; }\n"
+        ".tide-day { display:flex; flex-direction:column; gap:2px; font-size:12px; color:var(--ink2); font-variant-numeric:tabular-nums; }\n"
+        ".tide-day b { font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink); margin-bottom:2px; }\n"
+        ".tide-day em { font-style:normal; color:var(--mut2); }\n"
         ".tide-day .th { color:#1F3A52; }\n"
-        ".tide-day .tl { color:#5A5F6B; }\n"
-        ".tide-day .minus, .tide-day .minus em { color:#0B7A87; font-weight:700; }\n"
+        ".tide-day .tl { color:var(--mut); }\n"
+        ".tide-day .minus, .tide-day .minus em { color:var(--rainink); font-weight:700; }\n"
         ".tide-svg { display:block; width:100%; height:auto; overflow:visible; }\n"
         ".tide-svg text { font-family:inherit; font-size:10.5px; font-variant-numeric:tabular-nums; }\n"
-        ".tide-svg .td-day { font-size:10.5px; font-weight:700; letter-spacing:.05em; fill:#111; }\n"
-        ".tide-svg .td-ax { fill:#9A9FAB; }\n"
+        ".tide-svg .td-day { font-size:10.5px; font-weight:700; letter-spacing:.05em; fill:var(--ink); }\n"
+        ".tide-svg .td-ax { fill:var(--faint); }\n"
         ".tide-svg .td-hi { fill:#1F5F8B; font-weight:700; }\n"
-        ".tide-svg .td-lo { fill:#5A5F6B; }\n"
-        ".tide-svg .td-minus { fill:#0B7A87; font-weight:700; }\n"
+        ".tide-svg .td-lo { fill:var(--mut); }\n"
+        ".tide-svg .td-minus { fill:var(--rainink); font-weight:700; }\n"
         ".tide-svg .td-now { fill:#525D45; font-weight:700; font-size:10px; }\n"
         ".tide-svg circle { cursor:default; }\n"
-        ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
+        ".city-wash { position:absolute; top:10px; right:10px; z-index:2; display:flex; gap:2px; padding:3px; border-radius:9px; background:var(--glass); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
         ".city-wash[hidden] { display:none; }\n"
-        ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
-        ".city-wash button.on { background:#111; color:#fff; }\n"
-        ".city-wash-leg { position:absolute; right:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:rgba(255,255,255,.92); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:#333; }\n"
+        ".city-wash button { border:0; background:none; padding:4px 9px; border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; color:var(--mut); cursor:pointer; }\n"
+        ".city-wash button.on { background:var(--solid); color:var(--solid-ink); }\n"
+        ".city-wash-leg { position:absolute; right:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:var(--glass); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:var(--ink); }\n"
         ".city-wash-leg:empty { display:none; }\n"
         ".city-wash-leg i { display:block; height:7px; border-radius:4px; margin:4px 0 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }\n"
-        ".city-wash-leg span { display:flex; justify-content:space-between; color:#8A8F9C; }\n"
+        ".city-wash-leg span { display:flex; justify-content:space-between; color:var(--mut2); }\n"
         ".city-wash-leg em { font-style:normal; }\n"
         ".city-search { position:absolute; top:10px; left:10px; z-index:3; width:240px; max-width:calc(100% - 20px); }\n"
-        ".city-search > svg { position:absolute; left:10px; top:8px; width:15px; height:15px; color:#8A8F9C; pointer-events:none; }\n"
-        ".city-search input { width:100%; padding:6px 10px 6px 31px; border:0; border-radius:9px; background:rgba(255,255,255,.95); box-shadow:0 1px 3px rgba(20,24,35,.18); font:inherit; font-size:12.5px; color:#111; }\n"
-        ".city-search input:focus { outline:2px solid #525D45; outline-offset:0; }\n"
-        ".city-q-list { margin-top:4px; background:#fff; border-radius:9px; box-shadow:0 4px 14px rgba(20,24,35,.2); overflow:hidden; }\n"
+        ".city-search > svg { position:absolute; left:10px; top:8px; width:15px; height:15px; color:var(--mut2); pointer-events:none; }\n"
+        ".city-search input { width:100%; padding:6px 10px 6px 31px; border:0; border-radius:9px; background:var(--glass); box-shadow:0 1px 3px rgba(20,24,35,.18); font:inherit; font-size:12.5px; color:var(--ink); }\n"
+        ".city-search input:focus { outline:2px solid var(--acc); outline-offset:0; }\n"
+        ".city-q-list { margin-top:4px; background:var(--card); border-radius:9px; box-shadow:0 4px 14px rgba(20,24,35,.2); overflow:hidden; }\n"
         ".city-q-list button { display:flex; justify-content:space-between; align-items:baseline; gap:8px; width:100%; border:0; background:none; padding:7px 10px; font:inherit; font-size:12.5px; text-align:left; cursor:pointer; }\n"
-        ".city-q-list button + button { border-top:1px solid #F0F1F4; }\n"
-        ".city-q-list button:hover, .city-q-list button:focus-visible { background:#F0F4EC; outline:0; }\n"
-        ".city-q-list b { color:#111; }\n"
-        ".city-q-list span { color:#8A8F9C; font-size:11.5px; white-space:nowrap; }\n"
-        ".cq-none { padding:8px 10px; font-size:12px; color:#8A8F9C; }\n"
-        ".weather-marker.searched { box-shadow:0 0 0 1.5px #111,0 1px 4px rgba(0,0,0,0.22); }\n"
-        ".weather-marker.searched.sel { box-shadow:0 0 0 2px #525D45,0 2px 8px rgba(0,0,0,0.25); }\n"
-        ".cq-status { padding:12px 14px; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); font-size:13px; color:#5A5F6B; }\n"
-        ".cq-status.err { color:#9B1C1C; background:#FDF1F1; }\n"
-        ".cq-clear { margin-left:auto; border:1px solid #DDE0E6; background:#fff; border-radius:7px; width:26px; height:26px; font-size:16px; line-height:1; color:#5A5F6B; cursor:pointer; }\n"
-        ".cq-clear:hover { border-color:#525D45; color:#525D45; }\n"
-        ".cq-foot { margin:8px 0 0; font-size:11px; color:#9A9FAB; }\n"
+        ".city-q-list button + button { border-top:1px solid var(--soft); }\n"
+        ".city-q-list button:hover, .city-q-list button:focus-visible { background:var(--accbg4); outline:0; }\n"
+        ".city-q-list b { color:var(--ink); }\n"
+        ".city-q-list span { color:var(--mut2); font-size:11.5px; white-space:nowrap; }\n"
+        ".cq-none { padding:8px 10px; font-size:12px; color:var(--mut2); }\n"
+        ".weather-marker.searched { box-shadow:0 0 0 1.5px var(--ink),0 1px 4px rgba(0,0,0,0.22); }\n"
+        ".weather-marker.searched.sel { box-shadow:0 0 0 2px var(--acc),0 2px 8px rgba(0,0,0,0.25); }\n"
+        ".cq-status { padding:12px 14px; border-radius:10px; background:var(--card); box-shadow:0 1px 4px rgba(0,0,0,.08); font-size:13px; color:var(--mut); }\n"
+        ".cq-status.err { color:var(--errink); background:var(--errbg); }\n"
+        ".cq-clear { margin-left:auto; border:1px solid var(--line); background:var(--card); border-radius:7px; width:26px; height:26px; font-size:16px; line-height:1; color:var(--mut); cursor:pointer; }\n"
+        ".cq-clear:hover { border-color:var(--acc); color:var(--acc); }\n"
+        ".cq-foot { margin:8px 0 0; font-size:11px; color:var(--faint); }\n"
     ) + detail_css
 
     map_js = (
@@ -2856,7 +2856,7 @@ def build_trails_page(aq):
         ".mtn-pin.active .mtn-ic { transform:scale(2); }\n"
         ".mtn-pin .mtn-wx { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; transform:scale(2); transform-origin:50% 100%; pointer-events:none; }\n"
         ".mtn-pin .mtn-ic { position:relative; }\n"
-        ".mtn-pin-name small { display:block; font-size:11px; font-weight:600; color:#5A5F6B; }\n"
+        ".mtn-pin-name small { display:block; font-size:11px; font-weight:600; color:var(--mut); }\n"
         "@keyframes wxfall { from { transform:translateY(-1px); opacity:0; } 15% { opacity:1; } 75% { opacity:1; } to { transform:translateY(3.5px); opacity:0; } }\n"
         "@keyframes wxblow { from { stroke-dashoffset:14; opacity:0; } 30% { opacity:1; } to { stroke-dashoffset:-14; opacity:0; } }\n"
         "@keyframes wxspin { to { transform:rotate(45deg); } }\n"
@@ -2868,7 +2868,7 @@ def build_trails_page(aq):
         "@media (prefers-reduced-motion:reduce) { .mtn-wx * { animation:none !important; } }\n"
         ".mtn-pin:focus-visible { outline:none; }\n"
         # name sits just off the icon's right side, level with its middle (a 2x icon grows up from its base)
-        ".mtn-pin-name { position:absolute; left:calc(100% + 1px); top:60%; transform:translateY(-50%); padding:2px 8px; border-radius:999px; background:#fff; color:#111;"
+        ".mtn-pin-name { position:absolute; left:calc(100% + 1px); top:60%; transform:translateY(-50%); padding:2px 8px; border-radius:999px; background:var(--card); color:var(--ink);"
         " font-size:12px; font-weight:700; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.25); opacity:0; pointer-events:none; transition:opacity .15s, left .2s ease, right .2s ease, top .2s ease; }\n"
         ".mtn-pin:hover .mtn-pin-name, .mtn-pin:focus-visible .mtn-pin-name { opacity:1; left:calc(107.5% + 1px); }\n"
         ".mtn-pin.active .mtn-pin-name { opacity:1; left:calc(150% - 1px); top:15%; font-size:13px; }\n"
@@ -2883,43 +2883,43 @@ def build_trails_page(aq):
         ".mtn-detail .wp-header { margin:0 0 8px 2px; }\n"
         ".wm-info .rl { width:1.1em; height:1.1em; vertical-align:-0.2em; color:#368994; }\n"
         "#mtn-name { display:flex; align-items:center; gap:8px; white-space:nowrap; }\n"
-        ".cc-tiers { display:inline-flex; gap:2px; padding:3px; margin-top:10px; background:#EBEDF1; border-radius:9px; align-self:flex-start; }\n"
-        ".cc-tiers button { border:none; background:none; padding:5px 12px; border-radius:7px; font:inherit; font-size:12.5px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
-        ".cc-tiers button small { margin-left:6px; font-size:11px; font-weight:500; color:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
-        ".cc-tiers button:hover { color:#111; }\n"
-        ".cc-tiers button.active { background:#fff; color:#111; box-shadow:0 0 0 1px #E3E5EA, 0 1px 2px rgba(20,24,35,.06); }\n"
-        ".cc-tiers button:focus-visible { outline:2px solid #525D45; outline-offset:2px; }\n"
-        ".cc-wp { font-size:11px; color:#9A9FAB; margin-top:3px; }\n"
+        ".cc-tiers { display:inline-flex; gap:2px; padding:3px; margin-top:10px; background:var(--soft); border-radius:9px; align-self:flex-start; }\n"
+        ".cc-tiers button { border:none; background:none; padding:5px 12px; border-radius:7px; font:inherit; font-size:12.5px; font-weight:600; color:var(--mut); cursor:pointer; }\n"
+        ".cc-tiers button small { margin-left:6px; font-size:11px; font-weight:500; color:var(--faint); font-variant-numeric:tabular-nums; }\n"
+        ".cc-tiers button:hover { color:var(--ink); }\n"
+        ".cc-tiers button.active { background:var(--card); color:var(--ink); box-shadow:0 0 0 1px var(--line), 0 1px 2px rgba(20,24,35,.06); }\n"
+        ".cc-tiers button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }\n"
+        ".cc-wp { font-size:11px; color:var(--faint); margin-top:3px; }\n"
         # Forecast | Cameras switch and the camera view
         ".cc-head-r { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }\n"
-        ".cc-view { display:inline-flex; gap:2px; padding:3px; background:#EBEDF1; border-radius:9px; }\n"
+        ".cc-view { display:inline-flex; gap:2px; padding:3px; background:var(--soft); border-radius:9px; }\n"
         ".cc-view[hidden] { display:none; }\n"
-        ".cc-view button { white-space:nowrap; border:none; background:none; padding:4px 11px; border-radius:7px; font:inherit; font-size:12px; font-weight:600; color:#5A5F6B; cursor:pointer; }\n"
-        ".cc-view button:hover { color:#111; }\n"
-        ".cc-view button.active { background:#fff; color:#111; box-shadow:0 0 0 1px #E3E5EA, 0 1px 2px rgba(20,24,35,.06); }\n"
-        ".cc-view button:focus-visible { outline:2px solid #525D45; outline-offset:2px; }\n"
-        ".cc-view button span { margin-left:5px; font-size:11px; color:#9A9FAB; font-variant-numeric:tabular-nums; }\n"
+        ".cc-view button { white-space:nowrap; border:none; background:none; padding:4px 11px; border-radius:7px; font:inherit; font-size:12px; font-weight:600; color:var(--mut); cursor:pointer; }\n"
+        ".cc-view button:hover { color:var(--ink); }\n"
+        ".cc-view button.active { background:var(--card); color:var(--ink); box-shadow:0 0 0 1px var(--line), 0 1px 2px rgba(20,24,35,.06); }\n"
+        ".cc-view button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }\n"
+        ".cc-view button span { margin-left:5px; font-size:11px; color:var(--faint); font-variant-numeric:tabular-nums; }\n"
         # as tall as the photo + caption + thumbnails: a 0 flex-basis collapsed it to nothing wherever the
         # panel has no fixed height (phones, and the Volcanos tab's stacked layout)
         ".cc-cams { flex:1 0 auto; display:flex; flex-direction:column; gap:8px; padding-top:10px; }\n"
         ".cc-cams[hidden], .cc-charts[hidden], .cc-tiers[hidden] { display:none; }\n"
         ".cam-main { position:relative; margin:0; border-radius:8px; overflow:hidden; background:#10131A; aspect-ratio:3/2; flex:none; }\n"
         ".cam-main img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }\n"
-        ".cam-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; color:#C9CDD5; font-size:13px; }\n"
+        ".cam-msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; color:var(--zero); font-size:13px; }\n"
         ".cam-msg[hidden] { display:none; }\n"
         ".cam-thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; }\n"
         ".cam-thumbs:empty { display:none; }\n"
-        ".cam-thumbs button { display:flex; flex-direction:column; gap:4px; padding:0; border:none; background:none; font:inherit; font-size:11.5px; font-weight:600; color:#5A5F6B; text-align:left; cursor:pointer; }\n"
+        ".cam-thumbs button { display:flex; flex-direction:column; gap:4px; padding:0; border:none; background:none; font:inherit; font-size:11.5px; font-weight:600; color:var(--mut); text-align:left; cursor:pointer; }\n"
         ".cam-thumbs img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; background:#10131A; transition:opacity .15s; }\n"
-        ".cam-thumbs button:hover { color:#111; }\n"
+        ".cam-thumbs button:hover { color:var(--ink); }\n"
         ".cam-thumbs button:hover img { opacity:.85; }\n"
-        ".cam-thumbs button:focus-visible { outline:2px solid #525D45; outline-offset:2px; border-radius:6px; }\n"
-        ".cam-cap { font-size:12px; color:#5A5F6B; line-height:1.5; }\n"
-        ".cam-cap b { color:#111; }\n"
+        ".cam-thumbs button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; border-radius:6px; }\n"
+        ".cam-cap { font-size:12px; color:var(--mut); line-height:1.5; }\n"
+        ".cam-cap b { color:var(--ink); }\n"
         ".cam-cap .cam-when { font-variant-numeric:tabular-nums; }\n"
         ".cam-cap .cam-night { color:#8A5A00; }\n"
-        ".cam-cap button { border:none; background:none; padding:0; font:inherit; font-weight:600; color:#525D45; cursor:pointer; }\n"
-        ".cam-cap a { color:#8A8F9C; }\n"
+        ".cam-cap button { border:none; background:none; padding:0; font:inherit; font-weight:600; color:var(--acc); cursor:pointer; }\n"
+        ".cam-cap a { color:var(--mut2); }\n"
     )
     map_js = (
         "mapboxgl.accessToken='__TOKEN__';\n"
@@ -2976,7 +2976,7 @@ def build_trails_page(aq):
     full_html += '<div class="detail-list">' + details + '</div>'   # the selected volcano's table, then its charts
     full_html += ('<div class="cc-panel" id="mtn-cc"><div class="cc-head"><div><div class="cc-kicker" id="mtn-kicker">Next 24 hours</div>'
                   '<label class="cc-pick"><span id="mtn-name">' + mtn_icon(MOUNTAINS[DEFAULT_MTN]["uid"], 30) + html.escape(MOUNTAINS[DEFAULT_MTN]["name"]) + '</span>'
-                  '<svg width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="#A0A5B1" stroke-width="1.6"/></svg>'
+                  '<svg width="10" height="6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="var(--faint)" stroke-width="1.6"/></svg>'
                   '<select id="mtn-pick" aria-label="Mountain" onchange="selectMountain(+this.value)">' + opts + '</select></label>'
                   '<div class="cc-wp" id="mtn-wp"></div></div>'
                   '<div class="cc-head-r"><div class="cc-view" id="mtn-view" role="group" aria-label="View">'
@@ -3117,14 +3117,14 @@ def fmt_vis(mi):
 def vis_color(mi):
     # Text color, not a fill: good visibility stays quiet, only poor visibility draws the eye
     if mi is None:
-        return "#CCC"
+        return "var(--zero)"
     if mi < 1:
         return "#D11A24"
     if mi < 3:
         return "#C9760A"
     if mi < 6:
         return "#8C7440"
-    return "#888"
+    return "var(--mut2)"
 
 
 def wind_chill_f(t, w):
@@ -3254,6 +3254,8 @@ def hood_layers(profile, lat=SKI_POINTS[0]["lat"], lon=SKI_POINTS[0]["lon"]):
 def layer_depth(layers, elev_m, dt):
     """Estimated depth (in) at one elevation and local time, from the nearest earlier frame."""
     fr = layers["frames"]
+    if not fr:   # (no frames, e.g. a stale cache whose hours are all past: no estimate)
+        return 0.0
     ts = dt.replace(tzinfo=ZoneInfo("America/Los_Angeles")).timestamp() * 1000
     k = max([i for i, f in enumerate(fr) if f["t"] <= ts + 90 * 60000] or [0])
     E, D = layers["elev"], fr[k]["depth"]
@@ -3694,16 +3696,16 @@ def build_ski_page():
 
     ski_css = """
     * { box-sizing:border-box; }
-    body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:#FAFAFA; color:#111; }
-    .ski-card { background:#fff; border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+    body { font-family:'Helvetica Neue',Arial,sans-serif; margin:0; padding:14px; background:var(--page); color:var(--ink); }
+    .ski-card { background:var(--card); border-radius:10px; padding:12px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
     .ski-card-title { font-size:15px; font-weight:700; display:flex; align-items:center; gap:6px; }
-    .ski-card-sub { margin-top:4px; color:#888; font-size:11px; }
-    .ski-card-sub a { color:#888; }
-    .ski-card-placeholder { border:2px dashed #DDD; box-shadow:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:150px; }
-    .ski-card-placeholder .ski-card-title { color:#999; font-size:14px; }
-    .ski-card-placeholder .ski-card-sub { color:#BBB; }
+    .ski-card-sub { margin-top:4px; color:var(--mut2); font-size:11px; }
+    .ski-card-sub a { color:var(--mut2); }
+    .ski-card-placeholder { border:2px dashed var(--line); box-shadow:none; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:150px; }
+    .ski-card-placeholder .ski-card-title { color:var(--faint); font-size:14px; }
+    .ski-card-placeholder .ski-card-sub { color:var(--faint); }
     .gorge-card, .report-card { overflow-y:auto; max-height:300px; }
-    .gorge-body p, .report-body { margin:6px 0 0; font-size:12px; line-height:1.55; color:#333; }
+    .gorge-body p, .report-body { margin:6px 0 0; font-size:12px; line-height:1.55; color:var(--ink); }
     .hood-word { margin:28px 0; }
     .hood-row1 { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:14px; align-items:start; margin-bottom:24px; }
     .hood-row1 .gorge-card { max-height:560px; }
@@ -3714,46 +3716,46 @@ def build_ski_page():
     .hood-fc .ski-section { margin-bottom:0; }
     .hood-fc .wp-header { margin:0 0 4px 2px; }
     .hood-sum { margin-bottom:28px; }
-    .ss-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; }
+    .ss-wrap { overflow-x:auto; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; }
     .ss-grid { display:grid; grid-template-rows:auto auto auto; column-gap:4px; min-width:880px; }
     .ss-grp { grid-row:1 / span 2; text-align:center; padding:0 2px 8px; }
-    .ss-lbl { font-size:11px; font-weight:600; color:#5A5F6B; letter-spacing:.02em; white-space:nowrap; }
+    .ss-lbl { font-size:11px; font-weight:600; color:var(--mut); letter-spacing:.02em; white-space:nowrap; }
     .ss-tot { position:relative; margin-top:6px; }
-    .ss-tot::before { content:""; position:absolute; left:0; right:0; top:50%; border-top:1.5px solid #C9CDD5; }
-    .ss-tot span { position:relative; padding:0 8px; background:#fff; font-size:18px; font-weight:800; color:#111; font-variant-numeric:tabular-nums; }
+    .ss-tot::before { content:""; position:absolute; left:0; right:0; top:50%; border-top:1.5px solid var(--line); }
+    .ss-tot span { position:relative; padding:0 8px; background:var(--card); font-size:18px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; }
     .ss-day { grid-row:3; text-align:center; font-variant-numeric:tabular-nums; padding-top:2px; }
-    .ss-bar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:74px; border-bottom:1.5px solid #DDE0E6; }
-    .ss-bar b { font-size:12px; font-weight:800; color:#111; margin-bottom:3px; }
+    .ss-bar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:74px; border-bottom:1.5px solid var(--line); }
+    .ss-bar b { font-size:12px; font-weight:800; color:var(--ink); margin-bottom:3px; }
     .ss-bar em { display:block; width:62%; max-width:18px; border-radius:3px 3px 0 0; background:#7A5A99; }
     .ss-past .ss-bar em { background:#A9A3E8; }
-    .ss-zero .ss-bar b { color:#C9CDD5; font-weight:500; }
-    .ss-day i { display:block; font-style:normal; font-size:10.5px; line-height:1.3; color:#9A9FAB; margin-top:4px; }
-    .ss-day.ss-wk i { color:#111; font-weight:700; }
-    .ss-now { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; margin:0 6px; padding:10px 8px; border-radius:10px; background:#F1F2F5; text-align:center; }
-    .ss-big { font-size:40px; font-weight:800; line-height:1; color:#111; font-variant-numeric:tabular-nums; }
-    .ss-when { font-size:11px; color:#5A5F6B; line-height:1.4; }
-    .ss-when span { color:#8A8F9C; }
-    .ss-foot { margin-top:6px; font-size:11px; color:#9A9FAB; }
+    .ss-zero .ss-bar b { color:var(--zero); font-weight:500; }
+    .ss-day i { display:block; font-style:normal; font-size:10.5px; line-height:1.3; color:var(--faint); margin-top:4px; }
+    .ss-day.ss-wk i { color:var(--ink); font-weight:700; }
+    .ss-now { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; margin:0 6px; padding:10px 8px; border-radius:10px; background:var(--soft); text-align:center; }
+    .ss-big { font-size:40px; font-weight:800; line-height:1; color:var(--ink); font-variant-numeric:tabular-nums; }
+    .ss-when { font-size:11px; color:var(--mut); line-height:1.4; }
+    .ss-when span { color:var(--mut2); }
+    .ss-foot { margin-top:6px; font-size:11px; color:var(--faint); }
     .ss-key { display:inline-block; width:9px; height:9px; border-radius:2px; background:#7A5A99; margin-right:5px; vertical-align:-1px; }
     .ss-key.ss-key-p { background:#A9A3E8; }
-    .sec-h { margin:0 0 10px; font-size:15px; font-weight:700; color:#111; }
+    .sec-h { margin:0 0 10px; font-size:15px; font-weight:700; color:var(--ink); }
     .temp-pill { border-radius:5px; color:#fff; font-size:12px; font-weight:700; padding:2px 5px; display:inline-block; }
     .temp-pill.low { opacity:.7; }
-    .gust { font-size:10.5px; color:#8A8F9C; margin-left:3px; }
+    .gust { font-size:10.5px; color:var(--mut2); margin-left:3px; }
     .vis-pill { font-size:11px; font-weight:500; display:inline-block; }
     #hoodmap { width:100%; height:600px; border-radius:8px; }
     /* The Christomer: the thumbnail as a poster, Mt Hood + current weather over it */
-    .yt-wrap { flex:1; min-width:0; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:12px; }
-    .yt-h { font-size:15px; font-weight:700; color:#111; margin-bottom:8px; }
+    .yt-wrap { flex:1; min-width:0; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:12px; }
+    .yt-h { font-size:15px; font-weight:700; color:var(--ink); margin-bottom:8px; }
     .yt-card { position:relative; display:flex; align-items:flex-end; min-height:220px; padding:20px 18px 18px; border-radius:8px; overflow:hidden; color:#fff; text-decoration:none;
       background:radial-gradient(120% 90% at 20% 0%, #3E5578 0%, #243249 45%, #141B28 100%); }
     .yt-card.day { background:radial-gradient(120% 90% at 20% 0%, #8DB8DD 0%, #5A86B2 45%, #2E4766 100%); }
-    .yt-card:focus-visible { outline:2px solid #525D45; outline-offset:2px; }
+    .yt-card:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
     /* a faint far ridge along the bottom, for depth */
     .yt-ridge { position:absolute; left:0; right:0; bottom:0; height:38%; background:rgba(8,12,20,.35);
       clip-path:polygon(0 60%,12% 38%,22% 52%,35% 22%,46% 45%,58% 30%,70% 50%,83% 26%,100% 48%,100% 100%,0 100%); }
     .yt-play { position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 1px rgba(255,255,255,.35); transition:background .15s; }
-    .yt-play::after { content:""; position:absolute; left:16px; top:12px; border-style:solid; border-width:9px 0 9px 15px; border-color:transparent transparent transparent #fff; }
+    .yt-play::after { content:""; position:absolute; left:16px; top:12px; border-style:solid; border-width:9px 0 9px 15px; border-color:transparent transparent transparent var(--card); }
     .yt-card:hover .yt-play { background:#525D45; box-shadow:none; }
     .yt-foot { position:relative; display:flex; align-items:flex-end; flex-wrap:wrap; gap:12px 18px; width:100%; }
     .yt-badge { position:relative; flex:none; width:130px; height:89px; margin-top:26px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
@@ -3764,41 +3766,41 @@ def build_ski_page():
     .yt-d { font-size:12px; color:#DDE3EC; }
     .yt-d b { color:#fff; font-weight:700; }
     .ski-section { margin-bottom:18px; }
-    .scroll-wrap { overflow-x:auto; background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-top:4px; }
+    .scroll-wrap { overflow-x:auto; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:8px; margin-top:4px; }
     table { border-collapse:separate; border-spacing:4px 0; white-space:nowrap; font-size:13px; }
-    th { position:sticky; left:0; z-index:2; background:#fff; text-align:left; padding:3px 10px 3px 0; font-size:12px; color:#555; font-weight:600; min-width:96px; }
+    th { position:sticky; left:0; z-index:2; background:var(--card); text-align:left; padding:3px 10px 3px 0; font-size:12px; color:var(--mut); font-weight:600; min-width:96px; }
     th .ri { font-size:14px; margin-right:3px; }
     td { text-align:center; padding:3px 6px; min-width:58px; }
-    .dsum { cursor:pointer; min-width:84px; border-left:1px solid #DDE0E6; }
+    .dsum { cursor:pointer; min-width:84px; border-left:1px solid var(--line); }
     .dsum:hover { background:rgba(82,93,69,0.04); }
     .ddet { cursor:pointer; }
-    .dl { font-size:11px; font-weight:700; color:#111; letter-spacing:.5px; text-transform:uppercase; }
+    .dl { font-size:11px; font-weight:700; color:var(--ink); letter-spacing:.5px; text-transform:uppercase; }
     .ds-ci { font-size:18px; margin-top:2px; }
     .tt { background:#525D45; color:#fff; font-size:9px; padding:1px 5px; border-radius:3px; margin-left:3px; vertical-align:middle; }
     /* 10-day table: day headers, snow bars, temperature range bars, row rules, weekend tint */
     .ski-tbl { border-spacing:0; }
     .ski-tbl td.dsum { padding:7px 10px; min-width:78px; vertical-align:middle; }
-    .ski-tbl tr + tr td.dsum, .ski-tbl tr + tr th { border-top:1px solid #F0F1F4; }
+    .ski-tbl tr + tr td.dsum, .ski-tbl tr + tr th { border-top:1px solid var(--soft); }
     .ski-tbl th { padding:7px 12px 7px 0; vertical-align:middle; }
-    .ski-tbl td.wkd { background:#F7F8FA; }
-    .ski-tbl td.dsum.dsel { background:#EBF0E6; }
+    .ski-tbl td.wkd { background:var(--card2); }
+    .ski-tbl td.dsum.dsel { background:var(--accbg); }
     .dh { white-space:nowrap; }
-    .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:#111; }
-    .dh span { font-size:12.5px; font-weight:600; color:#8A8F9C; }
-    .snow-day { font-size:14px; font-weight:800; color:#7A5A99; font-variant-numeric:tabular-nums; }
-    .snow-none { font-size:13px; color:#C9CDD5; }
+    .dh b { font-size:12.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--ink); }
+    .dh span { font-size:12.5px; font-weight:600; color:var(--mut2); }
+    .snow-day { font-size:14px; font-weight:800; color:var(--snowink); font-variant-numeric:tabular-nums; }
+    .snow-none { font-size:13px; color:var(--zero); }
     .dh .tt { color:#fff; font-size:9px; font-weight:700; letter-spacing:.03em; }
     .trange { display:flex; flex-direction:column; align-items:center; gap:3px; }
-    .tr-track { position:relative; width:8px; height:54px; border-radius:4px; background:#EEF0F3; }
+    .tr-track { position:relative; width:8px; height:54px; border-radius:4px; background:var(--soft); }
     .tr-track i { position:absolute; left:0; right:0; border-radius:4px; }
-    .trange .th { font-size:13px; font-weight:700; color:#111; font-variant-numeric:tabular-nums; }
-    .trange .tl2 { font-size:12px; color:#8A8F9C; font-variant-numeric:tabular-nums; }
+    .trange .th { font-size:13px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+    .trange .tl2 { font-size:12px; color:var(--mut2); font-variant-numeric:tabular-nums; }
     .wv { font-weight:700; }
-    .snow-txt { color:#7A5A99; font-weight:700; }
-    .tl { font-size:11px; color:#999; font-weight:600; }
-    .ski-marker { background:#fff; border-radius:6px; padding:5px 10px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.25); white-space:nowrap; border-left:3px solid #6BBF68; cursor:pointer; }
-    .ski-marker.active { box-shadow:0 0 0 2px #525D45, 0 2px 6px rgba(0,0,0,0.25); }
-    .ski-marker .sm-name { font-weight:700; color:#111; font-size:14px; }
+    .snow-txt { color:var(--snowink); font-weight:700; }
+    .tl { font-size:11px; color:var(--faint); font-weight:600; }
+    .ski-marker { background:var(--card); border-radius:6px; padding:5px 10px; font-size:13px; box-shadow:0 2px 6px rgba(0,0,0,0.25); white-space:nowrap; border-left:3px solid #6BBF68; cursor:pointer; }
+    .ski-marker.active { box-shadow:0 0 0 2px var(--acc), 0 2px 6px rgba(0,0,0,0.25); }
+    .ski-marker .sm-name { font-weight:700; color:var(--ink); font-size:14px; }
     .ski-marker .sm-row { display:flex; gap:6px; align-items:center; margin-top:1px; }
     .ski-marker .sm-fl { font-weight:700; font-size:16px; color:#fff; border-radius:3px; padding:1px 4px; }
     .ski-marker .sm-wind { color:#368994; font-size:12px; }
@@ -3889,14 +3891,14 @@ def build_ski_page():
             '<div class="ski-card ski-card-placeholder">'
             '<div class="ski-card-title">\U0001F3D4 Meteorologist Forecast</div>'
             '<div class="ski-card-sub">via The Gorge Is My Gym</div>'
-            f'<div style="color:#999;font-size:11px;margin-top:10px;text-align:center;line-height:1.5;">{why}</div></div>')
+            f'<div style="color:var(--faint);font-size:11px;margin-top:10px;text-align:center;line-height:1.5;">{why}</div></div>')
     report_card = (
         '<div class="ski-card report-card"><div class="ski-card-title">\U0001F4CB Meadows Report</div>'
         '<div class="ski-card-sub">Mt Hood Meadows \u00b7 <a href="https://www.skihood.com/" target="_blank" rel="noopener">skihood.com \u2197</a></div>'
         f'<div class="report-body">{html.escape(_rpt_text[:900])}</div></div>'
         if _rpt_text else
         '<div class="ski-card ski-card-placeholder"><div class="ski-card-title">\U0001F4CB Meadows Report</div>'
-        '<div class="ski-card-sub">Mt Hood Meadows</div><div style="color:#999;font-size:11px;margin-top:10px;">No report posted today.</div></div>')
+        '<div class="ski-card-sub">Mt Hood Meadows</div><div style="color:var(--faint);font-size:11px;margin-top:10px;">No report posted today.</div></div>')
 
     hp = [{"name": pt["name"], "elev_ft": round(mp["elev_ft"]), "hrs": hrs}
           for pt, mp, hrs in zip(SKI_POINTS, map_points, hrs_all)]
@@ -4011,11 +4013,11 @@ def build_ski_page():
         )
     # Mapbox traffic + camera route map (Cedar Mill to Meadows)
     bottom_row += (
-        '<div style="flex:1;min-width:0;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px;">'
-        '<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:4px;">\U0001F697 Cedar Mill \u2192 Meadows &nbsp;\U0001F4F7 Road Cams</div>'
+        '<div style="flex:1;min-width:0;background:var(--card);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:12px;">'
+        '<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px;">\U0001F697 Cedar Mill \u2192 Meadows &nbsp;\U0001F4F7 Road Cams</div>'
         + (f'<div style="font-size:22px;font-weight:800;color:#4FB1BE;margin-bottom:2px;">{mb_route_info}</div>' if mb_route_info else '')
-        + '<div style="font-size:11px;color:#888;margin-bottom:2px;">Mapbox estimate</div>'
-        + (f'<div style="font-size:11px;color:#999;margin-bottom:6px;">\U0001F310 OSRM: {osrm_line}</div>' if osrm_line else '')
+        + '<div style="font-size:11px;color:var(--mut2);margin-bottom:2px;">Mapbox estimate</div>'
+        + (f'<div style="font-size:11px;color:var(--faint);margin-bottom:6px;">\U0001F310 OSRM: {osrm_line}</div>' if osrm_line else '')
         + '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;">'
         '<div id="routemap" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div></div>'
         '</div>'
@@ -4029,13 +4031,13 @@ def build_ski_page():
         cam_cards += (
             f'<div style="flex:1;min-width:0;text-align:center;">'
             f'<img src="{cam["img"]}" alt="{cam["name"]}" style="width:100%;border-radius:6px;display:block;"/>'
-            f'<div style="font-size:9px;font-weight:700;color:#525D45;margin-top:3px;">\U0001F4F7{ci2+1}</div>'
-            f'<div style="font-size:9px;font-weight:600;color:#555;">{cam["name"]}</div>'
+            f'<div style="font-size:9px;font-weight:700;color:var(--acc);margin-top:3px;">\U0001F4F7{ci2+1}</div>'
+            f'<div style="font-size:9px;font-weight:600;color:var(--mut);">{cam["name"]}</div>'
             f'</div>'
         )
     full_html += (
-        '<div style="margin-top:10px;background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:10px 12px;">'
-        '<div style="font-size:13px;font-weight:700;color:#111;margin-bottom:6px;">\U0001F4F7 Hwy 26 &amp; 35 \u2014 Live ODOT Snapshots</div>'
+        '<div style="margin-top:10px;background:var(--card);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:10px 12px;">'
+        '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;">\U0001F4F7 Hwy 26 &amp; 35 \u2014 Live ODOT Snapshots</div>'
         f'<div style="display:flex;gap:8px;">{cam_cards}</div>'
         '</div>'
     )
@@ -4084,9 +4086,9 @@ def build_ski_page():
         "  }\n"
         "  cams.forEach(function(c,i){\n"
         "    var el=document.createElement('div');\n"
-        "    el.style.cssText='background:#fff;border:2px solid #525D45;'"
+        "    el.style.cssText='background:var(--card);border:2px solid var(--acc);'"
         "      +'border-radius:4px;padding:1px 5px;font-size:10px;'"
-        "      +'font-weight:700;color:#111;cursor:pointer;'"
+        "      +'font-weight:700;color:var(--ink);cursor:pointer;'"
         "      +'box-shadow:0 1px 4px rgba(0,0,0,0.3);';\n"
         "    el.textContent='\U0001F4F7'+(i+1);\n"
         "    var popup=new mapboxgl.Popup({offset:12,"
@@ -4155,7 +4157,9 @@ def scope_css(css, scope):
             i = k
             continue
         k = css.find("}", j)
-        sels = [f"{scope} {s}" for s in (s.strip() for s in head.split(",")) if s and s not in ("body", "html")]
+        # a dark-mode rule (html[data-theme=dark] .x) keeps its html part in front: html[...] #pageN .x
+        sels = [(f"{s.split(' ', 1)[0]} {scope} {s.split(' ', 1)[1]}" if s.startswith("html[") else f"{scope} {s}")
+                for s in (s.strip() for s in head.split(",")) if s and s not in ("body", "html")]
         if sels:
             out.append(", ".join(sels) + " " + css[j:k + 1])
         i = k + 1
@@ -4245,121 +4249,121 @@ def build_dashboard() -> str:
     tab_css = """
     .shell{display:flex;min-height:100vh;}
     .side-nav{flex:0 0 188px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:2px;
-      padding:22px 12px 16px;background:#F2F3F6;border-right:1px solid #E3E5EA;z-index:1000;box-sizing:border-box;}
-    .brand{padding:0 10px 20px;font-size:15px;font-weight:700;color:#111;letter-spacing:-.01em;line-height:1.25;}
-    .brand small{display:block;margin-top:3px;font-size:10px;font-weight:600;color:#9A9FAB;letter-spacing:.08em;text-transform:uppercase;}
+      padding:22px 12px 16px;background:var(--soft);border-right:1px solid var(--line);z-index:1000;box-sizing:border-box;}
+    .brand{padding:0 10px 20px;font-size:15px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.25;}
+    .brand small{display:block;margin-top:3px;font-size:10px;font-weight:600;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;}
     .tab-btn{position:relative;display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;background:none;
-      border-radius:8px;color:#5A5F6B;font:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer;
+      border-radius:8px;color:var(--mut);font:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer;
       transition:background .15s,color .15s;}
-    .tab-btn .nv{width:18px;height:18px;flex:none;color:#8A8F9C;transition:color .15s;}
-    .tab-btn:hover{background:#E8EAEF;color:#111;}
-    .tab-btn.active{background:#fff;color:#111;box-shadow:0 0 0 1px #E3E5EA,0 1px 2px rgba(20,24,35,.05);}
+    .tab-btn .nv{width:18px;height:18px;flex:none;color:var(--mut2);transition:color .15s;}
+    .tab-btn:hover{background:var(--soft);color:var(--ink);}
+    .tab-btn.active{background:var(--card);color:var(--ink);box-shadow:0 0 0 1px var(--line),0 1px 2px rgba(20,24,35,.05);}
     .tab-btn.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#525D45;}
-    .tab-btn.active .nv{color:#525D45;}
-    .tab-btn:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
-    .updated{margin-top:auto;padding:0 10px;font-size:10.5px;line-height:1.5;color:#9A9FAB;font-variant-numeric:tabular-nums;}
-    .updated b{display:block;font-weight:600;color:#6B7080;}
+    .tab-btn.active .nv{color:var(--acc);}
+    .tab-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+    .updated{margin-top:auto;padding:0 10px;font-size:10.5px;line-height:1.5;color:var(--faint);font-variant-numeric:tabular-nums;}
+    .updated b{display:block;font-weight:600;color:var(--mut);}
     .main{flex:1;min-width:0;position:relative;}
     .page-section{padding:24px 26px;}
     .page-head{margin:0 0 18px;}
-    .page-head h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;color:#111;}
-    .page-head p{margin:4px 0 0;font-size:12px;color:#8A8F9C;}
-    .sec-rule{margin:32px 0;border:none;border-top:1px solid #E3E5EA;}
+    .page-head h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.02em;color:var(--ink);}
+    .page-head p{margin:4px 0 0;font-size:12px;color:var(--mut2);}
+    .sec-rule{margin:32px 0;border:none;border-top:1px solid var(--line);}
     /* section headers: city rows, trail waypoints, ski points */
     .city-detail{margin-bottom:24px;}
     .city-detail[hidden]{display:none!important;}
     .city-detail-header{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;padding:4px 2px 9px;
-      border-bottom:1px solid #E3E5EA;cursor:pointer;color:#111;}
+      border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink);}
     .ch-icon{display:flex;font-size:20px;}
     .ch-name{font-size:17px;font-weight:700;letter-spacing:-.01em;transition:color .15s;}
-    .city-detail-header:hover .ch-name{color:#525D45;}
-    .ch-temps{font-size:13px;color:#8A8F9C;font-variant-numeric:tabular-nums;}
-    .ch-temps b{color:#111;font-weight:600;}
-    .ch-meta{margin-left:auto;font-size:11px;color:#9A9FAB;font-variant-numeric:tabular-nums;}
-    .ch-chev{width:16px;height:16px;color:#A0A5B1;transition:transform .2s;}
+    .city-detail-header:hover .ch-name{color:var(--acc);}
+    .ch-temps{font-size:13px;color:var(--mut2);font-variant-numeric:tabular-nums;}
+    .ch-temps b{color:var(--ink);font-weight:600;}
+    .ch-meta{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
+    .ch-chev{width:16px;height:16px;color:var(--faint);transition:transform .2s;}
     .city-detail-header.collapsed .ch-chev{transform:rotate(-90deg);}
     .city-detail-body{margin-top:10px;}
     .city-detail .wp-header{display:none;}
     .wp-header{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin:14px 0 8px;}
     .wp-dot{width:8px;height:8px;border-radius:50%;align-self:center;flex:none;}
-    .wp-name{font-size:14px;font-weight:700;color:#111;}
-    .wp-meta{font-size:11px;color:#9A9FAB;font-variant-numeric:tabular-nums;}
+    .wp-name{font-size:14px;font-weight:700;color:var(--ink);}
+    .wp-meta{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
     .wp-chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px;}
-    .wp-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid #E3E5EA;border-radius:999px;
-      background:#fff;color:#5A5F6B;font:inherit;font-size:12px;font-weight:600;cursor:pointer;
+    .wp-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;
+      background:var(--card);color:var(--mut);font:inherit;font-size:12px;font-weight:600;cursor:pointer;
       transition:border-color .15s,color .15s;}
-    .wp-chip:hover{border-color:#C9CDD6;color:#111;}
-    .wp-chip.active{color:#111;border-color:#111;}
-    .wp-chip:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
-    .wp-chip-el{font-weight:500;color:#9A9FAB;font-variant-numeric:tabular-nums;}
+    .wp-chip:hover{border-color:var(--line);color:var(--ink);}
+    .wp-chip.active{color:var(--ink);border-color:var(--ink);}
+    .wp-chip:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+    .wp-chip-el{font-weight:500;color:var(--faint);font-variant-numeric:tabular-nums;}
     .mtn-chips .wp-chip{font-size:13px;padding:7px 14px;}
     /* Map tab */
-    .rmap-wrap{position:relative;height:calc(100vh - 170px);min-height:520px;border:1px solid #E3E5EA;border-radius:12px;overflow:hidden;background:#E9EEF0;}
+    .rmap-wrap{position:relative;height:calc(100vh - 170px);min-height:520px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--soft);}
     #regionmap{position:absolute;inset:0;}
     #rlyr{right:60px;}
     .rmap-tip{position:absolute;z-index:4;pointer-events:none;transform:translate(14px,14px);padding:6px 9px;border-radius:7px;
       background:rgba(17,17,17,.86);color:#fff;font-size:11.5px;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums;}
     .rmap-tip[hidden],.rmap-busy[hidden]{display:none;}
-    .rmap-busy{position:absolute;right:60px;bottom:12px;z-index:3;padding:4px 9px;border-radius:7px;background:rgba(255,255,255,.9);
-      font-size:11px;font-weight:600;color:#5A5F6B;box-shadow:0 1px 3px rgba(20,24,35,.15);}
+    .rmap-busy{position:absolute;right:60px;bottom:12px;z-index:3;padding:4px 9px;border-radius:7px;background:var(--glass);
+      font-size:11px;font-weight:600;color:var(--mut);box-shadow:0 1px 3px rgba(20,24,35,.15);}
     /* Accuracy tab */
     .acc{max-width:1000px;}
-    .acc h2{margin:28px 0 4px;font-size:15px;font-weight:700;color:#111;}
-    .acc-status{margin:0;padding:11px 14px;border:1px solid #E3E5EA;border-radius:10px;background:#fff;font-size:13px;line-height:1.5;color:#333;max-width:80ch;}
-    .acc-sub{margin:0 0 10px;font-size:12px;line-height:1.5;color:#8A8F9C;max-width:90ch;}
+    .acc h2{margin:28px 0 4px;font-size:15px;font-weight:700;color:var(--ink);}
+    .acc-status{margin:0;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:13px;line-height:1.5;color:var(--ink);max-width:80ch;}
+    .acc-sub{margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--mut2);max-width:90ch;}
     .acc-tbl{border-spacing:0;font-size:13px;}
-    .acc-tbl th,.acc-tbl td{position:static;padding:9px 16px;border-bottom:1px solid #EEF0F3;background:none;text-align:right;
+    .acc-tbl th,.acc-tbl td{position:static;padding:9px 16px;border-bottom:1px solid var(--soft);background:none;text-align:right;
       font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0;}
-    .acc-tbl th{text-align:left;font-size:13px;font-weight:600;color:#111;}
-    .acc-tbl tr:first-child th{font-size:10.5px;font-weight:600;color:#8A8F9C;text-transform:uppercase;letter-spacing:.05em;text-align:right;vertical-align:bottom;}
+    .acc-tbl th{text-align:left;font-size:13px;font-weight:600;color:var(--ink);}
+    .acc-tbl tr:first-child th{font-size:10.5px;font-weight:600;color:var(--mut2);text-transform:uppercase;letter-spacing:.05em;text-align:right;vertical-align:bottom;}
     .acc-tbl tr:first-child th:first-child{text-align:left;}
-    .acc-tbl th span,.acc-tbl td span{display:block;font-size:10.5px;font-weight:400;color:#9A9FAB;text-transform:none;letter-spacing:0;}
+    .acc-tbl th span,.acc-tbl td span{display:block;font-size:10.5px;font-weight:400;color:var(--faint);text-transform:none;letter-spacing:0;}
     .acc-up::before{content:"\\25B2  ";font-size:8px;color:#4E9A51;}
     .acc-down::before{content:"\\25BC  ";font-size:8px;color:#B7791F;}
     .acc-ok{color:#2F7D32;} .acc-warn{color:#B7791F;} .acc-bad{color:#C53030;}
-    .acc-blend th,.acc-blend td{font-weight:700;background:#F5F6F9;}
-    .acc-nodata td{text-align:left;font-style:italic;color:#9A9FAB;}
-    .acc-foot{margin-top:16px;font-size:11px;line-height:1.55;color:#9A9FAB;max-width:90ch;}
-    .acc-empty{color:#8A8F9C;}
+    .acc-blend th,.acc-blend td{font-weight:700;background:var(--card2);}
+    .acc-nodata td{text-align:left;font-style:italic;color:var(--faint);}
+    .acc-foot{margin-top:16px;font-size:11px;line-height:1.55;color:var(--faint);max-width:90ch;}
+    .acc-empty{color:var(--mut2);}
     /* 3D terrain map layers */
     .terrain-wrap{position:relative;}
     .lyr-ctl{position:absolute;top:10px;left:10px;right:10px;z-index:2;display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;pointer-events:none;}
     .lyr-ctl>div{pointer-events:auto;display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:9px;
-      background:rgba(255,255,255,.9);backdrop-filter:blur(6px);box-shadow:0 1px 3px rgba(20,24,35,.18);}
+      background:var(--glass);backdrop-filter:blur(6px);box-shadow:0 1px 3px rgba(20,24,35,.18);}
     .lyr-ctl>div[hidden],.lyr-ctl button[hidden],.lyr-ctl span[hidden],.lyr-leg[hidden]{display:none;}
     .lyr-ctl button{border:none;background:none;padding:5px 10px;border-radius:7px;font:inherit;font-size:12px;font-weight:600;
-      color:#5A5F6B;cursor:pointer;white-space:nowrap;}
-    .lyr-ctl button:hover{color:#111;}
-    .lyr-ctl button.active{background:#111;color:#fff;}
+      color:var(--mut);cursor:pointer;white-space:nowrap;}
+    .lyr-ctl button:hover{color:var(--ink);}
+    .lyr-ctl button.active{background:var(--solid);color:var(--solid-ink);}
     /* the fire overlay toggles on/off beside the layer choice, set apart by a divider */
     .lyr-ctl .lyr-fire{display:inline-flex;align-items:center;gap:5px;margin-left:5px;position:relative;}
-    .lyr-ctl .lyr-fire::before{content:"";position:absolute;left:-4px;top:5px;bottom:5px;width:1px;background:#DDE0E6;}
+    .lyr-ctl .lyr-fire::before{content:"";position:absolute;left:-4px;top:5px;bottom:5px;width:1px;background:var(--track);}
     .lyr-ctl .lyr-fire.active{background:#FCE3DB;color:#8A1F14;box-shadow:inset 0 0 0 1px #E4572E;}
-    .lyr-ctl button:focus-visible{outline:2px solid #525D45;outline-offset:1px;}
+    .lyr-ctl button:focus-visible{outline:2px solid var(--acc);outline-offset:1px;}
     .lyr-leg{position:absolute;left:10px;bottom:36px;z-index:2;width:240px;max-width:calc(100% - 20px);padding:8px 10px;
-      border-radius:9px;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);box-shadow:0 1px 3px rgba(20,24,35,.18);
-      font-size:11px;color:#333;}
+      border-radius:9px;background:var(--glass);backdrop-filter:blur(6px);box-shadow:0 1px 3px rgba(20,24,35,.18);
+      font-size:11px;color:var(--ink);}
     .lyr-bar{height:8px;border-radius:4px;margin:6px 0 3px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
-    .lyr-ticks{display:flex;justify-content:space-between;font-size:10px;color:#8A8F9C;font-variant-numeric:tabular-nums;}
-    .lyr-note{margin-top:5px;font-weight:600;color:#111;}
-    .lyr-src{margin-top:4px;max-width:260px;font-size:10px;line-height:1.4;color:#8A8F9C;}
-    .lyr-where{display:flex;align-items:center;gap:8px;margin-top:3px;color:#5A5F6B;font-variant-numeric:tabular-nums;}
+    .lyr-ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--mut2);font-variant-numeric:tabular-nums;}
+    .lyr-note{margin-top:5px;font-weight:600;color:var(--ink);}
+    .lyr-src{margin-top:4px;max-width:260px;font-size:10px;line-height:1.4;color:var(--mut2);}
+    .lyr-where{display:flex;align-items:center;gap:8px;margin-top:3px;color:var(--mut);font-variant-numeric:tabular-nums;}
     .lyr-ctl .lyr-time{align-items:center;gap:6px;padding:3px 10px 3px 3px;flex-wrap:nowrap;max-width:100%;}
-    .lyr-mode{display:inline-flex;gap:2px;padding:0 6px;border-left:1px solid #E3E5EA;border-right:1px solid #E3E5EA;}
+    .lyr-mode{display:inline-flex;gap:2px;padding:0 6px;border-left:1px solid var(--line);border-right:1px solid var(--line);}
     .lyr-ctl button:disabled{opacity:.4;cursor:default;}
     #tslider{flex:1 1 140px;min-width:80px;max-width:280px;accent-color:#111;cursor:pointer;}
     #tslider:disabled{opacity:.35;cursor:default;}
-    .lyr-rtime{min-width:112px;font-size:12px;font-weight:700;color:#111;white-space:nowrap;font-variant-numeric:tabular-nums;}
-    .lyr-pt{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:6px;font-size:10.5px;color:#5A5F6B;}
+    .lyr-rtime{min-width:112px;font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums;}
+    .lyr-pt{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:6px;font-size:10.5px;color:var(--mut);}
     .lyr-pt .lyr-bar{margin:3px 0;}
-    .lyr-go{margin-left:auto;border:none;padding:3px 10px;border-radius:6px;background:#111;color:#fff;font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
-    .lyr-go:focus-visible{outline:2px solid #525D45;outline-offset:2px;}
+    .lyr-go{margin-left:auto;border:none;padding:3px 10px;border-radius:6px;background:var(--solid);color:var(--solid-ink);font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
+    .lyr-go:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
     .tab-btn .ns{display:none;}
     @media (max-width:760px){
       .shell{flex-direction:column;}
       .side-nav{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;flex-direction:row;align-items:stretch;gap:0;
-        padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px));border-right:none;border-top:1px solid #E3E5EA;
-        background:rgba(250,250,251,.97);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+        padding:2px 4px calc(2px + env(safe-area-inset-bottom,0px));border-right:none;border-top:1px solid var(--line);
+        background:var(--bar);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
       .brand,.updated{display:none;}
       .tab-btn{flex:1 1 0;min-width:0;width:auto;flex-direction:column;justify-content:center;gap:3px;padding:7px 2px 6px;
         border-radius:10px;font-size:10.5px;font-weight:600;text-align:center;white-space:nowrap;}
@@ -4367,7 +4371,7 @@ def build_dashboard() -> str:
       .tab-btn .nl{display:none;}
       .tab-btn .ns{display:block;}
       .tab-btn:hover{background:none;}
-      .tab-btn.active{background:none;box-shadow:none;color:#525D45;}
+      .tab-btn.active{background:none;box-shadow:none;color:var(--acc);}
       .tab-btn.active::before{left:30%;right:30%;top:-3px;bottom:auto;width:auto;height:3px;border-radius:0 0 3px 3px;}
       .main{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
       .page-section{padding:18px 16px;}
@@ -4399,7 +4403,7 @@ def build_dashboard() -> str:
       .tl-tbl th{min-width:64px !important;max-width:76px;white-space:normal;font-size:11px !important;line-height:1.2;}
       .tl-tbl td{min-width:58px !important;padding:6px 5px !important;}
       .acc-tbl th,.acc-tbl td{padding:7px 9px;font-size:12px;}
-      .acc-tbl tr>:first-child{position:sticky;left:0;z-index:1;background:#fff;max-width:112px;white-space:normal;text-align:left;}
+      .acc-tbl tr>:first-child{position:sticky;left:0;z-index:1;background:var(--card);max-width:112px;white-space:normal;text-align:left;}
       /* headers: a place's name row keeps its collapse arrow on the right, elevation + coordinates below */
       .city-detail-header{gap:2px 8px;}
       .city-detail-header .ch-chev{order:4;margin-left:auto;}
@@ -4420,14 +4424,14 @@ def build_dashboard() -> str:
     .wx{width:1.35em;height:1.35em;}
     .wx.wx-wind{width:1.1em;height:1.1em;}
     .ds-ci{display:flex;justify-content:center;}
-    th .rl{width:1.25em;height:1.25em;vertical-align:-0.28em;margin-right:4px;color:#8A8F9C;}
+    th .rl{width:1.25em;height:1.25em;vertical-align:-0.28em;margin-right:4px;color:var(--mut2);}
     td{padding-top:4px;padding-bottom:4px;}
     td.cc{position:relative;height:20px;padding:0;}
     .cf{position:absolute;inset:-2px -6px;border-radius:12px;filter:blur(5px);pointer-events:none;}
     .pd{width:1.05em;height:1.05em;vertical-align:-0.15em;margin-right:2px;}
     .pd0{color:#E3E7EC;} .pd1{color:#A9D6DC;} .pd2{color:#4FB1BE;} .pd3{color:#2F8794;}
     .pb{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:3px;font-size:10px;font-weight:600;
-      color:#8A8F9C;font-variant-numeric:tabular-nums;}
+      color:var(--mut2);font-variant-numeric:tabular-nums;}
     .pb i{width:6px;height:6px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);}
     """
 
@@ -4442,7 +4446,8 @@ def build_dashboard() -> str:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#FAFAFA">
+    <meta name="theme-color" content="#111317">
+    {THEME_HEAD}
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <title>Oregon Weather Forecast — {now_str}</title>
@@ -4450,12 +4455,8 @@ def build_dashboard() -> str:
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <script>
     // on a touch screen every map takes two fingers to pan / zoom, so a swipe down the page scrolls
-    // the page instead of getting stuck in a map (Mapbox shows a hint on a one-finger drag)
-    if(window.mapboxgl&&window.matchMedia&&matchMedia('(pointer:coarse)').matches){{
-      var _M=mapboxgl.Map;
-      mapboxgl.Map=function(o){{return new _M(Object.assign({{cooperativeGestures:true}},o));}};
-      mapboxgl.Map.prototype=_M.prototype;
-    }}
+    // the page instead of getting stuck in a map (Mapbox shows a hint on a one-finger drag); dark mode: night maps
+    {MAP_WRAP_JS}
     // the Chrome extension's "save" (#save=...): a background tab that only measures and keeps one trail
     // (trail_live.py) and is closed by the extension - no maps are created, so no Mapbox map loads
     window.WX_SAVE_ONLY=location.hash.indexOf('#save=')===0;
@@ -4466,7 +4467,7 @@ def build_dashboard() -> str:
     {tab_css}
     </style>
     </head>
-    <body style="margin:0;padding:0;background:#FAFAFA;">
+    <body style="margin:0;padding:0;background:var(--page);">
     {WX_DEFS}
     <div class="shell">
     <nav class="side-nav" aria-label="Forecast sections">
@@ -4479,6 +4480,7 @@ def build_dashboard() -> str:
       <button class="tab-btn" onclick="showTab(5)"><svg class="nv" aria-hidden="true"><use href="#ri-target"/></svg><span class="nl">Accuracy</span><span class="ns">Accuracy</span></button>
       <button class="tab-btn" onclick="showTab(6)"><svg class="nv" aria-hidden="true"><use href="#ri-areas"/></svg><span class="nl">Trail Sections</span><span class="ns">Sections</span></button>
       <div class="updated"><b>Updated</b>{updated_str}</div>
+      <button class="theme-tg" type="button" onclick="wxThemeToggle()" aria-label="Switch light / dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Light / dark</span></button>
     </nav>
     <main class="main">
     <div class="page-section" id="page0">
@@ -4574,6 +4576,72 @@ def build_dashboard() -> str:
 # Each build's id (its time); the build also writes it to docs/version.json. An open dashboard checks
 # that file every 5 minutes: a newer build reloads a tab in the background, and shows a small notice
 # in a tab you're looking at (so a reload never pulls the page out from under you).
+# Dark mode (owner, 2026-10-23: dark by default, a sun/moon toggle for light, remembered per device in
+# localStorage 'wx-theme'). Colours throughout are CSS variables (themeify pass): surfaces --page / --card /
+# --card2 / --soft / --track, lines --line, text --ink / --ink2 / --mut / --mut2 / --faint / --zero, the
+# "solid" chip/tooltip pair --solid / --solid-ink, the accent as text/lines --acc (lighter in dark; as a
+# button fill it stays #525D45), accent tints --accbg..4, snow / rain text --snowink / --rainink. Data
+# colours (temps, rain/snow/mix bars, gusts, AQI, trail grades) are literals on purpose. The theme is set
+# before anything draws (no white flash); switching reloads, because the maps pick their style on creation.
+THEME_HEAD = r"""<script>
+(function(){var t='dark';try{t=localStorage.getItem('wx-theme')||'dark';}catch(e){}
+  document.documentElement.setAttribute('data-theme',t);
+  var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==='dark'?'#111317':'#FAFAFA';
+  window.wxThemeToggle=function(){var n=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';
+    try{localStorage.setItem('wx-theme',n);}catch(e){}location.reload();};})();
+</script>
+<style>
+:root{--page:#FAFAFA;--card:#FFFFFF;--card2:#F7F8FA;--soft:#F0F1F4;--track:#E3E5EA;--line:#DDE0E6;--zero:#C9CDD5;
+  --faint:#9A9FAB;--mut2:#8A8F9C;--mut:#5A5F6B;--ink2:#3F4450;--ink:#111111;--solid:#111111;--solid-ink:#FFFFFF;
+  --acc:#525D45;--accbg:#EBF0E6;--accbg2:#E0E8D9;--accbg3:#F5F7F2;--accbg4:#F0F4EC;--snowink:#7A5A99;--snowbg:#F5F1F8;
+  --rainink:#0B6F7C;--glass:rgba(255,255,255,.92);--tide:#CFE6F2;--errink:#9B1C1C;--errbg:#FDF1F1;--bar:rgba(250,250,251,.97);color-scheme:light;}
+html[data-theme=dark]{--page:#111317;--card:#1A1D22;--card2:#1F2329;--soft:#252A31;--track:#2C3139;--line:#343A44;--zero:#4B525D;
+  --faint:#7D8593;--mut2:#949BA8;--mut:#B2B8C3;--ink2:#CBD0D8;--ink:#ECEFF3;--solid:#ECEFF3;--solid-ink:#111317;
+  --acc:#A7BE8E;--accbg:#27301F;--accbg2:#303B27;--accbg3:#1E241B;--accbg4:#222A1D;--snowink:#BFA3DD;--snowbg:#2A2333;
+  --rainink:#5FC6D3;--glass:rgba(26,29,34,.9);--tide:#2A5870;--errink:#F2A0A0;--errbg:#3A1F22;--bar:rgba(22,24,29,.97);color-scheme:dark;}
+html[data-theme=dark] body{background:var(--page);color:var(--ink);}
+html[data-theme=dark] .mapboxgl-popup-content{background:var(--card);color:var(--ink);box-shadow:0 2px 10px rgba(0,0,0,.5);}
+html[data-theme=dark] .mapboxgl-popup-anchor-top .mapboxgl-popup-tip,html[data-theme=dark] .mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,html[data-theme=dark] .mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip{border-bottom-color:var(--card);}
+html[data-theme=dark] .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,html[data-theme=dark] .mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,html[data-theme=dark] .mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip{border-top-color:var(--card);}
+html[data-theme=dark] .mapboxgl-popup-anchor-left .mapboxgl-popup-tip{border-right-color:var(--card);}
+html[data-theme=dark] .mapboxgl-popup-anchor-right .mapboxgl-popup-tip{border-left-color:var(--card);}
+html[data-theme=dark] .mapboxgl-popup-close-button{color:var(--mut);}
+html[data-theme=dark] .mapboxgl-ctrl-group{background:var(--card);}
+html[data-theme=dark] .lyr-ctl .lyr-fire.active{background:#3A221C;color:#F2A491;}
+html[data-theme=dark] .lyr-ctl .lyr-trl.active{background:#2C2238;color:#C9B0EE;}
+html[data-theme=dark] .mapboxgl-ctrl-group button+button{border-top-color:var(--line);}
+html[data-theme=dark] .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon{filter:invert(1);}
+html[data-theme=dark] .mapboxgl-ctrl-attrib{background:rgba(17,19,23,.6);}
+html[data-theme=dark] .mapboxgl-ctrl-attrib a{color:var(--mut);}
+.theme-tg{display:flex;align-items:center;gap:8px;margin:10px 10px 0;padding:7px 10px;border:1px solid var(--line);border-radius:9px;
+  background:var(--card);color:var(--mut);font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.theme-tg:hover{color:var(--ink);border-color:var(--acc);}
+.theme-tg svg{width:15px;height:15px;}
+@media (max-width:760px){.theme-tg{position:fixed;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:40;margin:0;
+  width:38px;height:38px;padding:0;justify-content:center;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .theme-tg span{display:none;}}
+</style>"""
+# Every map goes through this: two-finger pan on touch screens, and in dark mode the night map (Mapbox
+# dark-v11) with our own hillshade under the roads and labels, so mountains still read.
+MAP_WRAP_JS = r"""
+if(window.mapboxgl){
+  var _M=mapboxgl.Map,coarse=window.matchMedia&&matchMedia('(pointer:coarse)').matches,
+      dark=document.documentElement.getAttribute('data-theme')==='dark';
+  mapboxgl.Map=function(o){
+    o=Object.assign(coarse?{cooperativeGestures:true}:{},o);
+    if(dark&&typeof o.style==='string'&&/styles\/mapbox\/(outdoors|streets)-v12/.test(o.style))o.style='mapbox://styles/mapbox/dark-v11';
+    var m=new _M(o);
+    if(dark)m.on('style.load',function(){
+      if(m.getSource('wx-hs'))return;
+      m.addSource('wx-hs',{type:'raster-dem',url:'mapbox://mapbox.mapbox-terrain-dem-v1',tileSize:512});
+      var before;m.getStyle().layers.some(function(l){if(l.type==='line'||l.type==='symbol'){before=l.id;return true;}});
+      m.addLayer({id:'wx-hillshade',type:'hillshade',source:'wx-hs',paint:{'hillshade-exaggeration':0.55,
+        'hillshade-shadow-color':'#000000','hillshade-highlight-color':'#4A5363','hillshade-accent-color':'#151A21'}},before);});
+    return m;};
+  mapboxgl.Map.prototype=_M.prototype;
+}"""
+
+
 BUILD_ID = int(time.time())
 # Where you are in the page (owner, 2026-10-13): the tab, the city / searched town, the day clicked, the
 # volcano + elevation, the Mt Hood lift, the Map tab's layer and view. Kept in sessionStorage: it survives a
@@ -4603,9 +4671,9 @@ function check(){
 setInterval(check,5*60000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)check();});
 var st=document.createElement('style');
-st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:#111;color:#fff;font:13px/1.3 "Helvetica Neue",Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}'
+st.textContent='.wx-newer{position:fixed;right:16px;bottom:16px;z-index:50;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--solid);color:var(--solid-ink);font:13px/1.3 "Helvetica Neue",Arial,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}'
   +'.wx-newer button{border:0;border-radius:6px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer;background:#525D45;color:#fff}'
-  +'.wx-newer button+button{background:none;color:#B8BCC6;padding:2px 4px;font-size:16px}'
+  +'.wx-newer button+button{background:none;color:var(--zero);padding:2px 4px;font-size:16px}'
   +'@media (max-width:760px){.wx-newer{right:12px;left:12px;bottom:calc(72px + env(safe-area-inset-bottom,0px));justify-content:space-between}}';   // above the tab bar
 document.head.appendChild(st);
 // installed as an app (owner, 2026-10-12): the service worker keeps the last good copy for offline use
