@@ -25,9 +25,12 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(ROOT, ".cache", "newsletter_data.json")
 SENT = os.path.join(ROOT, ".cache", "newsletter_sent.txt")
 SITE = "https://aaronmaddenjk.github.io/oregon-weather-dashboard/"
-GREEN, GREEN_T, GREEN_PALE = "#525D45", "#D9E3D2", "#F0F4EC"
-PLUM, PLUM_PALE, PLUM_PANEL = "#7A5A99", "#CDBEDC", "#F5F1F8"
-INK, MUT, FAINT, RULE = "#111111", "#5A5F6B", "#8A8F9C", "#EEF0F3"
+# dark, like the dashboard (owner, 2026-10-23); written as inline colours so every mail app shows it the same.
+# GREEN = the accent as a fill (header band, button), GREEN_INK = the accent as text / lines on the dark card
+GREEN, GREEN_T, GREEN_PALE, GREEN_INK = "#525D45", "#D9E3D2", "#222A1D", "#A7BE8E"
+PLUM, PLUM_PALE, PLUM_PANEL = "#BFA3DD", "#6E5A86", "#2A2333"
+INK, MUT, FAINT, RULE = "#ECEFF3", "#B2B8C3", "#949BA8", "#343A44"
+PAGE, CARD, PANEL, DIM = "#0B0D10", "#1A1D22", "#1F2329", "#7D8593"
 TOP, BASE = "Top of Cascade", "Meadows Base"
 DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
@@ -118,46 +121,46 @@ def build(D):
     bars, labels = "", ""
     for i, (d, v) in enumerate([(d, v) for d, v in past] + [(x["d"], x["snow"]) for x in top]):
         fut = i >= len(past)
-        col = (PLUM_PALE if i >= len(past) + 5 else PLUM) if fut else "#A9B2BF"
+        col = (PLUM_PALE if i >= len(past) + 5 else PLUM) if fut else "#5B6370"
         h = max(3, round(v / mx * 72))
         lab = ""
         if v >= 0.1:   # the amount over the bar
             amt = f"{v:.0f}" if v >= 10 else f"{v:.1f}"
             lab = f'<div style="font-size:{12 if v >= 3 else 10}px;color:{PLUM if fut else FAINT};font-weight:800;">{amt}</div>'
-        edge = f"border-right:2px dashed {GREEN};" if i == len(past) - 1 else ""
+        edge = f"border-right:2px dashed {GREEN_INK};" if i == len(past) - 1 else ""
         bars += f'<td valign="bottom" align="center" style="{edge}">{lab}<div style="height:{h}px;background:{col};border-radius:{3 if h > 4 else 2}px {3 if h > 4 else 2}px 0 0;margin:0 3px;"></div></td>'
         is_today = date.fromisoformat(d) == today
-        labels += (f'<td align="center" style="font-size:10px;color:{GREEN if is_today else "#9AA0AC"};font-weight:{800 if is_today else 700};padding-top:4px;">'
+        labels += (f'<td align="center" style="font-size:10px;color:{GREEN_INK if is_today else DIM};font-weight:{800 if is_today else 700};padding-top:4px;">'
                    f'{day_name(d)[0]}</td>')
 
     # the 7-day table
-    hdr = "".join(td(f'<b>{day_name(x["d"])}</b>', ("color:" + GREEN + ";" if date.fromisoformat(x["d"]) == today else "")
-                     + ("background:#EEF0F3;" if date.fromisoformat(x["d"]).weekday() >= 5 else "")) for x in top)
+    hdr = "".join(td(f'<b>{day_name(x["d"])}</b>', ("color:" + GREEN_INK + ";" if date.fromisoformat(x["d"]) == today else "")
+                     + ("background:#252A31;" if date.fromisoformat(x["d"]).weekday() >= 5 else "")) for x in top)
     def snow_row(xs):
         return "".join(td(inch(x["snow"]) if x["snow"] >= 0.05 else "0",
-                          f"color:{PLUM};font-weight:{800 if x['snow'] >= 1 else 700};" if x["snow"] >= 0.05 else "color:#C9CDD5;") for x in xs)
+                          f"color:{PLUM};font-weight:{800 if x['snow'] >= 1 else 700};" if x["snow"] >= 0.05 else "color:#4B525D;") for x in xs)
     hl = "".join(td(f'<b>{x["hi"]}°</b> <span style="color:{FAINT};">{x["lo"]}°</span>') for x in top)
-    gu = "".join(td(str(x["gust"]), "color:#D11A24;font-weight:800;" if x["gust"] >= 45 else "color:#D9730D;font-weight:700;" if x["gust"] >= 30 else "") for x in top)
-    po = "".join(td(f'{x["pop"]}%', "color:#B8BDC6;" if x["pop"] < 10 else f"color:#0B6F7C;font-weight:{800 if x['pop'] >= 50 else 400};") for x in top)
+    gu = "".join(td(str(x["gust"]), "color:#FF6B6B;font-weight:800;" if x["gust"] >= 45 else "color:#F0A04B;font-weight:700;" if x["gust"] >= 30 else "") for x in top)
+    po = "".join(td(f'{x["pop"]}%', "color:#5A616C;" if x["pop"] < 10 else f"color:#5FC6D3;font-weight:{800 if x['pop'] >= 50 else 400};") for x in top)
     row = lambda name, cells: (f'<tr style="border-top:1px solid {RULE};"><td style="padding:7px 4px;font-size:11px;line-height:1.25;font-weight:700;color:{MUT};">{name}</td>{cells}</tr>')
 
     # Temira's Mt Hood snow forecast (her whole section of the day's post), or a note when she isn't posting
     T = D.get("temira") or {}
     if T.get("html") and T.get("status") in ("current", "stale"):
-        body = T["html"].replace("<p>", f'<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#2A2E36;">')
-        older = "" if T["status"] == "current" else ' <span style="color:#B4400A;font-weight:700;">(not updated in the last 2 days)</span>'
+        body = T["html"].replace("<p>", f'<p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#CBD0D8;">')
+        older = "" if T["status"] == "current" else ' <span style="color:#F0A04B;font-weight:700;">(not updated in the last 2 days)</span>'
         temira = (f'<div style="font-size:12px;color:{FAINT};margin:2px 0 12px;">posted {html.escape(T.get("posted") or "")}{older} · '
-                  f'<a href="https://thegorgeismygym.com/forecast/" style="color:{GREEN};font-weight:700;text-decoration:none;">on her site ↗</a></div>{body}')
+                  f'<a href="https://thegorgeismygym.com/forecast/" style="color:{GREEN_INK};font-weight:700;text-decoration:none;">on her site ↗</a></div>{body}')
     else:
         temira = (f'<div style="font-size:13px;line-height:1.6;color:{FAINT};margin-top:8px;">Off-season: her Mt Hood snow forecast '
-                  f'returns when the season starts. <a href="https://thegorgeismygym.com/forecast/" style="color:{GREEN};font-weight:700;text-decoration:none;">Her site ↗</a></div>')
+                  f'returns when the season starts. <a href="https://thegorgeismygym.com/forecast/" style="color:{GREEN_INK};font-weight:700;text-decoration:none;">Her site ↗</a></div>')
 
     V = D.get("video") or {}
     video = ""
     if V.get("id"):
         url = f"https://www.youtube.com/watch?v={V['id']}"
         video = f'''<tr><td class="px" style="padding:22px 24px 6px;">
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:#7D8592;text-transform:uppercase;margin-bottom:8px;">Latest from Chris Tomer</div>
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{FAINT};text-transform:uppercase;margin-bottom:8px;">Latest from Chris Tomer</div>
     <a href="{url}" style="text-decoration:none;color:{INK};display:block;">
       <img src="https://i.ytimg.com/vi/{V['id']}/hqdefault.jpg" width="552" alt="Play: {html.escape(V.get('title') or 'latest video')}" style="display:block;width:100%;max-width:552px;height:auto;border-radius:12px;border:0;">
       <div style="font-size:15px;font-weight:800;margin-top:10px;">▶ {html.escape(V.get('title') or 'Latest video')}</div>
@@ -165,8 +168,9 @@ def build(D):
     </a></td></tr>'''
 
     when = datetime.now(tz)
-    doc = f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mt Hood · {html.escape(head)}</title>
+    doc = f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><title>Mt Hood · {html.escape(head)}</title>
 <style>
+:root {{ color-scheme:dark; }}
 @media only screen and (max-width:480px) {{
   .wrap {{ padding:8px 4px !important; }}
   .px {{ padding-left:14px !important; padding-right:14px !important; }}
@@ -174,10 +178,10 @@ def build(D):
   .big {{ font-size:24px !important; }}
 }}
 </style></head>
-<body style="margin:0;padding:0;background:#EEF0F3;">
+<body style="margin:0;padding:0;background:{PAGE};">
 <div style="display:none;max-height:0;overflow:hidden;">{html.escape(sub)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF0F3;"><tr><td class="wrap" align="center" style="padding:20px 10px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:14px;overflow:hidden;{F}color:{INK};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{PAGE};"><tr><td class="wrap" align="center" style="padding:20px 10px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:{CARD};border-radius:14px;overflow:hidden;{F}color:{INK};">
   <tr><td style="background:{GREEN};padding:18px 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
       <td style="font-size:12px;font-weight:800;letter-spacing:1.5px;color:{GREEN_T};text-transform:uppercase;">Mt Hood Meadows · Daily</td>
@@ -187,18 +191,18 @@ def build(D):
   </td></tr>
   <tr><td class="px" style="padding:18px 24px 6px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
     <td width="50%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
-      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">7 days · Cascade</div>
+      <div style="font-size:11px;font-weight:700;color:{FAINT};text-transform:uppercase;letter-spacing:.5px;">7 days · Cascade</div>
       <div class="big" style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(tot) if tot >= 0.05 else "0″"}</div>
       <div style="font-size:12px;color:{MUT};">{"most on " + day_name(big["d"]) + " " + str(date.fromisoformat(big["d"]).day) if big["snow"] >= 0.5 else "7,343 ft"}</div></td>
     <td width="8"></td>
     <td width="50%" style="padding:10px 12px;background:{PLUM_PANEL};border-radius:10px;">
-      <div style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">7 days · Base</div>
+      <div style="font-size:11px;font-weight:700;color:{FAINT};text-transform:uppercase;letter-spacing:.5px;">7 days · Base</div>
       <div class="big" style="font-size:28px;font-weight:800;color:{PLUM};margin-top:2px;">{inch(btot) if btot >= 0.05 else "0″"}</div>
       <div style="font-size:12px;color:{MUT};">5,361 ft</div></td>
   </tr><tr><td colspan="3" height="8" style="font-size:0;line-height:0;">&nbsp;</td></tr><tr>
     <td colspan="3" style="padding:10px 12px;background:{GREEN_PALE};border-radius:10px;">
-      <span style="font-size:11px;font-weight:700;color:#7D8592;text-transform:uppercase;letter-spacing:.5px;">Best day to go</span><br>
-      <span style="font-size:20px;font-weight:800;color:{GREEN};">{bd}</span>
+      <span style="font-size:11px;font-weight:700;color:{FAINT};text-transform:uppercase;letter-spacing:.5px;">Best day to go</span><br>
+      <span style="font-size:20px;font-weight:800;color:{GREEN_INK};">{bd}</span>
       <span style="font-size:13px;color:{MUT};">&nbsp;·&nbsp;{bd_sub}</span></td>
   </tr></table></td></tr>
   <tr><td class="px" style="padding:16px 24px 4px;"><div style="font-size:13px;font-weight:800;">Snow at Top of Cascade <span style="font-weight:600;color:{FAINT};">· the past week, then the next 7 days</span></div></td></tr>
@@ -209,7 +213,7 @@ def build(D):
   <tr><td class="px" style="padding:22px 24px 6px;"><div style="font-size:13px;font-weight:800;">The next 7 days <span style="font-weight:600;color:{FAINT};">· temps and gusts at Top of Cascade</span></div></td></tr>
   <tr><td style="padding:0 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;border-collapse:collapse;table-layout:fixed;">
-      <tr style="background:#F7F8FA;"><td width="64" style="padding:7px 4px;"></td>{hdr}</tr>
+      <tr style="background:{PANEL};"><td width="64" style="padding:7px 4px;"></td>{hdr}</tr>
       {row("Snow<br>Cascade", snow_row(top))}
       {row("Snow<br>Base", snow_row(base))}
       {row("High / low", hl)}
@@ -217,15 +221,15 @@ def build(D):
       {row("Chance", po)}
     </table></td></tr>
   <tr><td class="px" style="padding:26px 24px 6px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid {GREEN};background:#FBFBFC;border-radius:0 10px 10px 0;"><tr><td style="padding:14px 16px;">
-      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{GREEN};text-transform:uppercase;">The meteorologist's forecast</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-left:4px solid {GREEN_INK};background:{PANEL};border-radius:0 10px 10px 0;"><tr><td style="padding:14px 16px;">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{GREEN_INK};text-transform:uppercase;">The meteorologist's forecast</div>
       <div style="font-size:17px;font-weight:800;margin-top:4px;">Temira · The Gorge Is My Gym</div>
       {temira}
     </td></tr></table></td></tr>
   {video}
   <tr><td class="px" align="center" style="padding:26px 24px 8px;">
     <a href="{SITE}" style="display:inline-block;background:{GREEN};color:#fff;font-size:14px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px;">Open the full Mt Hood forecast</a></td></tr>
-  <tr><td class="px" style="padding:14px 24px 22px;font-size:11px;line-height:1.5;color:#9AA0AC;text-align:center;">
+  <tr><td class="px" style="padding:14px 24px 22px;font-size:11px;line-height:1.5;color:{DIM};text-align:center;">
     NWS forecast moved to each lift's elevation · snow from the dashboard's rain/snow model · built {when:%a %b} {when.day}, {when.hour % 12 or 12}:{when:%M} {"AM" if when.hour < 12 else "PM"}<br>
     Sent every morning by your Oregon Weather server</td></tr>
 </table></td></tr></table></body></html>'''

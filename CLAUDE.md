@@ -367,7 +367,8 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   attributes too); data colours (temps, rain/snow/mix, gusts, AQI, grades) stay literal. Page-scoped CSS can carry
   `html[data-theme=dark] .x {...}` rules: scope_css keeps the html part in front. MAP_WRAP_JS (the mapboxgl.Map wrapper)
   swaps outdoors/streets-v12 for dark-v11 in dark mode and adds a hillshade (source wx-hs, layer wx-hillshade) under the
-  roads/labels; satellite and custom styles untouched. Mapbox popups/controls get dark CSS in THEME_HEAD. The newsletter,
+  roads/labels; satellite and custom styles untouched. Mapbox popups/controls get dark CSS in THEME_HEAD. The NEWSLETTER is dark
+  too (always; inline colours in newsletter.py: GREEN = fill, GREEN_INK = accent as text, PAGE/CARD/PANEL/DIM). The
   widgets and Chrome extension are not themed. Contrast check used: a JS pass over each page flagging text < 3:1.
 - Visual language: accent (was orange `#FE5000`, now Launch Green above); snow (was violet `#5A4FCF`, now plum above), rain `#0E9AAE`, mix
   `#DE6A52` (palette-validated); temperatures via `temp_bg`; clean, quiet chrome; no
