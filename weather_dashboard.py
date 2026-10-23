@@ -3270,6 +3270,7 @@ def layer_depth(layers, elev_m, dt):
 # the cloud cross-section with the tier's elevation dotted), and Meadows' cameras.
 HOOD_JS = r"""
 var HP=__HP__, HCAMS=__HCAMS__, sel=0, view='fc', cam=0, daySel=null;
+window.HOOD_HP=HP;   // the picture's weather (HoodScene)
 var charts=WxCharts(document.getElementById('hood-cc')), tiers=document.getElementById('hood-tiers');
 var camsEl=document.getElementById('hood-cams'), camsView=WxCams(camsEl);
 function draw(){
@@ -3317,7 +3318,7 @@ draw();setView('fc');
 # Used by the Mt Hood page and the live trail page.
 TERRAIN_LAYERS_JS = r"""
 window.TerrainLayers=function(map,HL,wrap,uid){
-var st={l:'temp',k:0}, timer=null, tz=HL.tz||'America/Los_Angeles', src=uid+'-elev', lyr=uid+'-wx';
+var st={l:((wrap.querySelector('.lyr-ctl [data-l].active')||{dataset:{}}).dataset.l||'temp'),k:0}, timer=null, tz=HL.tz||'America/Los_Angeles', src=uid+'-elev', lyr=uid+'-wx';
 var RAMPS={
   temp:{S:[[-10,[75,44,127]],[5,[90,79,176]],[20,[79,127,201]],[29,[140,195,234]],[32,[250,252,255]],[35,[189,227,214]],[45,[124,196,122]],[60,[233,201,90]],[75,[242,154,59]],[90,[224,64,47]]],
         a:0.62,title:'Temperature',unit:'\u00b0F',lo:-10,hi:90,ticks:['-10\u00b0','32\u00b0','60\u00b0','90\u00b0F'],fmt:function(v){return Math.round(v)+'\u00b0F';}},
@@ -3334,6 +3335,11 @@ function col(S,v,a){
     return rgba([0,1,2,3].map(function(k){var x=k<p.length?p[k]:a,y=k<q.length?q[k]:a;return x+(y-x)*f;}),a);}}
   return rgba(S[S.length-1][1],a);}
 function vals(){return HL.frames[st.k][st.l];}
+function lut(){   // the scene's colours: [r,g,b,alpha] every 10 m from 0 to 4,500 m
+  var R=RAMPS[st.l],o=new Float32Array(451*4);
+  for(var i=0;i<=450;i++){var m=/rgba\(([\d.]+),([\d.]+),([\d.]+),([\d.]+)\)/.exec(col(R.S,at(i*10),R.a));
+    if(m){o[i*4]=+m[1];o[i*4+1]=+m[2];o[i*4+2]=+m[3];o[i*4+3]=+m[4];}}
+  return o;}
 function ramp(){var R=RAMPS[st.l],v=vals(),e=['interpolate',['linear'],['raster-value']];
   for(var i=0;i<HL.elev.length;i++)e.push(HL.elev[i],col(R.S,v[i],R.a));return e;}
 function at(z){var E=HL.elev,v=vals();for(var i=1;i<E.length;i++)if(E[i]>=z)return v[i-1]+(v[i]-v[i-1])*(z-E[i-1])/(E[i]-E[i-1]);return v[v.length-1];}
@@ -3342,7 +3348,9 @@ function when(t){var p={};WHEN.formatToParts(new Date(t)).forEach(function(x){p[
 var ctl=wrap.querySelector('.lyr-ctl'),leg=wrap.querySelector('.lyr-leg'),sl=wrap.querySelector('input[type=range]'),lab=wrap.querySelector('.lyr-rtime'),play=ctl.querySelector('[data-tplay]');
 sl.max=HL.frames.length-1;
 function legend(){
-  if(st.l==='none'){leg.hidden=true;return;}
+  if(st.l==='none'){if(map.wxScene){leg.innerHTML='<b>Weather</b> \u00b7 '+when(HL.frames[st.k].t)+'<div class="lyr-note">'+map.describe()+'</div>'
+      +'<div class="lyr-src">Sky, cloud base and precipitation from the forecast hour; rain below the snow level, snow above.</div>';leg.hidden=false;}
+    else leg.hidden=true;return;}
   var R=RAMPS[st.l],stops=R.S.filter(function(s){return s[0]>=R.lo&&s[0]<=R.hi;});
   var bar='linear-gradient(90deg,'+stops.map(function(s){return col(R.S,s[0],Math.max(R.a,0.9)).replace(/,([\d.]+)\)$/,function(m,a){return ','+Math.max(0.25,+a).toFixed(2)+')';})+' '+((s[0]-R.lo)/(R.hi-R.lo)*100).toFixed(1)+'%';}).join(',')+')';
   var pts=HL.pts.map(function(p){return p.name+' '+R.fmt(at(p.elev_ft/3.28084));}).join(' \u00b7 ');
@@ -3357,8 +3365,10 @@ function legend(){
   leg.hidden=false;}
 function apply(){
   ctl.querySelectorAll('[data-l]').forEach(function(b){b.classList.toggle('active',b.dataset.l===st.l);});
-  ctl.querySelector('.lyr-time').hidden=st.l==='none';
+  ctl.querySelector('.lyr-time').hidden=st.l==='none'&&!map.wxScene;
   sl.value=st.k;lab.textContent=when(HL.frames[st.k].t);
+  if(map.wxScene){map.set({l:st.l,k:st.k,t:HL.frames[st.k].t,fr:HL.frames[st.k],elev:HL.elev,
+    lut:st.l==='none'?null:lut(),val:at,fmt:st.l==='none'?null:RAMPS[st.l].fmt});legend();return;}
   legend();
   if(!map.getLayer(lyr))return;
   map.setLayoutProperty(lyr,'visibility',st.l==='none'?'none':'visible');
@@ -3367,19 +3377,172 @@ function stop(){if(timer){clearInterval(timer);timer=null;}play.textContent='\u2
 ctl.addEventListener('click',function(ev){var b=ev.target.closest('button');if(!b)return;
   if(b.dataset.tplay!==undefined){if(timer){stop();return;}play.textContent='\u275A\u275A Pause';play.classList.add('active');
     timer=setInterval(function(){st.k=(st.k+1)%HL.frames.length;apply();},900);return;}
-  if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none')stop();apply();}});
+  if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none'&&!map.wxScene)stop();apply();}});
 sl.addEventListener('input',function(){stop();st.k=+this.value;apply();});
-// the DEM tiles as a plain raster, decoded to metres and coloured by elevation
+// the DEM tiles as a plain raster, decoded to metres and coloured by elevation (Mapbox maps only)
+if(!map.wxScene){
 map.addSource(src,{type:'raster',url:'mapbox://mapbox.mapbox-terrain-dem-v1',tileSize:512});
 var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});
 map.addLayer({id:lyr,type:'raster',source:src,layout:{visibility:'visible'},
-  paint:{'raster-color':ramp(),'raster-color-mix':[1671168,6528,25.5,-10000],'raster-color-range':[0,4500],'raster-fade-duration':0}},sym);
+  paint:{'raster-color':ramp(),'raster-color-mix':[1671168,6528,25.5,-10000],'raster-color-range':[0,4500],'raster-fade-duration':0}},sym);}
 apply();
 return {stop:stop};
 };
 """
 
 HOOD_LAYER_JS = "window.TerrainLayers(map,__HL__,document.getElementById('hoodmap').parentNode,'hood');"
+
+# The Mt Hood tab's picture (owner, 2026-10-23: our own painting in place of the static Mapbox 3D map).
+# tools/hood_art.py renders it once from USGS 3DEP elevation + OpenStreetMap runs/lifts into hood3d/ (copied next
+# to the page): clear.jpg / flat.jpg / gold.jpg (the painting in sun, overcast and low sun, no sky), data.png
+# (half-res: R,G = elevation dm, B = log distance code, 255 = sky), noise.png (R = cloud wisps / sky puffs,
+# G = cloud-sea billows, B = 255 on terrain), scene.json (lift polylines with terrain visibility, the 3 points).
+# HoodScene draws each forecast hour into it: sun height (gold light at sunrise/sunset, dim at night), sky cover,
+# a cloud deck (the mountain hidden above the cloud base) or a cloud sea (low cloud with clear air above: the summit
+# above its top), extra haze in low visibility, rain below / snow above the snow level (animated, under the cloud),
+# and the TerrainLayers colours by elevation. It stands in for the Mapbox map in TerrainLayers (wxScene, set()).
+HOOD_SCENE_JS = r"""
+window.HoodScene=function(root,base,marks,HP){
+var NS='http://www.w3.org/2000/svg',W=1600,H=1000,S=null,st=null,wx=null,out=null;
+var cv=document.createElement('canvas'),ctx=cv.getContext('2d'),pc=document.createElement('canvas'),pctx=pc.getContext('2d');
+cv.className='hs-cv';pc.className='hs-pc';
+var svg=document.createElementNS(NS,'svg');svg.setAttribute('class','hs-svg');svg.setAttribute('preserveAspectRatio','xMidYMid slice');
+var path=document.createElementNS(NS,'path');path.setAttribute('class','hs-lift');svg.appendChild(path);
+var mk=document.createElement('div');mk.className='hs-marks';
+var tip=document.createElement('div');tip.className='hs-tip';tip.hidden=true;
+root.classList.add('hs-root');[cv,svg,pc,mk,tip].forEach(function(e){root.appendChild(e);});
+function sm(a,b,x){var t=(x-a)/(b-a);t=t<0?0:t>1?1:t;return t*t*(3-2*t);}
+function img(u){return new Promise(function(ok,no){var i=new Image();i.onload=function(){ok(i);};i.onerror=no;i.src=base+u;});}
+function px(i,w,h){var c=document.createElement('canvas');c.width=w;c.height=h;var x=c.getContext('2d',{willReadFrequently:true});
+  x.drawImage(i,0,0,w,h);return x.getImageData(0,0,w,h).data;}
+// the forecast hour at each point, by Pacific date + hour
+var FMT=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit',hour:'numeric',hourCycle:'h23'});
+function key(ms){var p={};FMT.formatToParts(new Date(ms)).forEach(function(x){p[x.type]=x.value;});return p.year+'-'+p.month+'-'+p.day+' '+(+p.hour%24);}
+var IDX=(HP||[]).map(function(pt){var m={};pt.hrs.forEach(function(h){var r=/(\d+)(AM|PM)/.exec(h.t);if(r)m[h.date+' '+(+r[1]%12+(r[2]==='PM'?12:0))]=h;});return m;});
+function sunAlt(ms){var r=Math.PI/180,d=ms/864e5-10957.5,g=(357.529+0.98560028*d)*r,L=(280.459+0.98564736*d+1.915*Math.sin(g)+0.02*Math.sin(2*g))*r,
+  e=(23.439-0.00000036*d)*r,ra=Math.atan2(Math.cos(e)*Math.sin(L),Math.cos(L)),dec=Math.asin(Math.sin(e)*Math.sin(L)),
+  ha=((18.697374558+24.06570982441908*d)%24*15-121.67)*r-ra,lat=45.33*r;
+  return Math.asin(Math.sin(lat)*Math.sin(dec)+Math.cos(lat)*Math.cos(dec)*Math.cos(ha))/r;}
+function weather(s){
+  var k=key(s.t),b=IDX[0]&&IDX[0][k],c=(IDX[2]&&IDX[2][k])||b,w={cover:0,ov:0,deck:null,sea:null,rate:0,snowM:1e9,vis:10,wind:0,alt:sunAlt(s.t)};
+  if(s.fr&&s.elev){var E=s.elev,T=s.fr.temp;   // snow level: where the temperature drops to 34F going up
+    for(var i=0;i<E.length;i++)if(T[i]<=34){w.snowM=i?E[i-1]+(E[i]-E[i-1])*(T[i-1]-34)/(T[i-1]-T[i]):0;break;}}
+  else if(b&&b.temp<=34)w.snowM=0;
+  if(c){var cover=(c.sky||0)/100,cl=(c.cl||0)/100,cm=(c.cm||0)/100,ch=(c.ch||0)/100,p=Math.max(b.p||0,c.p||0),
+      cbm=c.cb!=null?Math.max(1300,c.cb/3.28084):null;
+    w.cover=cover;w.ov=sm(0.55,0.95,cover);w.vis=b.vis==null?10:b.vis;w.wind=c.wind||0;
+    if(p>=0.005)w.rate=Math.min(1,Math.max(0.2,p/0.06));
+    if(cbm!=null&&cl>=0.4&&cm<0.3&&ch<0.6&&!w.rate){var top=cbm+450+600*cl;   // low cloud, clear above: a cloud sea
+      if(top<2700){w.sea=top;w.ov=0;w.cover=ch;}else w.deck=cbm;}
+    else if(cbm!=null&&cbm<3500&&(cl>=0.4||cm>=0.5||cover>=0.85))w.deck=cbm;
+    if(w.rate&&w.deck==null)w.deck=cbm!=null&&cbm<3500?cbm:3000;}
+  var ft=function(m){return(Math.round(m*3.28084/100)*100).toLocaleString('en-US')+'\u2032';},t=[];
+  t.push(w.alt<-6?'Night':w.sea!=null?'Clear above the clouds':w.cover<0.15?'Clear':w.cover<0.5?'Partly cloudy':w.cover<0.85?'Mostly cloudy':'Overcast');
+  if(w.sea!=null)t.push('cloud tops ~'+ft(w.sea));else if(w.deck!=null)t.push('cloud base ~'+ft(w.deck));
+  if(w.rate)t.push(w.snowM<1400?'snow':w.snowM>3300?'rain':'rain, snow above ~'+ft(w.snowM));
+  if(w.vis<5)t.push('visibility '+(w.vis<1?w.vis.toFixed(1):Math.round(w.vis))+' mi');
+  w.text=t.join(' \u00b7 ');return w;}
+function draw(){
+  if(!S||!wx)return;
+  if(!out)out=ctx.createImageData(W,H);
+  var o=out.data,CL=S.clear,FL=S.flat,GD=S.gold,bw=S.bw,w=wx,lut=st.lut,ov=w.ov,alt=w.alt,cloud=S.cloud;
+  var gold=(1-ov)*sm(14,2,alt)*sm(-7,-1,alt),nf=0.3+0.7*sm(-9,1,alt),nr=nf*(0.8+0.2*sm(-9,1,alt)),ng=nf*(0.9+0.1*sm(-9,1,alt)),nb=nf;
+  var T0=[115+(158-115)*ov,161+(166-161)*ov,217+(179-217)*ov],H0=[237+(199-237)*ov,227+(204-227)*ov,214+(212-214)*ov];
+  if(gold){H0=[H0[0]+(250-H0[0])*gold,H0[1]+(199-H0[1])*gold,H0[2]+(153-H0[2])*gold];}
+  var kx=Math.max(0,1.6/Math.max(150,w.vis*1609)-S.j.haze),hz=S.hz;for(var c=0;c<256;c++)hz[c]=kx&&c<255?1-Math.exp(-S.dist[c]*kx):0;
+  var hr=204+(194-204)*ov,hg=217+(199-217)*ov,hb=230+(207-230)*ov;
+  var dk=w.deck,dkA=lut?0.35:1,sea=w.sea,seaA=lut?0.5:1,cover=w.cover,puffs=cover>0.05&&ov<0.95;
+  for(var y=0;y<H;y++){
+    var tt=sm(0,0.55,y/H),sr=T0[0]+(H0[0]-T0[0])*tt,sg=T0[1]+(H0[1]-T0[1])*tt,sb=T0[2]+(H0[2]-T0[2])*tt,row=(y>>1)*bw;
+    for(var x=0;x<W;x++){
+      var i=(y*W+x)*4,bi=row+(x>>1),r,g,b,a;
+      if(!S.hit[bi]){r=sr;g=sg;b=sb;
+        if(puffs){var n=S.wisp[bi];a=sm(1-cover*0.9,1.05-cover*0.6,n)*(1-ov);
+          if(a>0){var sh=(0.88+0.12*sm(0.4,0.9,n))*250,pr=sh,pg=sh-(sh-195)*gold*0.75,pb=sh-(sh-170)*gold*0.75;
+            r+=(pr-r)*a;g+=(pg-g)*a;b+=(pb-b)*a;}}
+        cloud[bi]=0;o[i]=r*nr;o[i+1]=g*ng;o[i+2]=b*nb;o[i+3]=255;continue;}
+      r=CL[i]+(FL[i]-CL[i])*ov;g=CL[i+1]+(FL[i+1]-CL[i+1])*ov;b=CL[i+2]+(FL[i+2]-CL[i+2])*ov;
+      if(gold){r+=(GD[i]-r)*gold;g+=(GD[i+1]-g)*gold;b+=(GD[i+2]-b)*gold;}
+      var e=S.elev[bi];
+      if(lut){var li=(e/10|0)*4;a=lut[li+3];if(a>0){var f=0.45+0.75*(r+g+b)/765;r+=(lut[li]*f-r)*a;g+=(lut[li+1]*f-g)*a;b+=(lut[li+2]*f-b)*a;}}
+      if(kx){a=hz[S.dc[bi]];r+=(hr-r)*a;g+=(hg-g)*a;b+=(hb-b)*a;}
+      var ca=0;
+      if(dk!=null){var wi=S.wisp[bi];a=sm(dk-40,dk+260,e+(wi-0.5)*220);
+        if(a>0){ca=a;a*=dkA;var m=0.93+0.12*wi;r+=(sr*m-r)*a;g+=(sg*m-g)*a;b+=(sb*m-b)*a;}}
+      if(sea!=null){var bl=S.bill[bi];a=sm(sea+40,sea-140,e+(bl-0.5)*180);
+        if(a>0){ca=Math.max(ca,a);a*=seaA;var L=(0.8+0.22*sm(0.3,0.8,bl))*248;r+=(L-r)*a;g+=(L-g)*a;b+=(L*1.01-b)*a;}}
+      cloud[bi]=ca;o[i]=r*nr;o[i+1]=g*ng;o[i+2]=b*nb;o[i+3]=255;}}
+  ctx.putImageData(out,0,0);
+  var d='';S.j.lifts.forEach(function(L){var on=false;L.pts.forEach(function(q){
+    var v=q[2]&&q[0]>=0&&q[0]<W&&q[1]>=0&&q[1]<H&&cloud[((q[1]/2)|0)*bw+((q[0]/2)|0)]<0.5;
+    if(v){d+=(on?'L':'M')+q[0]+' '+q[1];on=true;}else on=false;});});
+  path.setAttribute('d',d);path.style.opacity=(0.35+0.5*nf).toFixed(2);
+  precip();}
+// rain / snow: particles on a half-resolution canvas, shown only where the ground is under the cloud and not hidden
+var parts=[],raf=0,seen=true,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function precip(){
+  if(!S||!wx||!wx.rate){pctx.clearRect(0,0,pc.width,pc.height);return;}
+  var n=Math.round(1100*Math.pow(wx.rate,1.2));
+  while(parts.length<n)parts.push({x:Math.random()*pc.width,y:Math.random()*pc.height,v:0.6+Math.random()*0.8});
+  parts.length=n;if(!raf)raf=requestAnimationFrame(tick);}
+function tick(){
+  raf=0;if(!S||!wx||!wx.rate)return;
+  var bw=S.bw,bh=S.bh,sl=Math.min(0.6,wx.wind/40),deck=wx.deck==null?1e9:wx.deck;
+  pctx.clearRect(0,0,bw,bh);pctx.lineCap='round';
+  for(var j=0;j<parts.length;j++){var p=parts[j],ix=p.x|0,iy=p.y|0;
+    var ok=ix>=0&&ix<bw&&iy>=0&&iy<bh,bi=iy*bw+ix,e=ok?S.elev[bi]:0,dc=ok?S.dc[bi]:255;
+    var near=dc<255?Math.min(1.6,Math.max(0.45,3500/S.dist[dc])):1,rain=e<wx.snowM;
+    if(ok&&S.hit[bi]&&S.cloud[bi]<0.5&&e<deck){
+      if(rain){pctx.strokeStyle='rgba(225,236,242,'+(0.75*Math.min(1,near)).toFixed(2)+')';pctx.lineWidth=near>1?1.6:1.1;
+        pctx.beginPath();pctx.moveTo(p.x,p.y);pctx.lineTo(p.x-sl*15*near,p.y+15*near);pctx.stroke();}
+      else{pctx.fillStyle='rgba(255,255,255,'+(0.9*Math.min(1,near)).toFixed(2)+')';pctx.beginPath();pctx.arc(p.x,p.y,1.7*near,0,6.283);pctx.fill();}}
+    var sp=rain?7*p.v*near:1.1*p.v*near;p.y+=sp;p.x-=sl*sp*(rain?1:0.6)+(rain?0:Math.sin((p.y+j)*0.05)*0.3);
+    if(p.y>bh||p.x<-20){p.y=-5;p.x=Math.random()*(bw+40);}}
+  if(!still&&seen)raf=requestAnimationFrame(tick);}
+if(window.IntersectionObserver)new IntersectionObserver(function(es){seen=es[0].isIntersecting;if(seen&&!raf)precip();}).observe(root);
+// the points: the same pins as before, placed over the picture (object-fit: cover maths)
+var pins=[];
+function layout(){if(!S)return;var R=root.getBoundingClientRect(),k=Math.max(R.width/W,R.height/H),ox=(R.width-W*k)/2,oy=(R.height-H*k)/2;
+  pins.forEach(function(el,i){var q=S.j.points[i],x=ox+q.x*k;el.style.left=x+'px';el.style.top=(oy+q.y*k)+'px';
+    el.classList.toggle('hs-flip',x+el.offsetWidth-9>R.width-4);});   // keep a pin inside the picture: open it leftwards
+  S.k=k;S.ox=ox;S.oy=oy;}
+function mkPins(){
+  var tc=function(t){if(t>=70)return'#FAA21B';if(t>=50)return'#6BBF68';if(t>=35)return'#4FB1BE';return'#368994';};
+  (marks||[]).forEach(function(m,i){if(!S.j.points[i])return;
+    var vis=m.vis_mi===null?'--':(m.vis_mi>=10?'10+':m.vis_mi.toFixed(1)+'mi'),fl=Math.round(m.hi);
+    var pin=document.createElement('div');pin.className='hs-pin';
+    pin.innerHTML='<div class="ski-marker'+(i===0?' active':'')+'" style="border-left-color:'+m.color+'"><div class="sm-name">'+m.icon+' '+m.name+'</div>'
+      +'<div class="sm-row"><span class="sm-fl" style="background:'+tc(fl)+'">'+fl+'\u00b0</span>'
+      +'<span class="sm-wind">\uD83C\uDF2C'+Math.round(m.wind)+'('+Math.round(m.gust)+')</span><span class="sm-vis">\uD83D\uDC41'+vis+'</span></div></div>'
+      +'<i class="hs-dot" style="border-color:'+m.color+'"></i>';
+    pin.addEventListener('click',function(){if(window.hoodPick)window.hoodPick(i);});
+    mk.appendChild(pin);pins.push(pin);});}
+// hover / tap: the height there, and the layer's value
+function hover(ev){if(!S||!S.k||!st){return;}var R=root.getBoundingClientRect(),cx=ev.clientX-R.left,cy=ev.clientY-R.top,
+    x=(cx-S.ox)/S.k,y=(cy-S.oy)/S.k,bi=((y/2)|0)*S.bw+((x/2)|0);
+  if(ev.target.closest&&ev.target.closest('.hs-pin,.lyr-ctl,.lyr-leg')||x<0||y<0||x>=W||y>=H||!S.hit[bi]){tip.hidden=true;return;}
+  var e=S.elev[bi],t=(Math.round(e*3.28084/10)*10).toLocaleString('en-US')+'\u2032';
+  if(st.lut&&st.val)t+=' \u00b7 '+st.fmt(st.val(e));else if(wx&&wx.rate&&S.cloud[bi]<0.5)t+=' \u00b7 '+(e<wx.snowM?'rain':'snow');
+  if(S.cloud[bi]>=0.5)t+=' \u00b7 in cloud';
+  tip.textContent=t;tip.hidden=false;tip.style.left=Math.min(cx+12,R.width-tip.offsetWidth-4)+'px';tip.style.top=Math.max(4,cy-30)+'px';}
+root.addEventListener('mousemove',hover);root.addEventListener('mouseleave',function(){tip.hidden=true;});
+root.addEventListener('pointerdown',function(ev){if(ev.pointerType!=='mouse')hover(ev);});
+if(window.ResizeObserver)new ResizeObserver(layout).observe(root);else window.addEventListener('resize',layout);
+var api={wxScene:true,set:function(s){st=s;wx=weather(s);draw();},describe:function(){return wx?wx.text:'';},
+  force:function(o){if(st){wx=Object.assign(weather(st),o);draw();}}};   // console testing: HOOD_SCENE.force({deck:1980,rate:.8})
+Promise.all([img('clear.jpg'),img('flat.jpg'),img('gold.jpg'),img('data.png'),img('noise.png'),
+             fetch(base+'scene.json').then(function(r){return r.json();})]).then(function(a){
+  var j=a[5];W=j.w;H=j.h;cv.width=W;cv.height=H;pc.width=j.bw;pc.height=j.bh;svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  var bw=j.bw,bh=j.bh,n=bw*bh,d=px(a[3],bw,bh),q=px(a[4],bw,bh);
+  S={j:j,bw:bw,bh:bh,clear:px(a[0],W,H),flat:px(a[1],W,H),gold:px(a[2],W,H),elev:new Float32Array(n),dc:new Uint8Array(n),
+     wisp:new Float32Array(n),bill:new Float32Array(n),hit:new Uint8Array(n),cloud:new Float32Array(n),dist:new Float32Array(256),hz:new Float32Array(256)};
+  for(var i=0;i<n;i++){S.elev[i]=(d[i*4]*256+d[i*4+1])/10;S.dc[i]=d[i*4+2];S.wisp[i]=q[i*4]/255;S.bill[i]=q[i*4+1]/255;S.hit[i]=q[i*4+2]>127?1:0;}
+  for(var c=0;c<255;c++)S.dist[c]=j.dlo*Math.pow(j.dhi/j.dlo,c/254);
+  mkPins();layout();if(!st)api.set({l:'none',k:0,t:Date.now()});else draw();
+}).catch(function(e){root.classList.add('hs-fail');console.error('Mt Hood picture',e);});
+return api;};
+"""
+
 
 
 
@@ -3744,6 +3907,20 @@ def build_ski_page():
     .gust { font-size:10.5px; color:var(--mut2); margin-left:3px; }
     .vis-pill { font-size:11px; font-weight:500; display:inline-block; }
     #hoodmap { width:100%; height:600px; border-radius:8px; }
+    .hs-root { position:relative; overflow:hidden; background:#C9D3DE; }
+    .hs-root .hs-cv, .hs-root .hs-pc, .hs-root .hs-svg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+    .hs-pc, .hs-svg { pointer-events:none; }
+    .hs-lift { fill:none; stroke:#141A20; stroke-width:1.6; vector-effect:non-scaling-stroke; stroke-linejoin:round; }
+    .hs-marks { position:absolute; inset:0; pointer-events:none; }
+    .hs-pin { position:absolute; pointer-events:auto; display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+      transform:translate(-9px, calc(-100% + 9px)); cursor:pointer; }
+    .hs-pin.hs-flip { transform:translate(calc(-100% + 9px), calc(-100% + 9px)); align-items:flex-end; }
+    .hs-pin.hs-flip .hs-dot { margin:0 3px 0 0; }
+    @media (max-width:760px) { .hs-pin .sm-wind, .hs-pin .sm-vis { display:none; } .hs-pin .ski-marker { padding:3px 7px; } .hs-pin .sm-name { font-size:12.5px; } }
+    .hs-dot { width:13px; height:13px; border-radius:50%; background:#fff; border:3px solid; box-sizing:border-box; margin-left:3px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
+    .hs-tip { position:absolute; z-index:3; pointer-events:none; padding:3px 8px; border-radius:6px; background:var(--solid); color:var(--solid-ink);
+      font-size:12px; font-weight:600; white-space:nowrap; }
+    .hs-fail::after { content:"The Mt Hood picture did not load"; position:absolute; inset:0; display:grid; place-items:center; color:var(--mut); font-size:13px; }
     /* The Christomer: the thumbnail as a poster, Mt Hood + current weather over it */
     .yt-wrap { flex:1; min-width:0; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:12px; }
     .yt-h { font-size:15px; font-weight:700; color:var(--ink); margin-bottom:8px; }
@@ -3808,37 +3985,10 @@ def build_ski_page():
     @media (max-width:1000px) { .hood-row1 { grid-template-columns:minmax(0,1fr); } #hoodmap { height:460px; } }
     """
 
-    # the map: the 3D Meadows view, clickable points, and the terrain layers
-    map_js = (
-        "mapboxgl.accessToken='__TOKEN__';\n"
-        "var markers=__MARKERS__;\n"
-        "var lifts=__LIFTS__;\n"
-        # framed on all three points; the top padding keeps Top of Cascade clear of the layer controls
-        "var map=new mapboxgl.Map({container:'hoodmap',style:'mapbox://styles/mapbox/outdoors-v12',center:[-121.6730,45.3355],zoom:13.45,pitch:76,bearing:0,attributionControl:false});\n"
-        "map.setPadding({top:110,bottom:0,left:0,right:0});\n"
-        "map.on('load',function(){\n"
-        "  map.addSource('mapbox-dem',{type:'raster-dem',url:'mapbox://mapbox.mapbox-terrain-dem-v1',tileSize:512});\n"
-        "  map.setTerrain({source:'mapbox-dem',exaggeration:1.6});\n"
-        "  map.getStyle().layers.forEach(function(layer){if(layer.id.match(/road|poi|place-|settlement|town|village|city|state-label|country-label|transit|airport/)){map.setLayoutProperty(layer.id,'visibility','none');}});\n"
-        "  if(window.hoodLayers)window.hoodLayers(map);\n"
-        "  map.addSource('lifts',{type:'geojson',data:lifts});\n"
-        "  map.addLayer({id:'lift-lines',type:'line',source:'lifts',filter:['==',['get','dashed'],0],paint:{'line-color':['get','color'],'line-width':4,'line-opacity':0.9}});\n"
-        "  map.addLayer({id:'lift-labels',type:'symbol',source:'lifts',layout:{'symbol-placement':'line','text-field':['get','name'],'text-size':11,'text-font':['DIN Pro Medium','Arial Unicode MS Regular'],'text-keep-upright':true},paint:{'text-color':'#111','text-halo-color':'#fff','text-halo-width':1.4}});\n"
-        "  var tc=function(t){if(t>=70)return'#FAA21B';if(t>=50)return'#6BBF68';if(t>=35)return'#4FB1BE';return'#368994';};\n"
-        "  markers.forEach(function(m,i){\n"
-        "    var vis=m.vis_mi===null?'--':(m.vis_mi>=10?'10+':m.vis_mi.toFixed(1)+'mi');\n"
-        "    var fl=Math.round(m.hi);\n"
-        "    var el=document.createElement('div');el.className='ski-marker'+(i===0?' active':'');el.style.borderLeftColor=m.color;\n"
-        "    el.innerHTML='<div class=\"sm-name\">'+m.icon+' '+m.name+'</div>'\n"
-        "      +'<div class=\"sm-row\"><span class=\"sm-fl\" style=\"background:'+tc(fl)+'\">'+fl+'\\u00b0</span>'\n"
-        "      +'<span class=\"sm-wind\">\U0001F32C'+Math.round(m.wind)+'('+Math.round(m.gust)+')</span>'\n"
-        "      +'<span class=\"sm-vis\">\U0001F441'+vis+'</span></div>';\n"
-        "    el.addEventListener('click',function(){if(window.hoodPick)window.hoodPick(i);});\n"
-        "    new mapboxgl.Marker(el).setLngLat([m.lon,m.lat]).addTo(map);\n"
-        "  });\n"
-        "  if(window.hoodPick)window.hoodPick();\n"
-        "});\n"
-    ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json).replace("__LIFTS__", lifts_json)
+    # the picture: our painting of Mt Hood with the forecast hour's weather (HoodScene), the points, the terrain layers
+    map_js = ("var sc=window.HOOD_SCENE=window.HoodScene(document.getElementById('hoodmap'),'hood3d/',__MARKERS__,window.HOOD_HP);\n"
+              "if(window.hoodLayers)window.hoodLayers(sc);\n"
+              "if(window.hoodPick)window.hoodPick();\n").replace("__MARKERS__", markers_json)
 
     # Meadows' own cameras (skihood.com), for the panel's Cameras view
     try:
@@ -3904,7 +4054,7 @@ def build_ski_page():
           for pt, mp, hrs in zip(SKI_POINTS, map_points, hrs_all)]
     if layers:
         layers["pts"] = [{"name": x["name"], "elev_ft": x["elev_ft"]} for x in hp]   # for the layer legend's readouts
-    lyr_ctl = ('<div class="lyr-ctl" id="hlyr"><div><button data-l="none">Terrain</button><button class="active" data-l="temp">Temperature</button>'
+    lyr_ctl = ('<div class="lyr-ctl" id="hlyr"><div><button class="active" data-l="none">Weather</button><button data-l="temp">Temperature</button>'
                '<button data-l="gust">Wind gusts</button><button data-l="snow">New snow</button><button data-l="depth">Snow depth</button></div>'
                '<div class="lyr-time"><button data-tplay>\u25B6 Play</button><input type="range" id="hslider" min="0" max="0" step="1" value="0" aria-label="Forecast time">'
                '<span id="hlabel" class="lyr-rtime"></span></div></div><div class="lyr-leg" id="hleg" hidden></div>') if layers else ''
@@ -3924,7 +4074,7 @@ def build_ski_page():
     full_html += (
         '<div class="dashboard-layout">'
         '<div class="map-panel"><div class="map-wrap trail-map-wrap"><div id="hoodmap"></div>' + lyr_ctl +
-        '<div class="legend">Click a point (base, Top of Blue, Top of Cascade) for its forecast \u00b7 layers colour every slope for its own elevation \u00b7 lift lines are schematic</div></div></div>'
+        '<div class="legend">Click a point (base, Top of Blue, Top of Cascade) for its forecast \u00b7 Weather shows the forecast hour\u2019s sky, cloud and rain/snow; the other layers colour every slope for its own elevation \u00b7 painted from USGS 3DEP elevation; runs and lifts \u00a9 OpenStreetMap contributors</div></div></div>'
         '<div class="cc-panel" id="hood-cc"><div class="cc-head"><div><div class="cc-kicker">Next 24 hours</div>'
         '<div class="cc-pick"><span>Mt Hood Meadows</span></div><div class="cc-wp" id="hood-wp"></div></div>'
         '<div class="cc-head-r"><div class="cc-view" id="hood-view" role="group" aria-label="View">'
@@ -4045,7 +4195,8 @@ def build_ski_page():
     full_html += '<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">'
     full_html += '<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>'
     full_html += '<script>function toggleSkiDay(idx){var s=document.querySelectorAll(".ski-tbl .d"+idx+".dsum");var d=document.querySelectorAll(".ski-tbl .d"+idx+".ddet");var open=d[0]&&d[0].style.display!=="none";s.forEach(function(el){el.style.display=open?"":"none"});d.forEach(function(el){el.style.display=open?"none":""})}document.querySelectorAll(".ski-tbl").forEach(function(tbl){tbl.addEventListener("click",function(ev){var td=ev.target.closest("td");if(!td)return;var m=td.className.match(/d(\\d+)/);if(m&&td.classList.contains("ddet"))toggleSkiDay(parseInt(m[1]))})});</script>'
-    # both Mt Hood maps are built the first time the tab is opened (each is a billed Mapbox map load)
+    # the Mt Hood picture and the route map are built the first time the tab is opened (the route map is a billed Mapbox load)
+    full_html += "<script>" + HOOD_SCENE_JS + "</script>"
     full_html += "<script>window.lazyMap('hood',function(){\n" + map_js + "\n});</script>"
 
     # Route map JS: route geometry is pre-fetched server-side and injected
@@ -4709,6 +4860,9 @@ def main():
     app_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app")   # the installable app's files
     for fn in os.listdir(app_dir):
         shutil.copyfile(os.path.join(app_dir, fn), os.path.join(os.path.dirname(OUTPUT_PATH), fn))
+    hood3d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hood3d")   # the Mt Hood picture (tools/hood_art.py)
+    if os.path.isdir(hood3d):
+        shutil.copytree(hood3d, os.path.join(os.path.dirname(OUTPUT_PATH), "hood3d"), dirs_exist_ok=True)
     if WIDGET.get("city_days") and WIDGET.get("hood_fut"):
         widgets.render(os.path.dirname(OUTPUT_PATH), WIDGET["city_days"], WIDGET.get("hood_past", []), WIDGET["hood_fut"],
                        datetime.now(ZoneInfo("America/Los_Angeles")).date())

@@ -209,6 +209,22 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   event (window.event fallback) and passes mode to the WxDayH handlers; di < 0 clears. Charts: `xlab()` thins
   hour labels by span (3 h / 6 h / 12 h / day names), `divs()` draws a line at each midnight (dashed where
   days aren't consecutive). Running totals (precip/snow) and summaries span the whole selection.
+- MT HOOD PICTURE (owner, 2026-10-23; replaced the static Mapbox 3D map, painterly style chosen, no night version):
+  tools/hood_art.py (needs numpy; one-time, NOT in the hourly build) ray-traces USGS 3DEP 10 m elevation (.cache/hood_art/
+  dem.tif) from a fixed camera south of Meadows looking N (bearing -14, pitch 15, exaggeration 1.35), paints it in map space
+  (procedural forest/treeline ~6,200 ft, OSM ski runs cut white, rock, snow, hillshade) and `--export` writes hood3d/
+  (committed; each build copies it to docs/hood3d/): clear/flat/gold.jpg (sun, overcast, low sun; no sky), data.png +
+  noise.png (half-res elevation dm, log distance, cloud noise, terrain mask), scene.json (OSM lift lines with terrain
+  visibility, the 3 points' screen positions). OSM data cached in .cache/hood_art/osm.json (Overpass needs a User-Agent;
+  mirrors time out). `--weather` renders still mockups. Re-export after changing the camera or the paint.
+  HOOD_SCENE_JS (`window.HoodScene`) composes each forecast hour on a canvas: HP hours (Top of Cascade sky/cl/cm/ch/cb,
+  base p/vis, wind) -> sky cover, a cloud DECK (mountain hidden above cb) or a cloud SEA (low cloud, clear above, no
+  precip: summit above cb+450-1050 m), extra haze for vis < ~10 mi, gold light near sunrise/sunset, dim at night, rain /
+  snow particles (half-res canvas, rAF only while visible) split at the HL frame's 34F height, the TerrainLayers colours
+  by elevation (a LUT every 10 m). TerrainLayers drives it via `map.wxScene` / `set()`; the first button is now
+  "Weather" (default; time slider + Play always shown). Pins = the old ski-markers placed by object-fit:cover maths,
+  flipped left at the edge, trimmed on phones. Console test: `HOOD_SCENE.force({deck:2380,rate:.9,snowM:1676})`.
+  ~135 ms per frame on the PC. The Mt Hood tab now loads Mapbox only for the route map.
 - Mt Hood's 10-day table works like Cities (owner, 2026-10-13): no 3-hourly expansion; a day click ->
   `wxDay('hood', di)` -> that day's hours in the Mt Hood charts for the selected lift (again: next 24 h),
   column highlighted (.dsel), kept through a refresh ('hday'). HP[i].hrs = every hour of the 10 days per lift
