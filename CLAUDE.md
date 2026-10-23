@@ -230,8 +230,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   which each build writes from the global NEWS dict (each lift's 10 days from the Mt Hood table loop, the
   past 15 days' estimated snow per lift from snow_summary_html, Temira's snow-forecast section, Chris
   Tomer's latest video). Headline / summary / "best day to go" are written from the numbers (story(),
-  best_day()). tools/publish.sh sends it after the 6 AM build (`newsletter.py --send`, once a day via
-  .cache/newsletter_sent.txt). Sending: RESEND_API_KEY + NEWSLETTER_TO (Resend free tier; owner doesn't
+  best_day()). tools/publish.sh runs `newsletter.py --send` after every build from 6 AM (owner, 2026-10-23): it sends
+  once Chris Tomer's video differs from the last email's, else waits; at the 11 AM build (`--deadline`) it sends anyway,
+  marked "no new video yet today". Once a day via .cache/newsletter_sent.txt ("<date> <video id>"). Sending: RESEND_API_KEY + NEWSLETTER_TO (Resend free tier; owner doesn't
   want Gmail 2-Step Verification, so no app password; from onboarding@resend.dev, only to the address the
   Resend account was made with) - or Gmail SMTP (465): GMAIL_USER + GMAIL_APP_PASSWORD. All in the
   server's .env, added by the OWNER; never handle the key or password.

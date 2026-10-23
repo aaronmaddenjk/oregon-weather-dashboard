@@ -69,8 +69,9 @@ if ( cd "$TMP" && git init -q -b gh-pages \
               commit -q -m "Dashboard build $(date '+%Y-%m-%d %H:%M')" \
        && git push -q -f "$REMOTE" gh-pages ) >> "$LOG" 2>&1; then
     log "=== published"
-    # the daily Mt Hood email (newsletter.py) after the 6 AM build; once a day, Gmail settings in .env
-    if [ "$((10#$(date +%H)))" = 6 ] && [ "${1:-}" != "--no-build" ]; then
+    # the daily Mt Hood email (newsletter.py): from the 6 AM build on, sent once Chris Tomer's new video is up,
+    # or at the 11 AM build without it (newsletter.py decides; once a day; Resend / Gmail settings in .env)
+    if [ "$((10#$(date +%H)))" -ge 6 ] && [ "${1:-}" != "--no-build" ]; then
         .venv/bin/python newsletter.py --send >> "$LOG" 2>&1 || log "(newsletter not sent)"
     fi
 else

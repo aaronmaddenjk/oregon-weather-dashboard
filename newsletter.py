@@ -160,7 +160,7 @@ def build(D):
     if V.get("id"):
         url = f"https://www.youtube.com/watch?v={V['id']}"
         video = f'''<tr><td class="px" style="padding:22px 24px 6px;">
-    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{FAINT};text-transform:uppercase;margin-bottom:8px;">Latest from Chris Tomer</div>
+    <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:{FAINT};text-transform:uppercase;margin-bottom:8px;">Latest from Chris Tomer{" <span style='color:#F0A04B;'>· no new video yet today</span>" if V.get("old") else ""}</div>
     <a href="{url}" style="text-decoration:none;color:{INK};display:block;">
       <img src="https://i.ytimg.com/vi/{V['id']}/hqdefault.jpg" width="552" alt="Play: {html.escape(V.get('title') or 'latest video')}" style="display:block;width:100%;max-width:552px;height:auto;border-radius:12px;border:0;">
       <div style="font-size:15px;font-weight:800;margin-top:10px;">▶ {html.escape(V.get('title') or 'Latest video')}</div>
@@ -290,9 +290,28 @@ if __name__ == "__main__":
             f.write(doc)
         print(f"newsletter: written to {out} ({subject})")
     if "--send" in sys.argv:
-        today = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
-        if os.path.exists(SENT) and open(SENT).read().strip() == today and "--force" not in sys.argv:
+        # owner (2026-10-23): wait for Chris Tomer's new video, then send; no new video by the deadline hour
+        # (--deadline, default 11 = the 11 AM build) -> send anyway, marked "no new video yet today".
+        # New = a different video from the last email's (SENT holds "<date> <video id>").
+        now = datetime.now(ZoneInfo("America/Los_Angeles"))
+        today = now.date().isoformat()
+        last = open(SENT).read().split() if os.path.exists(SENT) else []
+        V = D.get("video") or {}
+        if last[:1] == [today] and "--force" not in sys.argv:
             print("newsletter: already sent today")
-        elif send(subject, doc, text):
+            sys.exit(0)
+        if len(last) > 1:
+            new = bool(V.get("id")) and V["id"] != last[1]
+        else:   # no video recorded yet: posted today (RSS date, or the /videos page's "N hours ago")
+            pub = str(V.get("published") or "")
+            new = pub == today or any(u in pub for u in ("second", "minute", "hour"))
+        deadline = int(sys.argv[sys.argv.index("--deadline") + 1]) if "--deadline" in sys.argv else 11
+        if not new and now.hour < deadline and "--force" not in sys.argv:
+            print(f"newsletter: waiting for a new Chris Tomer video (sends anyway at the {deadline}:00 build)")
+            sys.exit(0)
+        if not new and V:
+            V["old"] = True
+            subject, doc, text = build(D)
+        if send(subject, doc, text):
             with open(SENT, "w") as f:
-                f.write(today)
+                f.write(f"{today} {V.get('id') or '-'}")
