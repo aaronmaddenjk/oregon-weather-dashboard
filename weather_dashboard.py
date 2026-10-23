@@ -3144,8 +3144,8 @@ def fmt_depth(inches):
 
 
 def snow_summary_html(pi, lat, lon, ev, now, entries):
-    """OpenSnow-style snow summary for one point: the previous 15 days (three 5-day groups), the
-    last 24 hours, and the next 10 days. The past is estimated like the forecast: Open-Meteo's
+    """OpenSnow-style snow summary for one point: the previous 5 days (owner, 2026-10-23; 15 are still
+    fetched for the email's and widget's past week), the last 24 hours, and the next 10 days. The past is estimated like the forecast: Open-Meteo's
     recent-past record at the point's own elevation, through the same wet-bulb snow model."""
     past, last24 = {}, 0.0
     try:
@@ -3192,7 +3192,8 @@ def snow_summary_html(pi, lat, lon, ev, now, entries):
         return (f'<div class="ss-grp" style="grid-column:{col} / span {len(ds)}"><div class="ss-lbl">{label}</div>'
                 f'<div class="ss-tot"><span>{amt(tot)}″</span></div></div>')
 
-    s_max = max([1.0] + [v for _, v in days_past + days_fut])   # one bar scale for past and future
+    shown = days_past[-5:]   # the chart's history
+    s_max = max([1.0] + [v for _, v in shown + days_fut])   # one bar scale for past and future
 
     def cells(ds, col0, past_side):
         out = ""
@@ -3205,16 +3206,15 @@ def snow_summary_html(pi, lat, lon, ev, now, entries):
         return out
 
     nf = len(days_fut)
-    grid = (group("Prev 11–15 days", days_past[0:5], 1) + group("Prev 6–10 days", days_past[5:10], 6)
-            + group("Prev 1–5 days", days_past[10:15], 11)
-            + f'<div class="ss-now" style="grid-column:16;grid-row:1 / span 3"><div class="ss-lbl">Last 24 hours</div>'
+    grid = (group("Prev 1–5 days", shown, 1)
+            + f'<div class="ss-now" style="grid-column:6;grid-row:1 / span 3"><div class="ss-lbl">Last 24 hours</div>'
               f'<div class="ss-big">{amt(last24, True)}″</div><div class="ss-when">{now:%a} {now.day} '
               f'{now.strftime("%I:%M%p").lstrip("0").lower()[:-1]}<br><span>Estimated</span></div></div>'
-            + group("Next 1–5 days", days_fut[0:5], 17)
-            + (group("Next 6–10 days", days_fut[5:10], 22) if nf > 5 else "")
-            + cells(days_past, 1, True) + cells(days_fut, 17, False))
+            + group("Next 1–5 days", days_fut[0:5], 7)
+            + (group("Next 6–10 days", days_fut[5:10], 12) if nf > 5 else "")
+            + cells(shown, 1, True) + cells(days_fut, 7, False))
     return (f'<div class="snowsum" data-p="{pi}"{" hidden" if pi else ""}><div class="ss-grid" '
-            f'style="grid-template-columns:repeat(15,minmax(26px,1fr)) minmax(130px,1.6fr) repeat({max(nf, 1)},minmax(26px,1fr))">{grid}</div></div>')
+            f'style="grid-template-columns:repeat(5,minmax(26px,1fr)) minmax(130px,1.6fr) repeat({max(nf, 1)},minmax(26px,1fr))">{grid}</div></div>')
 
 
 def hood_layers(profile, lat=SKI_POINTS[0]["lat"], lon=SKI_POINTS[0]["lon"]):
@@ -3717,7 +3717,7 @@ def build_ski_page():
     .hood-fc .wp-header { margin:0 0 4px 2px; }
     .hood-sum { margin-bottom:28px; }
     .ss-wrap { overflow-x:auto; background:var(--card); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.08); padding:14px 16px 10px; }
-    .ss-grid { display:grid; grid-template-rows:auto auto auto; column-gap:4px; min-width:880px; }
+    .ss-grid { display:grid; grid-template-rows:auto auto auto; column-gap:4px; min-width:600px; }
     .ss-grp { grid-row:1 / span 2; text-align:center; padding:0 2px 8px; }
     .ss-lbl { font-size:11px; font-weight:600; color:var(--mut); letter-spacing:.02em; white-space:nowrap; }
     .ss-tot { position:relative; margin-top:6px; }
