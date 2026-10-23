@@ -225,6 +225,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   "Weather" (default; time slider + Play always shown). Pins = the old ski-markers placed by object-fit:cover maths,
   flipped left at the edge, trimmed on phones. Console test: `HOOD_SCENE.force({deck:2380,rate:.9,snowM:1676})`.
   ~135 ms per frame on the PC. The Mt Hood tab now loads Mapbox only for the route map.
+  HOURLY (owner, 2026-10-23): Mt Hood's profile keeps every hour (`elevation_profile(..., frame_hours=range(24))` ->
+  `vertical_profile(frame_hours=)`; Volcanos / the Map grid stay 3-hourly via FRAME_HOURS), so the slider, Play (450 ms)
+  and all four layers step hourly (~154 frames); snowpack.evolve(hours=1) scales settling/melt (rates are per 3 h).
 - Mt Hood's 10-day table works like Cities (owner, 2026-10-13): no 3-hourly expansion; a day click ->
   `wxDay('hood', di)` -> that day's hours in the Mt Hood charts for the selected lift (again: next 24 h),
   column highlighted (.dsel), kept through a refresh ('hday'). HP[i].hrs = every hour of the 10 days per lift

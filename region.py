@@ -117,7 +117,7 @@ def _interp(anchors, z, below):
 FRAME_HOURS = (2, 5, 8, 11, 14, 17, 20, 23)   # 3-hourly map frames = the forecast tables' columns
 
 
-def vertical_profile(times, H, z_s, G, precip_fn, levels, probes=()):
+def vertical_profile(times, H, z_s, G, precip_fn, levels, probes=(), frame_hours=FRAME_HOURS):
     """The one forecast-by-elevation calculation shared by the Map tab and the
     mountain 3D maps. Hour by hour, builds the vertical profile at one spot:
       - temperature: NBM at the surface (z_s) joined to GFS upper-air levels,
@@ -128,7 +128,7 @@ def vertical_profile(times, H, z_s, G, precip_fn, levels, probes=()):
     liquid precipitation (in) for hour i at elevation z.
 
     Returns per day (DAYS of them): high, new snow, max gust and the precip-weighted
-    snow fraction at each level, plus FRAME_HOURS snapshots (temperature and gust at
+    snow fraction at each level, plus `frame_hours` snapshots (temperature and gust at
     that hour, snow accumulated since midnight). For each elevation in `probes` it also
     returns hourly {time: sustained wind} and {time: gust} (the forecast tables' wind)."""
     by_day = OrderedDict()
@@ -202,11 +202,11 @@ def vertical_profile(times, H, z_s, G, precip_fn, levels, probes=()):
                     snow[li] += s
                     wsum[li] += p * f
                     psum[li] += p
-            if int(times[i][11:13]) in FRAME_HOURS:
+            if int(times[i][11:13]) in frame_hours:
                 f_temp.append(temps)
                 f_gust.append(gusts)
                 f_snow.append(list(snow))
-        while len(f_temp) < len(FRAME_HOURS):   # a short final day: repeat its last frame
+        while len(f_temp) < len(frame_hours):   # a short final day: repeat its last frame
             f_temp.append(f_temp[-1] if f_temp else [0.0] * L)
             f_gust.append(f_gust[-1] if f_gust else [0.0] * L)
             f_snow.append(f_snow[-1] if f_snow else [0.0] * L)

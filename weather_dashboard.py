@@ -270,7 +270,7 @@ def blended_qpf(points, days):
     return out
 
 
-def elevation_profile(waypoints, qpf, days=7, nws_pts=None):
+def elevation_profile(waypoints, qpf, days=7, nws_pts=None, frame_hours=region.FRAME_HOURS):
     """Forecast across a ladder of elevations at the summit, which moves each mountain
     waypoint's temperature and wind to its own elevation - the same calculation as the Map tab (region.vertical_profile: NBM at the surface
     joined to GFS upper-air temperature/humidity/wind), evaluated at the mountain
@@ -320,7 +320,8 @@ def elevation_profile(waypoints, qpf, days=7, nws_pts=None):
 
     # probe each waypoint's real elevation, and each waypoint's NWS grid-box elevation
     box_elev = [p["elev_m"] if p else z for p, z in zip(nws_pts, wp_elev)]
-    prof = region.vertical_profile(times, H, z_s, G, qpf_at, PROFILE_ELEVS_M, probes=list(wp_elev) + box_elev)
+    prof = region.vertical_profile(times, H, z_s, G, qpf_at, PROFILE_ELEVS_M, probes=list(wp_elev) + box_elev,
+                                   frame_hours=frame_hours)
     nw = len(waypoints)
     # °F to add to a waypoint's NWS box temperature to get its real elevation, hour by hour
     tshift = [{t: prof["probe_temp"][k][t] - prof["probe_temp"][nw + k][t] for t in prof["probe_temp"][k]}
@@ -346,11 +347,11 @@ def elevation_profile(waypoints, qpf, days=7, nws_pts=None):
             "snow_level_ft": crossing_ft(prof["sfrac"][di], 0.5) if day_p >= 0.02 else None,
         })
     out["total_snow"] = [round(v, 2) for v in out["total_snow"]]
-    # 3-hourly snapshots at every level: temperature and gust at the hour, snow since midnight
+    # snapshots at every level (3-hourly; hourly for Mt Hood): temperature and gust at the hour, snow since midnight
     tz = ZoneInfo("America/Los_Angeles")
     out["frames"] = {
         "ts": [[int(datetime.strptime(f"{d} {hr:02d}", "%Y-%m-%d %H").replace(tzinfo=tz).timestamp() * 1000)
-                for hr in region.FRAME_HOURS] for d in prof["dates"]],
+                for hr in frame_hours] for d in prof["dates"]],
         "temp": [[[round(v, 1) for v in fr] for fr in day] for day in prof["f_temp"]],
         "gust": [[[round(v) for v in fr] for fr in day] for day in prof["f_gust"]],
         "snow": [[[round(v, 2) for v in fr] for fr in day] for day in prof["f_snow"]],
@@ -3218,7 +3219,7 @@ def snow_summary_html(pi, lat, lon, ev, now, entries):
 
 
 def hood_layers(profile, lat=SKI_POINTS[0]["lat"], lon=SKI_POINTS[0]["lon"]):
-    """The Meadows map's terrain layers, 3-hourly from now: temperature, gust, new snow since
+    """The Meadows picture's terrain layers, hourly from now: temperature, gust, new snow since
     now and estimated snow depth at every PROFILE_ELEVS_M level. None without a profile."""
     if not profile or "frames" not in profile:
         return None
@@ -3231,7 +3232,7 @@ def hood_layers(profile, lat=SKI_POINTS[0]["lat"], lon=SKI_POINTS[0]["lon"]):
         before = [sum(F["day_snow"][k][li] for k in range(di)) for li in range(L)]   # snow in the days before
         for fi, ts in enumerate(F["ts"][di]):
             cum = [before[li] + F["snow"][di][fi][li] for li in range(L)]
-            if ts < now_ms - 90 * 60000:
+            if ts < now_ms - 30 * 60000:
                 prev_cum = cum
                 continue
             if cum_start is None:
@@ -3241,7 +3242,7 @@ def hood_layers(profile, lat=SKI_POINTS[0]["lat"], lon=SKI_POINTS[0]["lon"]):
                         "snow": [round(max(0.0, c - s0), 1) for c, s0 in zip(cum, cum_start)],
                         "new": [max(0.0, c - p) for c, p in zip(cum, prev_cum)]})
             prev_cum = cum
-    depth = snowpack.evolve(d0, seq)
+    depth = snowpack.evolve(d0, seq, hours=1)
     for fr, dp in zip(seq, depth):
         fr["depth"] = dp
         del fr["new"]
@@ -3376,7 +3377,7 @@ function apply(){
 function stop(){if(timer){clearInterval(timer);timer=null;}play.textContent='\u25B6 Play';play.classList.remove('active');}
 ctl.addEventListener('click',function(ev){var b=ev.target.closest('button');if(!b)return;
   if(b.dataset.tplay!==undefined){if(timer){stop();return;}play.textContent='\u275A\u275A Pause';play.classList.add('active');
-    timer=setInterval(function(){st.k=(st.k+1)%HL.frames.length;apply();},900);return;}
+    timer=setInterval(function(){st.k=(st.k+1)%HL.frames.length;apply();},450);return;}
   if(b.dataset.l){st.l=b.dataset.l;if(st.l==='none'&&!map.wxScene)stop();apply();}});
 sl.addEventListener('input',function(){stop();st.k=+this.value;apply();});
 // the DEM tiles as a plain raster, decoded to metres and coloured by elevation (Mapbox maps only)
@@ -3559,7 +3560,7 @@ def build_ski_page():
     qpf = [merge_qpf(n, b) for n, b in zip(nws_pts, blended_qpf(SKI_POINTS, 10))]
     # the same forecast-by-elevation as the Trails tab and the Map: moves temperature and wind to
     # each point's real elevation, and colours the map's terrain layers
-    profile = elevation_profile(SKI_POINTS, qpf, days=7, nws_pts=nws_pts)
+    profile = elevation_profile(SKI_POINTS, qpf, days=7, nws_pts=nws_pts, frame_hours=tuple(range(24)))   # hourly layers
     layers = hood_layers(profile)
     h24_all = []
     hrs_all = []   # every forecast hour per lift (with its date), for a clicked day in the charts

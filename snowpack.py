@@ -74,12 +74,13 @@ def initial_profile(levels_m, obs):
     return [min(max(0.0, my + slope * (z - mx)), max(top * 1.5, top + 12)) for z in levels_m]
 
 
-def evolve(d0, frames):
+def evolve(d0, frames, hours=3):
     """Depth at every level for each frame. frames: [{'temp': [...], 'new': [...]}], where
-    new = the snow that fell (in) since the previous frame."""
+    new = the snow that fell (in) since the previous frame; frames `hours` apart (the rates are per 3 h)."""
     d, out = list(d0), []
+    settle, melt = SETTLE_PER_STEP ** (hours / 3), MELT_IN_PER_F * hours / 3
     for fr in frames:
-        d = [max(0.0, (x + fr["new"][i]) * SETTLE_PER_STEP - max(0.0, fr["temp"][i] - 32) * MELT_IN_PER_F)
+        d = [max(0.0, (x + fr["new"][i]) * settle - max(0.0, fr["temp"][i] - 32) * melt)
              for i, x in enumerate(d)]
         out.append([round(x, 1) for x in d])
     return out
