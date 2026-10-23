@@ -144,10 +144,11 @@ var st={pts:null,res:null,sel:0,map:null,layers:null,charts:null};
 function rhFromDew(t,d){t=(t-32)/1.8;d=(d-32)/1.8;return 100*Math.exp(17.625*d/(243.04+d))/Math.exp(17.625*t/(243.04+t));}
 function wetBulb(tf,rh){var t=(tf-32)/1.8;rh=Math.min(100,Math.max(5,rh));
   var tw=t*Math.atan(0.151977*Math.sqrt(rh+8.313659))+Math.atan(t+rh)-Math.atan(rh-1.676331)+0.00391838*Math.pow(rh,1.5)*Math.atan(0.023101*rh)-4.686035;return tw*1.8+32;}
-function snowFrac(tw){return tw<=32?1:tw>=35?0:(35-tw)/3;}
-var SLR=[[10,15],[20,13],[26,11],[30,9],[34,7]];
+function snowFrac(tw){return tw<=32?1:tw>=34?0:(34-tw)/2;}
+var SLR=[[10,15],[20,13],[26,11],[30,9],[33,6],[35,2]];   // = snow_model.py (fitted to SNOTEL)
+function stick(t){return t<=33?1:t>=36?0:(36-t)/3;}
 function slr(t){if(t<=SLR[0][0])return SLR[0][1];for(var i=1;i<SLR.length;i++)if(t<=SLR[i][0]){var a=SLR[i-1],b=SLR[i];return a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);}return SLR[SLR.length-1][1];}
-function newSnow(p,t,rh){if(!p||t==null)return[0,0];var f=snowFrac(wetBulb(t,rh==null?90:rh));return[p*f*slr(t),f];}
+function newSnow(p,t,rh){if(!p||t==null)return[0,0];var f=snowFrac(wetBulb(t,rh==null?90:rh));return[p*f*slr(t)*stick(t),f];}
 function interp(anchors,z,below){   // linear in elevation between anchors; `below` extrapolates under the lowest
   if(z<=anchors[0][0])return below(anchors[0][0],anchors[0][1],z);
   for(var i=1;i<anchors.length;i++)if(z<=anchors[i][0]){var a=anchors[i-1],b=anchors[i];return a[1]+(b[1]-a[1])*(z-a[0])/(b[0]-a[0]);}

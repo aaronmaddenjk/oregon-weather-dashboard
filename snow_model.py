@@ -61,16 +61,21 @@ def wet_bulb_f(t_f, rh):
     return tw * 1.8 + 32
 
 
+# The warm side is fitted to SNOTEL (owner, 2026-10-23; tools/snow_backtest.py, 8 Cascade stations, 2 winters,
+# days with observed humidity): the old model (rain only at wet-bulb 35°F, ratio floor 7:1, everything that fell
+# counted) gave 2.2-2.5x the depth gain on 33-37°F days vs 1.6x on cold days. With the switch at 34°F, ratios
+# down to 2:1 by 35°F and on-contact melt above 33°F air, every temperature band comes out alike (~1.5-1.6x, the
+# depth sensor's settling undercount, also seen on cold days - the cold side is left as it was).
 def snow_fraction(tw_f):
-    """Share of precip falling as snow: all snow at wet-bulb <= 32°F, all rain at >= 35°F."""
-    return 1.0 if tw_f <= 32 else 0.0 if tw_f >= 35 else (35 - tw_f) / 3
+    """Share of precip falling as snow: all snow at wet-bulb <= 32°F, all rain at >= 34°F."""
+    return 1.0 if tw_f <= 32 else 0.0 if tw_f >= 34 else (34 - tw_f) / 2
 
 
-_SLR = [(10, 15), (20, 13), (26, 11), (30, 9), (34, 7)]
+_SLR = [(10, 15), (20, 13), (26, 11), (30, 9), (33, 6), (35, 2)]
 
 def snow_ratio(t_f):
-    """Snow-to-liquid ratio: dense ~7:1 'Cascade concrete' near freezing, up to 15:1 in
-    cold air (capped - PNW maritime snow rarely gets fluffier than that)."""
+    """Snow-to-liquid ratio: up to 15:1 in cold air (capped - PNW maritime snow rarely gets fluffier), ~9:1 at
+    30°F, 6:1 at 33°F, 2:1 by 35°F (wet snow that packs down as it lands)."""
     if t_f <= _SLR[0][0]:
         return _SLR[0][1]
     for (a, x), (b, y) in zip(_SLR, _SLR[1:]):
@@ -79,9 +84,15 @@ def snow_ratio(t_f):
     return _SLR[-1][1]
 
 
+def stick(t_f):
+    """Share of the falling snow that lasts on the ground: all of it at <= 33°F air, none by 36°F (melts on contact)."""
+    return 1.0 if t_f <= 33 else 0.0 if t_f >= 36 else (36 - t_f) / 3
+
+
 def new_snow_in(p_in, t_f, rh):
-    """(snow inches, snow fraction) from one hour of liquid precip."""
+    """(snow inches on the ground, snow fraction of the precip) from one hour of liquid precip.
+    The fraction is the phase (rain / mix / snow labels); the inches also drop what melts on contact."""
     if not p_in or t_f is None:
         return 0.0, 0.0
     f = snow_fraction(wet_bulb_f(t_f, 90 if rh is None else rh))
-    return p_in * f * snow_ratio(t_f), f
+    return p_in * f * snow_ratio(t_f) * stick(t_f), f

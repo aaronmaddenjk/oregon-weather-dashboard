@@ -292,6 +292,13 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Mt Hood + Trail Forecast keep the old single column. No more 3-hourly table expansion anywhere:
   clicking a day in a table shows that day's hours in the charts (click again: next 24 h); the build
   ships every hour as packed columns (`hour_cols` -> `WxCharts.hours`), `wxDay(uid, i)` dispatches.
+- SNOW MODEL WARM SIDE FITTED TO SNOTEL (owner, 2026-10-23: "too optimistic when warm?" - yes, 2.2-2.5x on 33-37°F
+  days vs 1.6x cold). snow_model.py (+ the JS copy in trail_live.py, keep them equal): rain/snow switch wet-bulb 32-34°F
+  (was 35), ratio 9:1 at 30 -> 6:1 at 33 -> 2:1 at 35°F (floor was 7:1), and stick(): snow melts on contact from 33°F air
+  (none lasts at 36°F). Now ~1.5-1.6x the depth-sensor gain in every temperature band (the sensor's settling undercount;
+  the cold side was left alone - trimming it would make powder days look worse). Re-check: `python tools/snow_backtest.py`
+  (8 Cascade SNOTELs, 2 winters; only Mt Hood Test Site / Irish Taylor / Rex River / Lost Horse / Meadows Pass report RH,
+  the rest assume 90%, which inflates their warm rows).
 - Volcano snow depth (owner asked for it): `snowpack` method per waypoint - SNOTEL depths within 35 km
   of the summit fitted against elevation, then hourly new snow / melt / settling; a "Snow depth" table
   row (end of day), "~N″ seasonal snow" beside the elevation name, `sd` in the chart tooltip. Seasonal
