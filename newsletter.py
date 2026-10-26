@@ -11,12 +11,16 @@ no Gmail 2-Step Verification needed) or GMAIL_USER + GMAIL_APP_PASSWORD (+ optio
 tools/publish.sh sends it after the 6 AM build.
 Email-safe HTML: one 600 px column of tables, inline styles only, no scripts or video (Gmail strips them).
 """
+import base64
 import html
+import io
 import json
+import math
 import os
 import smtplib
 import sys
 from datetime import date, datetime
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
@@ -99,11 +103,141 @@ def best_day(top):
     return f"{day_name(x['d'])} {date.fromisoformat(x['d']).day}", f"no new snow · calmest day (gusts {x['gust']})"
 
 
+# ---- the charts: PNGs (mail apps don't draw SVG), sent as inline images (cid:) so old emails keep them ----
+# Drawn at 3x the email's 2x size and scaled down (Pillow lines aren't anti-aliased). 552 px wide in the email.
+SS, OUTW = 3, 1104   # supersampling, output width (2x of 552)
+
+
+def _font(px, bold=False):
+    from PIL import ImageFont
+    for f in (("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"), ("arialbd.ttf" if bold else "arial.ttf"),
+              "/usr/share/fonts/dejavu/" + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"),
+              "/usr/share/fonts/dejavu-sans-fonts/" + ("DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf")):
+        try:
+            return ImageFont.truetype(f, px)
+        except OSError:
+            continue
+    return ImageFont.load_default(size=px)
+
+
+def _rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def _nice_step(span, n=4):
+    for st in (0.5, 1, 2, 3, 5, 10, 15, 20, 25, 50):
+        if span / st <= n:
+            return st
+    return 100
+
+
+def _png(im):
+    from PIL import Image
+    im = im.resize((OUTW, round(im.height * OUTW / im.width)), Image.LANCZOS)
+    b = io.BytesIO()
+    im.save(b, "PNG", optimize=True)
+    return b.getvalue()
+
+
+def chart_snow(days, n_past, today):
+    """Bars: the past week (grey, estimated) | today | the next 7 days (plum; the last two paler), on a y-axis in inches."""
+    from PIL import Image, ImageDraw
+    W, H = OUTW * SS, 330 * SS
+    L, R, T, B = 74 * SS, 10 * SS, 40 * SS, 268 * SS   # plot box
+    im = Image.new("RGB", (W, H), _rgb(CARD))
+    d = ImageDraw.Draw(im)
+    vals = [v for _, v in days]
+    top = max(1.0, max(vals) * 1.08)
+    st = _nice_step(top)
+    top = math.ceil(top / st - 1e-9) * st
+    y = lambda v: B - (B - T) * v / top
+    f, fb = _font(29 * SS), _font(29 * SS, True)
+    k = 0.0
+    while k <= top + 1e-9:   # gridlines + axis labels
+        d.line([(L, y(k)), (W - R, y(k))], fill=_rgb("#2C3139") if k else _rgb("#4B525D"), width=2 * SS)
+        d.text((L - 12 * SS, y(k)), f"{k:g}″" if k else "0", font=f, fill=_rgb(FAINT), anchor="rm")
+        k += st
+    n = len(days)
+    slot = (W - R - L) / n
+    for i, (dd, v) in enumerate(days):
+        fut = i >= n_past
+        col = (PLUM_PALE if i >= n_past + 5 else PLUM) if fut else "#5B6370"
+        x0, x1 = L + slot * i + slot * 0.2, L + slot * (i + 1) - slot * 0.2
+        if v >= 0.05:
+            yt = min(y(v), B - 4 * SS)
+            d.rounded_rectangle([x0, yt, x1, B], radius=6 * SS, fill=_rgb(col))
+            d.rectangle([x0, (yt + B) / 2, x1, B], fill=_rgb(col))   # square bottom
+        is_today = date.fromisoformat(dd) == today
+        d.text(((x0 + x1) / 2, B + 30 * SS), DOW[date.fromisoformat(dd).weekday()][0], font=fb if is_today else f,
+               fill=_rgb(GREEN_INK if is_today else DIM), anchor="mm")
+    xt = L + slot * n_past   # today: a dashed line between the past and the forecast
+    yy = T - 10 * SS
+    while yy < B:
+        d.line([(xt, yy), (xt, min(B, yy + 9 * SS))], fill=_rgb(GREEN_INK), width=2 * SS)
+        yy += 16 * SS
+    d.text((xt - 10 * SS, T - 20 * SS), "past week", font=f, fill=_rgb(DIM), anchor="rm")
+    d.text((xt + 10 * SS, T - 20 * SS), "forecast", font=f, fill=_rgb(PLUM), anchor="lm")
+    return _png(im)
+
+
+HI_COL, LO_COL = "#F0A04B", "#7FB8E6"   # warm / cool, both clear of the plum snow and on the dark card
+
+
+def chart_temps(top, today):
+    """Two continuous lines, the daily high and low at Top of Cascade over the next 7 days, with a dashed 32 F line."""
+    from PIL import Image, ImageDraw
+    W, H = OUTW * SS, 330 * SS
+    L, R, T, B = 74 * SS, 30 * SS, 56 * SS, 268 * SS
+    im = Image.new("RGB", (W, H), _rgb(CARD))
+    d = ImageDraw.Draw(im)
+    his, los = [x["hi"] for x in top], [x["lo"] for x in top]
+    lo_v, hi_v = min(los + [32]) - 3, max(his + [32]) + 3
+    st = _nice_step(hi_v - lo_v, 5)
+    lo_v, hi_v = math.floor(lo_v / st) * st, math.ceil(hi_v / st) * st
+    y = lambda v: B - (B - T) * (v - lo_v) / (hi_v - lo_v)
+    f, fb = _font(29 * SS), _font(29 * SS, True)
+    k = lo_v
+    while k <= hi_v + 1e-9:
+        d.line([(L, y(k)), (W - R, y(k))], fill=_rgb("#2C3139"), width=2 * SS)
+        d.text((L - 12 * SS, y(k)), f"{k:g}°", font=f, fill=_rgb(FAINT), anchor="rm")
+        k += st
+    xf = L   # freezing: a dashed line
+    while xf < W - R:
+        d.line([(xf, y(32)), (min(W - R, xf + 12 * SS), y(32))], fill=_rgb("#8FA3B8"), width=2 * SS)
+        xf += 22 * SS
+    n = len(top)
+    slot = (W - R - L) / n
+    xs = [L + slot * (i + 0.5) for i in range(n)]
+    for vals, col in ((his, HI_COL), (los, LO_COL)):
+        pts = [(x, y(v)) for x, v in zip(xs, vals)]
+        d.line(pts, fill=_rgb(col), width=5 * SS, joint="curve")
+        for x, yv in pts:
+            r = 7 * SS
+            d.ellipse([x - r, yv - r, x + r, yv + r], fill=_rgb(col), outline=_rgb(CARD), width=3 * SS)
+    for i, x in enumerate(xs):
+        dd = top[i]["d"]
+        is_today = date.fromisoformat(dd) == today
+        d.text((x, B + 30 * SS), "Today" if is_today else DOW[date.fromisoformat(dd).weekday()], font=fb if is_today else f,
+               fill=_rgb(GREEN_INK if is_today else DIM), anchor="mm")
+    lx = L   # legend, top left: the two lines and the dashed freezing line
+    for name, col, dash in (("High", HI_COL, False), ("Low", LO_COL, False), ("32° freezing", "#8FA3B8", True)):
+        if dash:
+            for x0 in (lx, lx + 18 * SS):
+                d.line([(x0, 20 * SS), (x0 + 10 * SS, 20 * SS)], fill=_rgb(col), width=3 * SS)
+        else:
+            d.line([(lx, 20 * SS), (lx + 30 * SS, 20 * SS)], fill=_rgb(col), width=5 * SS)
+        d.text((lx + 40 * SS, 20 * SS), name, font=f, fill=_rgb(MUT), anchor="lm")
+        lx += 40 * SS + d.textlength(name, font=f) + 34 * SS
+    return _png(im)
+
+
 def td(s, extra=""):
     return f'<td align="center" style="padding:7px 1px;{extra}">{s}</td>'
 
 
-def build(D):
+def build(D, inline="data"):
+    """subject, html, text, images. inline='data' puts the charts in the page as data: URIs (the --out preview);
+    'cid' points at inline attachments (cid:snow / cid:temps), which send() attaches."""
     tz = ZoneInfo("America/Los_Angeles")
     today = datetime.now(tz).date()
     top = [x for x in D["hood"][TOP] if date.fromisoformat(x["d"]) >= today][:7]
@@ -115,23 +249,12 @@ def build(D):
     big = max(top, key=lambda x: x["snow"])
     F = "font-family:'Helvetica Neue',Arial,sans-serif;"
 
-    # the snow timeline: the past week (estimated at Cascade's elevation) | today | the next 7 days
-    vals = [v for _, v in past] + [x["snow"] for x in top]
-    mx = max([2.0] + vals)
-    bars, labels = "", ""
-    for i, (d, v) in enumerate([(d, v) for d, v in past] + [(x["d"], x["snow"]) for x in top]):
-        fut = i >= len(past)
-        col = (PLUM_PALE if i >= len(past) + 5 else PLUM) if fut else "#5B6370"
-        h = max(3, round(v / mx * 72))
-        lab = ""
-        if v >= 0.1:   # the amount over the bar
-            amt = f"{v:.0f}" if v >= 10 else f"{v:.1f}"
-            lab = f'<div style="font-size:{12 if v >= 3 else 10}px;color:{PLUM if fut else FAINT};font-weight:800;">{amt}</div>'
-        edge = f"border-right:2px dashed {GREEN_INK};" if i == len(past) - 1 else ""
-        bars += f'<td valign="bottom" align="center" style="{edge}">{lab}<div style="height:{h}px;background:{col};border-radius:{3 if h > 4 else 2}px {3 if h > 4 else 2}px 0 0;margin:0 3px;"></div></td>'
-        is_today = date.fromisoformat(d) == today
-        labels += (f'<td align="center" style="font-size:10px;color:{GREEN_INK if is_today else DIM};font-weight:{800 if is_today else 700};padding-top:4px;">'
-                   f'{day_name(d)[0]}</td>')
+    # the snow timeline (the past week, estimated at Cascade's elevation | today | the next 7 days) and the highs / lows
+    series = [(d, v) for d, v in past] + [(x["d"], x["snow"]) for x in top]
+    images = {"snow": chart_snow(series, len(past), today), "temps": chart_temps(top, today)}
+    src = {k: (f"cid:{k}" if inline == "cid" else "data:image/png;base64," + base64.b64encode(v).decode()) for k, v in images.items()}
+    snow_alt = "Snow at Top of Cascade: " + ", ".join(f"{day_name(d)} {inch(v)}" for d, v in series)
+    temp_alt = "Highs and lows at Top of Cascade: " + ", ".join(f"{day_name(x['d'])} {x['hi']}°/{x['lo']}°" for x in top)
 
     # the 7-day table
     hdr = "".join(td(f'<b>{day_name(x["d"])}</b>', ("color:" + GREEN_INK + ";" if date.fromisoformat(x["d"]) == today else "")
@@ -139,7 +262,6 @@ def build(D):
     def snow_row(xs):
         return "".join(td(inch(x["snow"]) if x["snow"] >= 0.05 else "0",
                           f"color:{PLUM};font-weight:{800 if x['snow'] >= 1 else 700};" if x["snow"] >= 0.05 else "color:#4B525D;") for x in xs)
-    hl = "".join(td(f'<b>{x["hi"]}°</b> <span style="color:{FAINT};">{x["lo"]}°</span>') for x in top)
     gu = "".join(td(str(x["gust"]), "color:#FF6B6B;font-weight:800;" if x["gust"] >= 45 else "color:#F0A04B;font-weight:700;" if x["gust"] >= 30 else "") for x in top)
     po = "".join(td(f'{x["pop"]}%', "color:#5A616C;" if x["pop"] < 10 else f"color:#5FC6D3;font-weight:{800 if x['pop'] >= 50 else 400};") for x in top)
     row = lambda name, cells: (f'<tr style="border-top:1px solid {RULE};"><td style="padding:7px 4px;font-size:11px;line-height:1.25;font-weight:700;color:{MUT};">{name}</td>{cells}</tr>')
@@ -207,16 +329,19 @@ def build(D):
   </tr></table></td></tr>
   <tr><td class="px" style="padding:16px 24px 4px;"><div style="font-size:13px;font-weight:800;">Snow at Top of Cascade <span style="font-weight:600;color:{FAINT};">· the past week, then the next 7 days</span></div></td></tr>
   <tr><td class="px" style="padding:6px 24px 0;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="table-layout:fixed;"><tr style="height:96px;">{bars}</tr><tr>{labels}</tr></table>
+    <img src="{src['snow']}" width="552" alt="{html.escape(snow_alt)}" style="display:block;width:100%;max-width:552px;height:auto;border:0;">
     <div style="font-size:11px;color:{FAINT};margin-top:6px;">Grey = the past week (estimated at Cascade's elevation) · plum = forecast new snow (paler: less sure) · dashed = today</div>
   </td></tr>
-  <tr><td class="px" style="padding:22px 24px 6px;"><div style="font-size:13px;font-weight:800;">The next 7 days <span style="font-weight:600;color:{FAINT};">· temps and gusts at Top of Cascade</span></div></td></tr>
+  <tr><td class="px" style="padding:20px 24px 4px;"><div style="font-size:13px;font-weight:800;">Highs and lows at Top of Cascade <span style="font-weight:600;color:{FAINT};">· the next 7 days</span></div></td></tr>
+  <tr><td class="px" style="padding:6px 24px 0;">
+    <img src="{src['temps']}" width="552" alt="{html.escape(temp_alt)}" style="display:block;width:100%;max-width:552px;height:auto;border:0;">
+  </td></tr>
+  <tr><td class="px" style="padding:22px 24px 6px;"><div style="font-size:13px;font-weight:800;">The next 7 days <span style="font-weight:600;color:{FAINT};">· gusts at Top of Cascade</span></div></td></tr>
   <tr><td style="padding:0 24px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;border-collapse:collapse;table-layout:fixed;">
       <tr style="background:{PANEL};"><td width="64" style="padding:7px 4px;"></td>{hdr}</tr>
       {row("Snow<br>Cascade", snow_row(top))}
       {row("Snow<br>Base", snow_row(base))}
-      {row("High / low", hl)}
       {row("Gusts", gu)}
       {row("Chance", po)}
     </table></td></tr>
@@ -237,10 +362,10 @@ def build(D):
     text = f"{head}\n{sub}\n\nBest day to go: {bd} ({bd_sub})\n\n" + "\n".join(
         f"{day_name(x['d'])}: Cascade {inch(x['snow'])}, Base {inch(b['snow'])}, {x['hi']}°/{x['lo']}° up top, gusts {x['gust']}, {x['pop']}%"
         for x, b in zip(top, base)) + f"\n\nFull forecast: {SITE}\n"
-    return f"Mt Hood · {head}", doc, text
+    return f"Mt Hood · {head}", doc, text, images
 
 
-def send(subject, doc, text):
+def send(subject, doc, text, images=None):
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(ROOT, ".env"))
@@ -258,7 +383,9 @@ def send(subject, doc, text):
         r = requests.post("https://api.resend.com/emails", timeout=60,
                           headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                           json={"from": os.environ.get("NEWSLETTER_FROM") or "Oregon Weather <onboarding@resend.dev>",
-                                "to": [to], "subject": subject, "html": doc, "text": text})
+                                "to": [to], "subject": subject, "html": doc, "text": text,
+                                "attachments": [{"filename": f"{k}.png", "content": base64.b64encode(v).decode(),
+                                                 "content_id": k} for k, v in (images or {}).items()]})
         if r.status_code >= 300:
             print(f"newsletter: Resend said {r.status_code}: {r.text[:300]}")
             return False
@@ -269,10 +396,17 @@ def send(subject, doc, text):
     if not user or not pw:
         print("newsletter: not configured (RESEND_API_KEY, or GMAIL_USER + GMAIL_APP_PASSWORD, in .env) - not sent")
         return False
-    m = MIMEMultipart("alternative")
+    m = MIMEMultipart("related")
     m["Subject"], m["From"], m["To"] = subject, f"Oregon Weather <{user}>", to
-    m.attach(MIMEText(text, "plain", "utf-8"))
-    m.attach(MIMEText(doc, "html", "utf-8"))
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(text, "plain", "utf-8"))
+    alt.attach(MIMEText(doc, "html", "utf-8"))
+    m.attach(alt)
+    for k, v in (images or {}).items():
+        part = MIMEImage(v, "png")
+        part.add_header("Content-ID", f"<{k}>")
+        part.add_header("Content-Disposition", "inline", filename=f"{k}.png")
+        m.attach(part)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=60) as s:
         s.login(user, pw.replace(" ", ""))
         s.sendmail(user, [to], m.as_string())
@@ -283,7 +417,7 @@ def send(subject, doc, text):
 if __name__ == "__main__":
     with open(DATA, encoding="utf-8") as f:
         D = json.load(f)
-    subject, doc, text = build(D)
+    subject, doc, text, images = build(D)   # the preview: charts as data: URIs
     if "--out" in sys.argv:
         out = sys.argv[sys.argv.index("--out") + 1]
         with open(out, "w", encoding="utf-8") as f:
@@ -311,7 +445,7 @@ if __name__ == "__main__":
             sys.exit(0)
         if not new and V:
             V["old"] = True
-            subject, doc, text = build(D)
-        if send(subject, doc, text):
+        subject, doc, text, images = build(D, "cid")   # the charts as inline attachments
+        if send(subject, doc, text, images):
             with open(SENT, "w") as f:
                 f.write(f"{today} {V.get('id') or '-'}")
