@@ -257,6 +257,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   server's .env, added by the OWNER; never handle the key or password.
   Without them it logs "not configured". Preview: `python newsletter.py --out x.html`; resend today:
   `--send --force`. Email-safe HTML only (tables, inline styles; a video = thumbnail link).
+  CHARTS (owner, 2026-10-25): the snow timeline (y-axis in inches, no bar labels) and the 7-day high/low lines (+ dashed
+  32F) are Pillow PNGs (chart_snow / chart_temps, drawn 3x and scaled to 1104 px), sent as INLINE attachments
+  (Resend `attachments[].content_id`, Gmail SMTP multipart/related Content-ID) referenced as cid:snow / cid:temps;
+  `--out` previews embed them as data: URIs. The table lost its High / low row. Fonts: DejaVu on the server, Arial on the PC.
 - HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
   index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
   `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site
