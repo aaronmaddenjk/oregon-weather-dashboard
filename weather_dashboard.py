@@ -1040,7 +1040,7 @@ WX_SYMBOLS = {
     "snow":    ("Snow",          _cloud("translate(0 -2)") + _flakes([(8, 19.5), (12, 21.5), (16, 19.5)])),
     "pdrop":   ("Chance of precipitation", '<path d="M12 3.5c3 4 5.5 7 5.5 10a5.5 5.5 0 0 1-11 0c0-3 2.5-6 5.5-10z" '
                                  'fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>'),
-    "wind":    ("Windy",         '<g fill="none" stroke="#368994" stroke-width="1.8" stroke-linecap="round">'
+    "wind":    ("Windy",         '<g fill="none" stroke="#6F7FD1" stroke-width="1.8" stroke-linecap="round">'
                                  '<path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5"/><path d="M3 13h15a2.8 2.8 0 1 1-2.8 2.8"/>'
                                  '<path d="M3 17h6"/></g>'),
 }
@@ -1504,7 +1504,7 @@ td {{ text-align:center; padding:3px 6px; min-width:50px; }}
 .tl {{ font-size:11px; color:var(--faint); font-weight:600; }}
 .tp {{ border-radius:5px; color:#fff; font-size:13px; font-weight:700; padding:2px 5px; display:inline-block; }}
 .cb {{ font-size:11px; color:var(--mut2); }}
-.gs {{ font-size:10px; color:#368994; margin-left:2px; }}
+.gs {{ font-size:10px; color:#6F7FD1; margin-left:2px; }}
 .cc {{ height:20px; font-size:10px; padding:0 3px; text-align:center; vertical-align:middle; line-height:20px; }}
 th.cch {{ font-size:9px; min-width:85px; padding:1px 8px 1px 0; }}
 .alt {{ font-size:8px; color:var(--faint); font-weight:400; }}
@@ -1742,8 +1742,8 @@ window.WxCharts=function(panel,opt){
   var C={
     wind:function(W,PH){
       var gmax=Math.max.apply(null,d.map(function(h){return h.gust;})),wmax=Math.max.apply(null,d.map(function(h){return h.wind;})),wt=nice(Math.max(10,gmax)/2);
-      return chart('Wind','Max '+wmax+' mph · gusts '+gmax,[['#368994','Wind'],['var(--ink2)','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
-        val:function(h){return h.wind;},col:function(){return'#368994';},whisker:function(h){return h.gust;},dirs:true});},
+      return chart('Wind','Max '+wmax+' mph · gusts '+gmax,[['#6F7FD1','Wind'],['var(--ink2)','Gust',1]],d,W,PH,{lo:0,hi:wt*2,ticks:[0,wt,wt*2],fmt:function(v){return v;},
+        val:function(h){return h.wind;},col:function(){return'#6F7FD1';},whisker:function(h){return h.gust;},dirs:true});},
     temp:function(W,PH){   // temperature bars, with a whisker to "feels like" (wind chill / heat index) where it differs
       var tv=d.map(function(h){return h.temp;}),tx=Math.max.apply(null,tv),tn=Math.min.apply(null,tv);
       var fv=d.map(function(h){return h.feels==null?h.temp:h.feels;}),fx=Math.max.apply(null,fv),fn=Math.min.apply(null,fv);
@@ -2061,7 +2061,7 @@ function cyFall(kind,cols,x0,x1,y0){var o='',n=0;
     o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r=".95" fill="#fff" stroke="#7A5A99" stroke-width=".5"/>'
       :'<line class="wx-fall" '+st+' x1="'+x.toFixed(1)+'" y1="'+y.toFixed(1)+'" x2="'+(x-0.8).toFixed(1)+'" y2="'+(y+2.5).toFixed(1)+'" stroke="#0E9AAE" stroke-width=".85" stroke-linecap="round"/>';}
   return o;}
-function cyWind(){return'<g fill="none" stroke="#368994" stroke-width=".8" stroke-linecap="round">'
+function cyWind(){return'<g fill="none" stroke="#6F7FD1" stroke-width=".8" stroke-linecap="round">'
   +'<path class="wx-blow" d="M1 21H11Q13.4 21 13.4 19.2Q13.4 17.9 12.1 17.9"/><path class="wx-blow" style="animation-delay:.4s" d="M-1 24.5H15"/>'
   +'<path class="wx-blow" style="animation-delay:.8s" d="M2 28H9Q11.2 28 11.2 29.6Q11.2 30.6 10.2 30.6"/></g>';}
 function cyArt(d){
@@ -2288,7 +2288,7 @@ def build_cities_page():
         ".city-popup .pn { font-weight:700; font-size:14px; color:var(--ink); margin-bottom:2px; }\n"
         ".city-popup .pr { display:flex; gap:12px; align-items:center; }\n"
         ".city-popup .pt { font-size:18px; font-weight:700; }\n"
-        ".city-popup .pw { color:#368994; }\n"
+        ".city-popup .pw { color:#6F7FD1; }\n"
         ".city-popup .pp { color:#4FB1BE; }\n"
         ".city-popup .pi { font-size:16px; }\n"
         ".legend { font-size:11px; color:var(--faint); margin-top:8px; }\n"
@@ -2419,7 +2419,7 @@ def build_cities_page():
         "  function pillVal(m,kind){\n"
         "    if(kind==='air'){var a=window.AQL&&window.AQL.at(m.lat,m.lon,0,AQF);return a==null?{t:'--',c:'#A3ABB8',tip:'no air-quality data'}:{t:'AQI '+a,c:aqCol(a),tip:'air quality '+a+' ('+window.AQL.cat(a)+') now'};}\n"
         "    if(kind==='rain'){var r=m.rain24||0;return{t:r<0.01?'dry':(r<0.1?r.toFixed(2):r.toFixed(1))+'\u2033',c:r<0.01?'#A3ABB8':r<0.25?'#4FB1BE':r<0.75?'#0E9AAE':'#3E3AA8',tip:(r<0.01?'no rain':r.toFixed(2)+'\u2033 of rain')+' in the next 24 h'};}\n"
-        "    if(kind==='wind'){var g=m.gnow==null?m.gust:m.gnow;return{t:g+' mph',c:g<15?'#368994':g<30?'#D08A12':'#C8401A',tip:'gusts '+g+' mph now'};}\n"
+        "    if(kind==='wind'){var g=m.gnow==null?m.gust:m.gnow;return{t:g+' mph',c:g<15?'#6F7FD1':g<30?'#D08A12':'#C8401A',tip:'gusts '+g+' mph now'};}\n"
         "    var f=m.feels==null?m.hi:m.feels;return{t:f+'\u00b0',c:tc(f),tip:'feels like '+f+'\u00b0 now'};}\n"
         "  function pills(kind){window.cityMarkerEls.forEach(function(el,i){var v=pillVal(markers[i],kind),b=el.querySelector('.wm-temp');\n"
         "    b.textContent=v.t;b.style.background=v.c;el.title=markers[i].name+': '+v.tip;});}\n"
@@ -2714,7 +2714,7 @@ function fall(kind){   // rain streaks / snowflakes dropping from the storm clou
     o+=k==='snow'?'<circle class="wx-fall" '+st+' cx="'+x+'" cy="'+y+'" r=".85" fill="#fff" stroke="#7A5A99" stroke-width=".45"/>'
       :'<line class="wx-fall" '+st+' x1="'+x+'" y1="'+y+'" x2="'+(x-0.8)+'" y2="'+(y+2.4)+'" stroke="#0E9AAE" stroke-width=".75" stroke-linecap="round"/>';});
   return o;}
-function wind(){return'<g fill="none" stroke="#368994" stroke-width=".7" stroke-linecap="round">'
+function wind(){return'<g fill="none" stroke="#6F7FD1" stroke-width=".7" stroke-linecap="round">'
   +'<path class="wx-blow" d="M-3 7.5H6Q8.2 7.5 8.2 5.8Q8.2 4.6 7 4.6"/>'
   +'<path class="wx-blow" style="animation-delay:.4s" d="M-5 10.5H9"/>'
   +'<path class="wx-blow" style="animation-delay:.8s" d="M-2 13.5H5Q7 13.5 7 15Q7 16 6 16"/></g>';}
@@ -2882,7 +2882,7 @@ def build_trails_page(aq):
         # waypoint name is already on the active button; keep just its elevation + coordinates
         ".mtn-detail .wp-header .wp-dot, .mtn-detail .wp-header .wp-name { display:none; }\n"
         ".mtn-detail .wp-header { margin:0 0 8px 2px; }\n"
-        ".wm-info .rl { width:1.1em; height:1.1em; vertical-align:-0.2em; color:#368994; }\n"
+        ".wm-info .rl { width:1.1em; height:1.1em; vertical-align:-0.2em; color:#6F7FD1; }\n"
         "#mtn-name { display:flex; align-items:center; gap:8px; white-space:nowrap; }\n"
         ".cc-tiers { display:inline-flex; gap:2px; padding:3px; margin-top:10px; background:var(--soft); border-radius:9px; align-self:flex-start; }\n"
         ".cc-tiers button { border:none; background:none; padding:5px 12px; border-radius:7px; font:inherit; font-size:12.5px; font-weight:600; color:var(--mut); cursor:pointer; }\n"
@@ -3446,22 +3446,27 @@ function weather(s){
 function draw(){
   if(!S||!wx)return;
   if(!out)out=ctx.createImageData(W,H);
-  var o=out.data,CL=S.clear,FL=S.flat,GD=S.gold,bw=S.bw,w=wx,lut=st.lut,ov=w.ov,alt=w.alt,cloud=S.cloud;
-  var gold=(1-ov)*sm(14,2,alt)*sm(-7,-1,alt),nf=0.3+0.7*sm(-9,1,alt),nr=nf*(0.8+0.2*sm(-9,1,alt)),ng=nf*(0.9+0.1*sm(-9,1,alt)),nb=nf;
+  var o=out.data,CL=S.clear,FL=S.flat,GD=S.gold,bw=S.bw,w=wx,lut=st.lut,ov=w.ov,alt=w.alt,cloud=S.cloud,cover=w.cover;
+  // night (owner: a dark sky, but keep the mountain visible): the sky goes navy with a few stars; the terrain only
+  // dims to a cool moonlit ~60-80%
+  var gold=(1-ov)*sm(14,2,alt)*sm(-7,-1,alt),night=1-sm(-9,1,alt),nr=1-0.42*night,ng=1-0.36*night,nb=1-0.2*night;
+  var stars=night>0.5&&cover<0.6?(1-cover/0.6)*night:0;
   var T0=[115+(158-115)*ov,161+(166-161)*ov,217+(179-217)*ov],H0=[237+(199-237)*ov,227+(204-227)*ov,214+(212-214)*ov];
   if(gold){H0=[H0[0]+(250-H0[0])*gold,H0[1]+(199-H0[1])*gold,H0[2]+(153-H0[2])*gold];}
   var kx=Math.max(0,1.6/Math.max(150,w.vis*1609)-S.j.haze),hz=S.hz;for(var c=0;c<256;c++)hz[c]=kx&&c<255?1-Math.exp(-S.dist[c]*kx):0;
   var hr=204+(194-204)*ov,hg=217+(199-217)*ov,hb=230+(207-230)*ov;
-  var dk=w.deck,dkA=lut?0.35:1,sea=w.sea,seaA=lut?0.5:1,cover=w.cover,puffs=cover>0.05&&ov<0.95;
+  var dk=w.deck,dkA=lut?0.35:1,sea=w.sea,seaA=lut?0.5:1,puffs=cover>0.05&&ov<0.95;
   for(var y=0;y<H;y++){
     var tt=sm(0,0.55,y/H),sr=T0[0]+(H0[0]-T0[0])*tt,sg=T0[1]+(H0[1]-T0[1])*tt,sb=T0[2]+(H0[2]-T0[2])*tt,row=(y>>1)*bw;
+    if(night){sr+=(10+24*tt+(30-10)*ov*0.4-sr)*night;sg+=(14+30*tt+(34-14)*ov*0.4-sg)*night;sb+=(30+44*tt+(46-30)*ov*0.4-sb)*night;}
     for(var x=0;x<W;x++){
       var i=(y*W+x)*4,bi=row+(x>>1),r,g,b,a;
       if(!S.hit[bi]){r=sr;g=sg;b=sb;
         if(puffs){var n=S.wisp[bi];a=sm(1-cover*0.9,1.05-cover*0.6,n)*(1-ov);
-          if(a>0){var sh=(0.88+0.12*sm(0.4,0.9,n))*250,pr=sh,pg=sh-(sh-195)*gold*0.75,pb=sh-(sh-170)*gold*0.75;
+          if(a>0){var sh=(0.88+0.12*sm(0.4,0.9,n))*250*(1-0.72*night),pr=sh,pg=sh-(sh-195)*gold*0.75,pb=sh-(sh-170)*gold*0.75;
             r+=(pr-r)*a;g+=(pg-g)*a;b+=(pb-b)*a;}}
-        cloud[bi]=0;o[i]=r*nr;o[i+1]=g*ng;o[i+2]=b*nb;o[i+3]=255;continue;}
+        if(stars&&((bi*2654435761)>>>0)%1000<2&&y<H*0.5){var sv=(120+((bi*40503)>>>0)%110)*stars;r+=sv;g+=sv;b+=sv;}
+        cloud[bi]=0;o[i]=r;o[i+1]=g;o[i+2]=b;o[i+3]=255;continue;}
       r=CL[i]+(FL[i]-CL[i])*ov;g=CL[i+1]+(FL[i+1]-CL[i+1])*ov;b=CL[i+2]+(FL[i+2]-CL[i+2])*ov;
       if(gold){r+=(GD[i]-r)*gold;g+=(GD[i+1]-g)*gold;b+=(GD[i+2]-b)*gold;}
       var e=S.elev[bi];
@@ -3477,7 +3482,7 @@ function draw(){
   var d='';S.j.lifts.forEach(function(L){var on=false;L.pts.forEach(function(q){
     var v=q[2]&&q[0]>=0&&q[0]<W&&q[1]>=0&&q[1]<H&&cloud[((q[1]/2)|0)*bw+((q[0]/2)|0)]<0.5;
     if(v){d+=(on?'L':'M')+q[0]+' '+q[1];on=true;}else on=false;});});
-  path.setAttribute('d',d);path.style.opacity=(0.35+0.5*nf).toFixed(2);
+  path.setAttribute('d',d);path.style.opacity=(0.85-0.3*night).toFixed(2);
   precip();}
 // rain / snow: particles on a half-resolution canvas, shown only where the ground is under the cloud and not hidden
 var parts=[],raf=0,seen=true,still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3981,7 +3986,13 @@ def build_ski_page():
     .ski-marker .sm-name { font-weight:700; color:var(--ink); font-size:14px; }
     .ski-marker .sm-row { display:flex; gap:6px; align-items:center; margin-top:1px; }
     .ski-marker .sm-fl { font-weight:700; font-size:16px; color:#fff; border-radius:3px; padding:1px 4px; }
-    .ski-marker .sm-wind { color:#368994; font-size:12px; }
+    .mhm-cams { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+    .mhm-cam { display:block; text-align:center; text-decoration:none; }
+    .mhm-cam img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:6px; display:block; background:var(--soft); }
+    .mhm-cam span { display:block; font-size:10px; font-weight:600; color:var(--mut); margin-top:3px; }
+    .mhm-cam:hover span { color:var(--acc); }
+    @media (max-width:760px) { .mhm-cams { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    .ski-marker .sm-wind { color:#6F7FD1; font-size:12px; }
     .ski-marker .sm-vis { font-size:12px; }
     @media (max-width:1000px) { .hood-row1 { grid-template-columns:minmax(0,1fr); } #hoodmap { height:460px; } }
     """
@@ -4192,6 +4203,17 @@ def build_ski_page():
         f'<div style="display:flex;gap:8px;">{cam_cards}</div>'
         '</div>'
     )
+    # Mt Hood Meadows' cameras on the mountain (owner, 2026-10-26), each linking to its live stream
+    mhm = [c for c in _mhm_cams if c.get("image")]
+    if mhm:
+        full_html += (
+            '<div style="margin-top:10px;background:var(--card);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);padding:10px 12px;">'
+            '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;">\U0001F3BF Mt Hood Meadows \u2014 Mountain Cameras</div>'
+            '<div class="mhm-cams">' + "".join(
+                f'<a class="mhm-cam" href="{html.escape(c.get("url") or c["image"])}" target="_blank" rel="noopener">'
+                f'<img src="{html.escape(c["image"])}" alt="{html.escape(c.get("name") or "Meadows camera")}" loading="lazy">'
+                f'<span>{html.escape(c.get("name") or "")}</span></a>' for c in mhm) +
+            '</div><div style="font-size:10px;color:var(--faint);margin-top:6px;">Live from skihood.com \u00b7 tap a camera for its stream</div></div>')
 
     full_html += '<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">'
     full_html += '<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>'

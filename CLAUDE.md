@@ -401,6 +401,11 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   roads/labels; satellite and custom styles untouched. Mapbox popups/controls get dark CSS in THEME_HEAD. The NEWSLETTER is dark
   too (always; inline colours in newsletter.py: GREEN = fill, GREEN_INK = accent as text, PAGE/CARD/PANEL/DIM). The
   widgets and Chrome extension are not themed. Contrast check used: a JS pass over each page flagging text < 3:1.
+- WIND IS PERIWINKLE #6F7FD1 (owner, 2026-10-26: wind was #368994, the same teal as the coldest temperature band).
+  Charts, gust text (.gs), weather-art wind streaks, Cities wind pills, Mt Hood pin wind. #368994 stays for temps only.
+- Mt Hood picture at NIGHT (owner, 2026-10-26): navy sky + a few stars when clear; terrain only dims to ~60-80% with a cool
+  tint (was 30% everything, the mountain vanished). Mt Hood tab: "Mountain Cameras" grid (all skihood.com cams, link to
+  each stream) under the ODOT snapshots.
 - Visual language: accent (was orange `#FE5000`, now Launch Green above); snow (was violet `#5A4FCF`, now plum above), rain `#0E9AAE`, mix
   `#DE6A52` (palette-validated); temperatures via `temp_bg`; clean, quiet chrome; no
   heavy color blocks. Follow the dataviz rules (one axis per chart, legends, hover layers).
