@@ -449,6 +449,90 @@ window.AQL=(function(){
 # Map tab: full-region explorer. Each pixel is coloured from the 4 surrounding forecast
 # cells, evaluated at that pixel's own elevation (read from Mapbox terrain-RGB tiles), so
 # freezing lines, snow lines and wind exposure follow the real terrain.
+# ---- WxRadar: smooth radar for any Mapbox map (owner, 2026-10-26: "very smooth outlines, like Google Weather").
+# Live NEXRAD (IEM n0q tiles: now and every 5 min back to 50 min) and NOAA HRRR forecast radar (IEM REFP tiles, by
+# run): each frame's zoom-7 tiles over OR/WA are stitched on one canvas, softened (two box-blur passes on premultiplied
+# colour, ~1.5 km) and given a smooth edge, then drawn as one canvas source with linear resampling. Frames are
+# processed once (ImageBitmap cache, newest 16). Used by the Map tab (RegionLayers) and the Cities map.
+RADAR_JS = r"""
+window.WxRadar=(function(){
+var Z=7,N=1<<Z;
+function tx(lon){return Math.floor((lon+180)/360*N);}
+function ty(lat){var r=lat*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*N);}
+function lonOf(x){return x/N*360-180;}
+function latOf(y){var n=Math.PI-2*Math.PI*y/N;return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));}
+var X0=tx(-125.4),X1=tx(-116.0),Y0=ty(49.6),Y1=ty(41.4),W=(X1-X0+1)*256,H=(Y1-Y0+1)*256;
+var COORDS=[[lonOf(X0),latOf(Y0)],[lonOf(X1+1),latOf(Y0)],[lonOf(X1+1),latOf(Y1+1)],[lonOf(X0),latOf(Y1+1)]];
+var META='https://mesonet.agron.iastate.edu/data/gis/images/4326/hrrr/refd_1080.json',RUN=null,runP=null;
+function run(){
+  if(RUN&&Date.now()-RUN.checked<10*60000)return Promise.resolve(RUN);
+  return runP||(runP=fetch(META,{cache:'no-store'}).then(function(r){return r.json();}).then(function(j){
+    var t=Date.parse(j.model_init_utc);if(!isNaN(t))RUN={init:t,stamp:j.model_init_utc.replace(/[-:TZ]/g,'').slice(0,12),checked:Date.now()};
+    runP=null;return RUN;}).catch(function(){runP=null;return RUN;}));}
+function slot(){return Math.floor(Date.now()/300000);}   // live frames refresh every 5 minutes
+function url(f,x,y){return f.kind==='obs'
+  ?'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913'+(f.off?'-m'+String(f.off).padStart(2,'0')+'m':'')+'/'+Z+'/'+x+'/'+y+'.png?b='+slot()
+  :'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/hrrr::REFP-F'+String(f.min).padStart(4,'0')+'-'+f.stamp+'/'+Z+'/'+x+'/'+y+'.png';}
+function key(f){return f.kind==='obs'?'o'+f.off+'@'+slot():'h'+f.min+'@'+f.stamp;}
+function tile(u){return new Promise(function(res){var i=new Image();i.crossOrigin='anonymous';
+  i.onload=function(){res(i);};i.onerror=function(){res(null);};i.src=u;});}
+function blur(a,w,h,r){   // separable box blur of premultiplied RGBA (Float32), in place
+  var t=new Float32Array(a.length),d=2*r+1,x,y,i,o,s0,s1,s2,s3;
+  for(y=0;y<h;y++){var row=y*w;s0=s1=s2=s3=0;
+    for(x=-r;x<=r;x++){i=(row+Math.min(w-1,Math.max(0,x)))*4;s0+=a[i];s1+=a[i+1];s2+=a[i+2];s3+=a[i+3];}
+    for(x=0;x<w;x++){o=(row+x)*4;t[o]=s0/d;t[o+1]=s1/d;t[o+2]=s2/d;t[o+3]=s3/d;
+      var ia=(row+Math.min(w-1,x+r+1))*4,ib=(row+Math.max(0,x-r))*4;
+      s0+=a[ia]-a[ib];s1+=a[ia+1]-a[ib+1];s2+=a[ia+2]-a[ib+2];s3+=a[ia+3]-a[ib+3];}}
+  for(x=0;x<w;x++){s0=s1=s2=s3=0;
+    for(y=-r;y<=r;y++){i=(Math.min(h-1,Math.max(0,y))*w+x)*4;s0+=t[i];s1+=t[i+1];s2+=t[i+2];s3+=t[i+3];}
+    for(y=0;y<h;y++){o=(y*w+x)*4;a[o]=s0/d;a[o+1]=s1/d;a[o+2]=s2/d;a[o+3]=s3/d;
+      var ja=(Math.min(h-1,y+r+1)*w+x)*4,jb=(Math.max(0,y-r)*w+x)*4;
+      s0+=t[ja]-t[jb];s1+=t[ja+1]-t[jb+1];s2+=t[ja+2]-t[jb+2];s3+=t[ja+3]-t[jb+3];}}}
+var CACHE={},ORDER=[];
+function frame(f){
+  var k=key(f);if(CACHE[k])return CACHE[k];
+  CACHE[k]=(async function(){
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var g=cv.getContext('2d',{willReadFrequently:true}),jobs=[];
+    for(var x=X0;x<=X1;x++)for(var y=Y0;y<=Y1;y++)(function(x,y){
+      jobs.push(tile(url(f,x,y)).then(function(i){if(i)g.drawImage(i,(x-X0)*256,(y-Y0)*256);}));})(x,y);
+    await Promise.all(jobs);
+    var im=g.getImageData(0,0,W,H),px=im.data,n=W*H,a=new Float32Array(n*4),i;
+    for(i=0;i<n;i++){var al=px[i*4+3]/255;a[i*4]=px[i*4]*al;a[i*4+1]=px[i*4+1]*al;a[i*4+2]=px[i*4+2]*al;a[i*4+3]=al;}
+    blur(a,W,H,2);blur(a,W,H,2);
+    for(i=0;i<n;i++){var A=a[i*4+3];if(A<0.03){px[i*4+3]=0;continue;}
+      var e=A<0.14?0:A>0.42?1:(A-0.14)/0.28;e=e*e*(3-2*e);   // a smooth, rounded edge where the softened echo was ~1/4 covered
+      px[i*4]=a[i*4]/A;px[i*4+1]=a[i*4+1]/A;px[i*4+2]=a[i*4+2]/A;px[i*4+3]=e*255;}
+    g.putImageData(im,0,0);
+    return window.createImageBitmap?createImageBitmap(cv):cv;})();
+  ORDER.push(k);while(ORDER.length>16)delete CACHE[ORDER.shift()];
+  return CACHE[k];}
+// timeline(hours): live frames back to 50 min, then HRRR forecast frames (15 min apart for 6 h, then hourly)
+function timeline(hours){return run().then(function(R){var now=Date.now(),out=[],end=now+hours*3600000;
+  for(var o=50;o>=0;o-=5)out.push({kind:'obs',off:o,t:now-o*60000});
+  if(R){var m=Math.max(15,Math.ceil((now-R.init)/900000)*15);
+    while(m<=1080){var t=R.init+m*60000;if(t>end)break;if(t>now)out.push({kind:'hrrr',min:m,stamp:R.stamp,t:t});
+      if(t-now<6*3600000)m+=15;else m=Math.floor(m/60)*60+60;}}
+  return out;});}
+function make(map,before){
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;var g=cv.getContext('2d'),want=null;
+  function ensure(){if(map.getSource('wxradar'))return;
+    map.addSource('wxradar',{type:'canvas',canvas:cv,coordinates:COORDS,animate:false});
+    map.addLayer({id:'wxradar',type:'raster',source:'wxradar',paint:{'raster-opacity':0.85,'raster-resampling':'linear','raster-fade-duration':0}},before);}
+  function paint(bm){g.clearRect(0,0,W,H);if(bm)g.drawImage(bm,0,0);
+    var src=map.getSource('wxradar');if(src){src.play();map.once('render',function(){src.pause();});map.triggerRepaint();}}
+  return {
+    show:function(f){
+      if(!f){want=null;if(map.getLayer('wxradar'))map.setLayoutProperty('wxradar','visibility','none');return Promise.resolve();}
+      var k=want=key(f);ensure();map.setLayoutProperty('wxradar','visibility','visible');
+      return frame(f).then(function(bm){if(want===k)paint(bm);});},
+    preload:function(f){if(f&&(f.kind==='obs'||f.kind==='hrrr'))frame(f);},
+    timeline:timeline};}
+make.run=run;make.timeline=timeline;
+return make;})();
+"""
+
+
 REGION_JS = r"""
 (function(){
 var R=__DATA__, TOKEN='__TOKEN__', FIRES=__FIRES__, SMOKE=__SMOKE__;
@@ -654,13 +738,14 @@ function hrrrEnsure(min){
   map.addSource(id,{type:'raster',tileSize:256,attribution:'Forecast radar: NOAA HRRR via Iowa Environmental Mesonet',
     tiles:['https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/hrrr::REFP-F'+String(min).padStart(4,'0')+'-'+HR.stamp+'/{z}/{x}/{y}.png']});
   map.addLayer({id:id,type:'raster',source:id,paint:{'raster-opacity':0,'raster-fade-duration':0}},sym);}
-function hrrrShow(frame){   // frame: the timeline entry to show, or null to hide all
-  if(!map)return;
-  var want=frame&&frame.kind==='hrrr'?frame.min:-1;
-  if(want>=0){hrrrEnsure(want);[TL[ti+1],TL[ti+2],TL[ti-1]].forEach(function(n){if(n&&n.kind==='hrrr')hrrrEnsure(n.min);});}   // neighbours preload for smooth playback
-  map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)!=='hr')return;var m=+l.id.slice(2);
-    map.setLayoutProperty(l.id,'visibility',want>=0&&Math.abs(m-want)<=60?'visible':'none');
-    map.setPaintProperty(l.id,'raster-opacity',m===want?0.82:0);});}
+// live + HRRR frames are drawn by WxRadar (smoothed); model frames by the pixel colouring below
+var RAD=null;
+function radarFrame(f){return !f?null:f.kind==='obs'?{kind:'obs',off:f.off}:f.kind==='hrrr'&&HR?{kind:'hrrr',min:f.min,stamp:HR.stamp}:null;}
+function hrrrShow(frame){   // frame: the timeline entry to show, or null to hide
+  if(!map||!window.WxRadar)return;
+  if(!RAD)RAD=window.WxRadar(map,sym);
+  var f=radarFrame(frame);RAD.show(f);
+  if(f)[TL[ti+1],TL[ti+2]].forEach(function(n){RAD.preload(radarFrame(n));});}   // neighbours preload for smooth playback
 // ---- observed radar ----
 // NEXRAD base-reflectivity composite (N0Q) from the Iowa Environmental Mesonet: now and every 5 min
 // back to 50 min ago. Live tiles, so it needs no build; a new 5-min slot starts fresh layers.
@@ -672,13 +757,7 @@ function obsEnsure(off){
   map.addSource(id,{type:'raster',tileSize:256,attribution:'Radar: NOAA NEXRAD via Iowa Environmental Mesonet',
     tiles:['https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913'+(off?'-m'+String(off).padStart(2,'0')+'m':'')+'/{z}/{x}/{y}.png?b='+OBS_B]});
   map.addLayer({id:id,type:'raster',source:id,paint:{'raster-opacity':0,'raster-fade-duration':0}},sym);}
-function obsShow(frame){
-  if(!map)return;
-  var want=frame&&frame.kind==='obs'?frame.off:-1;
-  if(want>=0){obsEnsure(want);obsEnsure(want-5);obsEnsure(want+5);}   // neighbours preload for smooth playback
-  map.getStyle().layers.forEach(function(l){if(l.id.slice(0,2)!=='nx')return;var m=+l.id.slice(2);
-    map.setLayoutProperty(l.id,'visibility',want>=0&&Math.abs(m-want)<=5?'visible':'none');
-    map.setPaintProperty(l.id,'raster-opacity',m===want?0.8:0);});}
+function obsShow(frame){}   // (WxRadar draws the live frames too: hrrrShow)
 // NEXRAD reflectivity (dBZ) in the N0Q tiles' colours, for the legend
 var DBZ=[[5,'#04E9E7'],[15,'#019FF4'],[25,'#02FD02'],[35,'#FDF802'],[45,'#FD9500'],[55,'#FD0000'],[65,'#F800FD']];
 // Beyond 18 h: the model's own 3-hourly precipitation drawn radar-style, in the same
@@ -2370,6 +2449,17 @@ def build_cities_page():
         ".city-wash button.on { background:var(--solid); color:var(--solid-ink); }\n"
         ".city-wash-leg { position:absolute; right:10px; bottom:10px; z-index:2; width:190px; padding:6px 9px; border-radius:9px; background:var(--glass); box-shadow:0 1px 3px rgba(20,24,35,.18); font-size:10.5px; color:var(--ink); }\n"
         ".city-wash-leg:empty { display:none; }\n"
+        ".cr-bar { position:absolute; left:10px; right:10px; bottom:10px; z-index:3; display:flex; align-items:center; gap:10px; padding:7px 12px 7px 8px; border-radius:12px; background:var(--glass); box-shadow:0 1px 3px rgba(20,24,35,.18); }\n"
+        ".cr-bar[hidden] { display:none; }\n"
+        ".cr-play { flex:none; width:30px; height:30px; border-radius:50%; border:0; background:var(--solid); color:var(--solid-ink); font-size:11px; cursor:pointer; }\n"
+        ".cr-track { position:relative; flex:1; min-width:0; height:30px; touch-action:none; cursor:pointer; outline:none; }\n"
+        ".cr-track::before { content:''; position:absolute; left:0; right:0; top:13px; height:4px; border-radius:2px; background:var(--track); }\n"
+        ".cr-fill { position:absolute; left:0; top:13px; height:4px; border-radius:2px; background:var(--acc); }\n"
+        ".cr-now { position:absolute; top:7px; width:2px; height:16px; margin-left:-1px; border-radius:1px; background:var(--ink2); }\n"
+        ".cr-thumb { position:absolute; top:7px; width:16px; height:16px; margin-left:-8px; border-radius:50%; background:var(--card); box-shadow:0 0 0 2.5px var(--acc), 0 1px 3px rgba(0,0,0,.3); }\n"
+        ".cr-track:focus-visible .cr-thumb { box-shadow:0 0 0 2.5px var(--acc), 0 0 0 5px var(--accbg2); }\n"
+        ".cr-time { flex:none; min-width:96px; font-size:12px; font-weight:700; color:var(--ink); text-align:right; line-height:1.2; font-variant-numeric:tabular-nums; }\n"
+        ".cr-time small { display:block; font-size:10px; font-weight:600; color:var(--mut2); }\n"
         ".city-wash-leg i { display:block; height:7px; border-radius:4px; margin:4px 0 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }\n"
         ".city-wash-leg span { display:flex; justify-content:space-between; color:var(--mut2); }\n"
         ".city-wash-leg em { font-style:normal; }\n"
@@ -2395,7 +2485,7 @@ def build_cities_page():
 
     map_js = (
         "mapboxgl.accessToken = '__TOKEN__';\n"
-        "var markers = window.cityMarkers = __MARKERS__, washKind = 'temp';\n"
+        "var markers = window.cityMarkers = __MARKERS__, washKind = 'radar';\n"
         "var map = new mapboxgl.Map({\n"
         "  container: 'citymap', style: 'mapbox://styles/mapbox/outdoors-v12',\n"
         "  center: [-122.5, 45.5], zoom: 5, pitch: 0, bearing: 0, attributionControl: false\n"
@@ -2420,7 +2510,7 @@ def build_cities_page():
         "    if(kind==='air'){var a=window.AQL&&window.AQL.at(m.lat,m.lon,0,AQF);return a==null?{t:'--',c:'#A3ABB8',tip:'no air-quality data'}:{t:'AQI '+a,c:aqCol(a),tip:'air quality '+a+' ('+window.AQL.cat(a)+') now'};}\n"
         "    if(kind==='rain'){var r=m.rain24||0;return{t:r<0.01?'dry':(r<0.1?r.toFixed(2):r.toFixed(1))+'\u2033',c:r<0.01?'#A3ABB8':r<0.25?'#4FB1BE':r<0.75?'#0E9AAE':'#3E3AA8',tip:(r<0.01?'no rain':r.toFixed(2)+'\u2033 of rain')+' in the next 24 h'};}\n"
         "    if(kind==='wind'){var g=m.gnow==null?m.gust:m.gnow;return{t:g+' mph',c:g<15?'#6F7FD1':g<30?'#D08A12':'#C8401A',tip:'gusts '+g+' mph now'};}\n"
-        "    var f=m.feels==null?m.hi:m.feels;return{t:f+'\u00b0',c:tc(f),tip:'feels like '+f+'\u00b0 now'};}\n"
+        "    var f=m.feels==null?m.hi:m.feels;return{t:f+'\u00b0',c:tc(f),tip:'feels like '+f+'\u00b0 now'};}   // (radar: temperatures too)\n"
         "  function pills(kind){window.cityMarkerEls.forEach(function(el,i){var v=pillVal(markers[i],kind),b=el.querySelector('.wm-temp');\n"
         "    b.textContent=v.t;b.style.background=v.c;el.title=markers[i].name+': '+v.tip;});}\n"
         "  markers.forEach(function(m,i){\n"
@@ -2433,7 +2523,7 @@ def build_cities_page():
         "  // each pill beside its town on its preferred side (east; the WEST ones west), flipped to the other\n"
         "  // side, below or above when that side would leave the map, cover another pill or the controls (the\n"
         "  // map is a narrow third of the page)\n"
-        "  function place(){var C=map.getContainer(),W=C.clientWidth,H=C.clientHeight,taken=[[0,0,W,80],[W-205,H-64,W,H]];\n"
+        "  function place(){var C=map.getContainer(),W=C.clientWidth,H=C.clientHeight,taken=[[0,0,W,80],washKind==='radar'?[0,H-66,W,H]:[W-205,H-64,W,H]];\n"
         "    var hit=function(b){return taken.some(function(t){return b[0]<t[2]&&b[2]>t[0]&&b[1]<t[3]&&b[3]>t[1];});};\n"
         "    MK.forEach(function(o){var p=map.project(o.mk.getLngLat()),w=o.el.offsetWidth,h=o.el.offsetHeight,g=5,box=null,side=null;\n"
         "      var off={e:[g+w/2,0],w:[-(g+w/2),0],s:[0,g+h/2],n:[0,-(g+h/2)]},order=o.west?['w','s','n','e']:['e','s','n','w'];\n"
@@ -2442,7 +2532,7 @@ def build_cities_page():
         "      if(!side){side=order[0];var d0=off[side];box=[p.x+d0[0]-w/2,p.y+d0[1]-h/2,p.x+d0[0]+w/2,p.y+d0[1]+h/2];}\n"
         "      o.mk.setOffset(off[side]);o.el.classList.toggle('west',side==='w');taken.push(box);});}\n"
         "  window.cityMap=map;window.cityPills=function(){pills(washKind);place();};\n"
-        "  selectCity(undefined,true);pills('temp');place();\n"
+        "  selectCity(undefined,true);pills(washKind);place();\n"
         "  map.on('moveend',place);map.on('resize',place);\n"
         "  // the regional wash under everything: temperature / wind now, or rain over the next 24 h\n"
         "  var sym;map.getStyle().layers.some(function(l){if(l.type==='symbol'){sym=l.id;return true;}});\n"
@@ -2450,7 +2540,9 @@ def build_cities_page():
         "  if(window.AQL)window.AQL.attach(map,sym);\n"
         "  function wash(kind){\n"
         "    if(window.AQL)window.AQL.show(map,0,kind==='air',AQF,true);\n"
-        "    if(map.getLayer('wash'))map.setLayoutProperty('wash','visibility',kind==='air'?'none':'visible');\n"
+        "    if(map.getLayer('wash'))map.setLayoutProperty('wash','visibility',kind==='air'||kind==='radar'?'none':'visible');\n"
+        "    radar(kind==='radar');\n"
+        "    if(kind==='radar'){ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});leg.innerHTML='';return;}\n"
         "    if(kind==='air'){ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});\n"
         "      leg.innerHTML='<b>Air quality now (AQI)</b><i style=\"background:linear-gradient(90deg,#00C800 0%,#00C800 14%,#F5E100 21%,#FF7E00 36%,#EB1414 50%,#8F3F97 71%,#7E0023 100%)\"></i><span><em>Good</em><em>Unhealthy</em><em>Hazardous</em></span>';return;}\n"
         "    if(!window.RegionWash)return;window.RegionWash(kind).then(function(w){if(kind!==washKind)return;if(!w){ctl.hidden=true;return;}\n"
@@ -2460,7 +2552,31 @@ def build_cities_page():
         "    leg.innerHTML='<b>'+w.title+'</b><i style=\"background:'+w.bar+'\"></i><span>'+w.ticks.map(function(t){return '<em>'+t+'</em>';}).join('')+'</span>';\n"
         "    ctl.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.w===kind);});});}\n"
         "  ctl.addEventListener('click',function(e){var b=e.target.closest('button');if(b){washKind=b.dataset.w;wash(washKind);pills(washKind);place();}});\n"
-        "  wash('temp');\n"
+        "  // radar (owner: the default here): smooth live radar + HRRR forecast, a scrubber with a haptic tick per frame on phones\n"
+        "  var RD=null,RT=[],ri=-1,rTimer=null,rBuilt=0,cr=document.getElementById('city-radar'),track=cr.querySelector('.cr-track'),\n"
+        "      thumb=cr.querySelector('.cr-thumb'),fill=cr.querySelector('.cr-fill'),nowM=cr.querySelector('.cr-now'),lab=cr.querySelector('.cr-time'),playB=cr.querySelector('.cr-play');\n"
+        "  var HM=new Intl.DateTimeFormat('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit'});\n"
+        "  function rLabel(f){if(f.kind==='obs')return(f.off?f.off+' min ago':'Now')+'<small>Live radar \u00b7 '+HM.format(f.t)+'</small>';\n"
+        "    var m=Math.round((f.t-Date.now())/60000);return(m<60?'In '+m+' min':'In '+(Math.round(m/30)/2)+' h')+'<small>Forecast \u00b7 '+HM.format(f.t)+'</small>';}\n"
+        "  function rSet(i,tick){if(!RT.length)return;i=Math.max(0,Math.min(RT.length-1,i));\n"
+        "    if(i!==ri&&tick&&navigator.vibrate)navigator.vibrate(6);\n"
+        "    ri=i;var p=RT.length>1?i/(RT.length-1)*100:0;thumb.style.left=p+'%';fill.style.width=p+'%';lab.innerHTML=rLabel(RT[i]);\n"
+        "    RD.show(RT[i]);RD.preload(RT[i+1]);RD.preload(RT[i+2]);}\n"
+        "  function rPlay(on){if(rTimer){clearInterval(rTimer);rTimer=null;}playB.textContent=on?'\u275A\u275A':'\u25B6';playB.setAttribute('aria-label',on?'Pause':'Play');\n"
+        "    if(on)rTimer=setInterval(function(){if(ri>=RT.length-1&&Date.now()-rBuilt>5*60000){rBuild();return;}rSet(ri>=RT.length-1?0:ri+1);},400);}\n"
+        "  function rBuild(){RD.timeline(6).then(function(t){RT=t;rBuilt=Date.now();var n=0;t.forEach(function(f,i){if(f.kind==='obs'&&f.off===0)n=i;});\n"
+        "    nowM.style.left=(t.length>1?n/(t.length-1)*100:0)+'%';ri=-1;rSet(n);});}\n"
+        "  function radar(on){if(!window.WxRadar){cr.hidden=true;return;}\n"
+        "    if(!on){rPlay(false);cr.hidden=true;if(RD)RD.show(null);return;}\n"
+        "    if(!RD)RD=window.WxRadar(map,sym);cr.hidden=false;if(!RT.length||Date.now()-rBuilt>5*60000)rBuild();else if(RT[ri])RD.show(RT[ri]);}\n"
+        "  function rAt(ev){var b=track.getBoundingClientRect();return Math.round(Math.max(0,Math.min(1,(ev.clientX-b.left)/b.width))*(RT.length-1));}\n"
+        "  var drag=false;track.addEventListener('pointerdown',function(ev){drag=true;track.setPointerCapture(ev.pointerId);rPlay(false);rSet(rAt(ev),ev.pointerType!=='mouse');});\n"
+        "  track.addEventListener('pointermove',function(ev){if(drag)rSet(rAt(ev),ev.pointerType!=='mouse');});\n"
+        "  track.addEventListener('pointerup',function(){drag=false;});track.addEventListener('pointercancel',function(){drag=false;});\n"
+        "  track.addEventListener('keydown',function(ev){if(ev.key==='ArrowRight'){rPlay(false);rSet(ri+1);ev.preventDefault();}if(ev.key==='ArrowLeft'){rPlay(false);rSet(ri-1);ev.preventDefault();}});\n"
+        "  playB.addEventListener('click',function(){rPlay(!rTimer);});\n"
+        "  document.addEventListener('visibilitychange',function(){if(!document.hidden&&washKind==='radar'&&Date.now()-rBuilt>5*60000)rBuild();});\n"
+        "  wash(washKind);\n"
         "});\n"
     ).replace("__TOKEN__", MAPBOX_TOKEN).replace("__MARKERS__", markers_json)
 
@@ -2516,9 +2632,12 @@ def build_cities_page():
                   '<div class="cc-charts"></div><div class="cc-extra" id="cc-extra"></div><div class="cc-tip" hidden></div></div>')
     full_html += '</div>'
     full_html += ('<div class="la-map map-panel"><div class="map-wrap"><div class="city-mapbox"><div id="citymap"></div>'
-                  '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="temp" class="on">Temperature</button>'
+                  '<div class="city-wash" id="city-wash" role="group" aria-label="Map shading"><button data-w="radar" class="on">Radar</button><button data-w="temp">Temperature</button>'
                   '<button data-w="rain">Rain</button><button data-w="wind">Wind</button><button data-w="air" title="Air quality (AQI)">Air</button></div>'
                   '<div class="city-wash-leg" id="city-wash-leg"></div>'
+                  '<div class="cr-bar" id="city-radar" hidden><button class="cr-play" type="button" aria-label="Play">\u25B6</button>'
+                  '<div class="cr-track" tabindex="0" role="slider" aria-label="Radar time"><div class="cr-fill"></div><div class="cr-now"></div><div class="cr-thumb"></div></div>'
+                  '<div class="cr-time"></div></div>'
                   '<div class="city-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
                   '<input id="city-q" type="search" autocomplete="off" placeholder="Any town in OR or WA" aria-label="Search a town in Oregon or Washington">'
                   '<div class="city-q-list" id="city-q-list" hidden></div></div></div>')
@@ -4735,6 +4854,7 @@ def build_dashboard() -> str:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
     for s in k_scripts:
         combined += '<script>' + _wrap_iife(s) + '</script>\n'
+    combined += '<script>' + RADAR_JS + '</script>\n'
     combined += '<script>' + (REGION_JS.replace("__DATA__", json.dumps(region_data, separators=(",", ":")))
                               .replace("__TOKEN__", MAPBOX_TOKEN)
                               .replace("__FIRES__", json.dumps(fire_data, separators=(",", ":")))

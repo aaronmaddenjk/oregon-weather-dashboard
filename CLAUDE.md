@@ -401,6 +401,13 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   roads/labels; satellite and custom styles untouched. Mapbox popups/controls get dark CSS in THEME_HEAD. The NEWSLETTER is dark
   too (always; inline colours in newsletter.py: GREEN = fill, GREEN_INK = accent as text, PAGE/CARD/PANEL/DIM). The
   widgets and Chrome extension are not themed. Contrast check used: a JS pass over each page flagging text < 3:1.
+- SMOOTH RADAR (owner, 2026-10-26, "like Google Weather"): RADAR_JS `window.WxRadar(map, beforeId)` stitches each frame's
+  zoom-7 IEM tiles over OR/WA (live NEXRAD n0q now..-50 min, HRRR REFP by run) on one canvas, box-blurs premultiplied
+  colour twice (r=2, ~1.5 km), re-edges alpha with a smoothstep (0.14-0.42), and shows it as a Mapbox canvas source
+  (play()/pause() to re-upload; ImageBitmap cache of 16 frames). Map tab: hrrrShow() routes obs + HRRR frames through it
+  (model frames beyond 18 h unchanged). CITIES MAP DEFAULTS TO RADAR (owner): "Radar" first in the switch, a scrubber
+  (.cr-bar: play, track with a Now mark, label "Now / 20 min ago / In 45 min") over the past 50 min + 6 h of HRRR;
+  dragging on touch calls navigator.vibrate(6) per frame (Android Chrome / the installed app; iOS ignores it).
 - WIND IS PERIWINKLE #6F7FD1 (owner, 2026-10-26: wind was #368994, the same teal as the coldest temperature band).
   Charts, gust text (.gs), weather-art wind streaks, Cities wind pills, Mt Hood pin wind. #368994 stays for temps only.
 - Mt Hood picture at NIGHT (owner, 2026-10-26): navy sky + a few stars when clear; terrain only dims to ~60-80% with a cool
