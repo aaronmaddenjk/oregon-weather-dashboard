@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import copy
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -3171,10 +3172,21 @@ def fetch_gorge_snow_forecast():
                          headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
         if r.status_code != 200:
             return None, None, None
-        soup = BeautifulSoup(r.text, "html.parser")
+        soup = BeautifulSoup(r.content, "html.parser")
         div = soup.find(id="snow-forecast")
         if not div:
-            return None, None, None
+            # her newer posts (Oct 2026): a "MT HOOD SNOW FORECAST" heading, then paragraphs up to the next heading
+            # (a section heading, not the post title, which also says "Mt Hood snow forecast"; copies, so the
+            # page keeps its <time> for the date below)
+            head = next((h for h in soup.find_all(["h2", "h3", "h4"])
+                         if re.match(r"MT\.? HOOD SNOW FORECAST", h.get_text(" ", strip=True).upper())), None)
+            if not head:
+                return None, None, None
+            div = soup.new_tag("div")
+            for el in head.find_next_siblings():
+                if el.name in ("h1", "h2", "h3", "h4") or el.find(["h1", "h2", "h3", "h4"]):
+                    break
+                div.append(copy.copy(el))
         now_pt = datetime.now(ZoneInfo('America/Los_Angeles'))
         # the post's own date: a <time datetime>, else the first "September 24, 2026" on the page
         posted = None
@@ -3197,6 +3209,15 @@ def fetch_gorge_snow_forecast():
         paras = [p.get_text(strip=True) for p in div.find_all(['p', 'li'])]
         paras = [x for x in paras if x and 'MT HOOD SNOW FORECAST' not in x.upper()] or [body[:500]]
         forecast_html = ''.join(f'<p>{html.escape(x)}</p>' for x in paras)
+        # her charts in the section (e.g. "Extended Mt Hood Snow Forecast"), not the subscribe banner
+        for fig in div.find_all("figure"):
+            img, cap = fig.find("img"), fig.find("figcaption")
+            src = img.get("src") if img else None
+            if not src or "subscribe" in src.lower() or not src.startswith("https://"):
+                continue
+            label = cap.get_text(" ", strip=True) if cap else "Temira's chart"
+            forecast_html += (f'<p><img src="{html.escape(src)}" alt="{html.escape(label)}" '
+                              f'style="display:block;width:100%;max-width:552px;height:auto;border-radius:8px;border:0;"></p>')
         return forecast_html, status, (posted.strftime("%a %b %d").replace(" 0", " ") if posted else None)
     except Exception as exc:
         print(f"  WARNING: Gorge Is My Gym forecast unavailable ({exc})")

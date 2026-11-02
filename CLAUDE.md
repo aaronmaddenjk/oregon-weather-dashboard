@@ -245,6 +245,10 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   = quietly nothing. A pick made before the fix wins (locPicked / ccSel / a search). Nothing stored.
   Test from the console: `wxLocateAt(lat, lon)`. Don't end a JS line in CITY_JS with a // comment that
   precedes more code on the same line (twice now that ate the rest of the line).
+- TEMIRA'S SECTION (fetch_gorge_snow_forecast): her site dropped the id="snow-forecast" wrapper (~Oct 2026); now an <h2>
+  starting "MT HOOD SNOW FORECAST" + sibling paragraphs/figures up to the next heading (the post TITLE also says "Mt Hood
+  snow forecast" - match h2-h4 only, and copy elements so the page keeps its <time> for the date). Her section's charts
+  (figures, not the SUBSCRIBE banner) come along as <img> (dashboard card + email). The old wrapper is still tried first.
 - DAILY MT HOOD EMAIL (owner, 2026-10-14): `newsletter.py` builds it from `.cache/newsletter_data.json`,
   which each build writes from the global NEWS dict (each lift's 10 days from the Mt Hood table loop, the
   past 15 days' estimated snow per lift from snow_summary_html, Temira's snow-forecast section, Chris
