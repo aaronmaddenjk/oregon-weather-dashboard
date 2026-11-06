@@ -69,7 +69,8 @@ ECON_LIGHT_FEEDS = {"obituary": "Obituary", "culture": "Culture", "science-and-t
                     "international": "International"}
 FUN_WORDS = re.compile(r"\?|\b(why|how|secret|strange|odd|weird|curious|joy|fun|funny|love|dog|cat|bird|food|pizza|"
                        r"wine|beer|chocolate|game|sport|music|song|art|film|movie|ghost|myster\w*|bizarre|tiny|giant)\b", re.I)
-SKIP = re.compile(r"newsletter|recruiting|transcript|podcast|quiz|crossword|cartoon|caption contest|briefly noted", re.I)
+SKIP = re.compile(r"newsletter|recruiting|transcript|podcast|quiz|crossword|cartoon|caption contest|briefly noted|"
+                  r"what to (watch|read|see|listen)|this week$|week ahead|^the week in|letters to the editor", re.I)
 
 # paper palette
 PAGE, CARD, INK, BODY, MUT, RULE = "#F2EEE6", "#FFFFFF", "#15171C", "#3F4450", "#7A7F8A", "#E7E2D9"
