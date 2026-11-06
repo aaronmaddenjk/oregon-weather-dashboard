@@ -265,6 +265,19 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   32F) are Pillow PNGs (chart_snow / chart_temps, drawn 3x and scaled to 1104 px), sent as INLINE attachments
   (Resend `attachments[].content_id`, Gmail SMTP multipart/related Content-ID) referenced as cid:snow / cid:temps;
   `--out` previews embed them as data: URIs. The table lost its High / low row. Fonts: DejaVu on the server, Arial on the PC.
+- DAILY READ EMAIL (owner, 2026-11-05; not weather): `reading_digest.py`, its own cron line on the server (7 AM daily,
+  log ~/dash/logs/reading.log), sent via newsletter.send(sender="Daily Read"). One big story + one lighter (fun-first)
+  piece from the CURRENT issues of The Economist and The New Yorker, alternating magazines; .cache/reading_log.json =
+  what was sent (no repeats). Only headlines/subheads/pictures/links - never article text (library licences; owner
+  asked, declined: automated Gale/PressReader extraction is against their terms). Economist -> PressReader search
+  (cid 7434; RSS feeds only, economist.com pages 403 the server; cover = PressReader's public t.prcdn.co thumbnail);
+  New Yorker -> Gale Academic OneFile via WCCLS EZproxy (gale(): issue date = cover date - 7 days, AU~ author search
+  = one result; Talk of the Town is one authorless Gale doc -> TI~ title search); Libby (wccls) has NY issues too.
+  `--week` dry-runs 7 days of picks, `--out x.html --date D` previews. Owner's companion tools live OUTSIDE this
+  repo: Documents\reader-mode (Chrome reader-view extension, auto-opens Gale articles; Readability for other sites)
+  and Documents\economist-pressreader (extension). Also checked: The Atlantic is current only on PressReader (cid 9ly6;
+  Gale stops 2018); NYT via WCCLS 72-hour passes; WaPo / Guardian / New York Mag / Businessweek on PressReader -
+  owner kept it to Economist + New Yorker for now.
 - HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
   index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
   `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site

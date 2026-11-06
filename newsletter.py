@@ -365,7 +365,7 @@ def build(D, inline="data"):
     return f"Mt Hood · {head}", doc, text, images
 
 
-def send(subject, doc, text, images=None):
+def send(subject, doc, text, images=None, sender="Oregon Weather"):
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(ROOT, ".env"))
@@ -382,7 +382,7 @@ def send(subject, doc, text, images=None):
         import requests
         r = requests.post("https://api.resend.com/emails", timeout=60,
                           headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                          json={"from": os.environ.get("NEWSLETTER_FROM") or "Oregon Weather <onboarding@resend.dev>",
+                          json={"from": os.environ.get("NEWSLETTER_FROM") or f"{sender} <onboarding@resend.dev>",
                                 "to": [to], "subject": subject, "html": doc, "text": text,
                                 "attachments": [{"filename": f"{k}.png", "content": base64.b64encode(v).decode(),
                                                  "content_id": k} for k, v in (images or {}).items()]})
@@ -397,7 +397,7 @@ def send(subject, doc, text, images=None):
         print("newsletter: not configured (RESEND_API_KEY, or GMAIL_USER + GMAIL_APP_PASSWORD, in .env) - not sent")
         return False
     m = MIMEMultipart("related")
-    m["Subject"], m["From"], m["To"] = subject, f"Oregon Weather <{user}>", to
+    m["Subject"], m["From"], m["To"] = subject, f"{sender} <{user}>", to
     alt = MIMEMultipart("alternative")
     alt.attach(MIMEText(text, "plain", "utf-8"))
     alt.attach(MIMEText(doc, "html", "utf-8"))
