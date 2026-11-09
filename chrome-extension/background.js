@@ -27,12 +27,14 @@ const TITLE = "Save this trail to your trails (right-click: save and open the fo
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({ id: "forecast", title: "Save and open the forecast", contexts: ["action"] });
   chrome.contextMenus.create({ id: "all", title: "Save every trail tab in this window (Alt+Shift+A)", contexts: ["action"] });
+  chrome.contextMenus.create({ id: "collect", title: "Collect trail links as I scroll (again: add them to my list)", contexts: ["action"] });
   chrome.contextMenus.create({ id: "list", title: "Open your trail list", contexts: ["action"] });
 });
-chrome.commands.onCommand.addListener((cmd, tab) => { if (cmd === "save-all") saveAll(tab); });
+chrome.commands.onCommand.addListener((cmd, tab) => { if (cmd === "save-all") saveAll(tab); if (cmd === "collect") collect(tab); });
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "forecast") forecast(tab);
   if (info.menuItemId === "all") saveAll(tab);
+  if (info.menuItemId === "collect") collect(tab);
   if (info.menuItemId === "list") chrome.tabs.create({ url: chrome.runtime.getURL("list.html") });
 });
 // the trail list page (list.html) asks for a fresh look at trails.json for its Saved marks
@@ -42,7 +44,55 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     return true;
   }
   if (msg && msg.type === "saveTabs" && Array.isArray(msg.items)) { saveTabs(msg.items); reply(true); }
+  // the link collector in an AllTrails tab: its running count on that tab's button
+  if (msg && msg.type === "collectCount" && sender.tab) badge(sender.tab.id, String(Math.min(msg.n, 9999)), "Collecting trail links: " + msg.n + " so far. Keep scrolling, then right-click → Collect trail links again to add them to your list", "#525D45");
 });
+
+// ---------- collect trail links while you scroll an AllTrails list (owner, 2026-11-08) ----------
+// Replaces the F12 console snippet: the first click starts recording every trail link that appears on
+// the page as YOU scroll (AllTrails drops rows that scroll away, so it keeps them as they pass); the
+// second click stops and adds the new ones to the trail list (list.html), skipping trails already in it
+// or already saved. It only reads link addresses on the page you're on; it never scrolls or opens anything.
+async function collect(tab) {
+  if (!/^https:\/\/(www\.)?alltrails\.com\//.test(tab.url || ""))
+    return badge(tab.id, "?", "Open an AllTrails page with a trail list (explore map, a park, a search), then try again");
+  let result;
+  try { [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: collectToggle }); }
+  catch (e) { return badge(tab.id, "!", "Couldn't start collecting here: " + e.message); }
+  if (!result.done) return badge(tab.id, String(result.n), "Collecting trail links: scroll the list, then right-click → Collect trail links again to add them", "#525D45");
+  const { trailList = [] } = await chrome.storage.local.get("trailList");
+  const have = new Set(trailList.map((it) => linkKey(it.u))), saved = await savedLinks();
+  let added = 0, already = 0;
+  for (const u of result.links) {
+    const k = linkKey(u);
+    if (!k || have.has(k)) continue;
+    if (saved[k]) { already++; continue; }
+    have.add(k); trailList.push({ u, opened: false }); added++;
+  }
+  await chrome.storage.local.set({ trailList });
+  badge(tab.id, "+" + added, "Added " + added + " new trail link" + (added === 1 ? "" : "s") + " to your trail list"
+    + (already ? " (" + already + " already saved, skipped)" : "") + ". Right-click → Open your trail list to save them.", "#525D45");
+}
+// runs in the AllTrails page: start recording (returns {done:false, n}) or stop (returns {done:true, links})
+function collectToggle() {
+  if (window.__wxcTimer) {
+    clearInterval(window.__wxcTimer); window.__wxcTimer = null;
+    const links = [...(window.__wxc || [])]; window.__wxc = null;
+    return { done: true, links };
+  }
+  window.__wxc = new Set();
+  let last = -1;
+  const scan = () => {
+    document.querySelectorAll('a[href*="/trail/"]').forEach((a) => {
+      const m = a.href.match(/^https:\/\/www\.alltrails\.com\/(?:explore\/)?trail\/[^/?#]+\/[^/?#]+\/[^/?#]+/);
+      if (m) window.__wxc.add(m[0].replace("/explore/", "/"));
+    });
+    if (window.__wxc.size !== last) { last = window.__wxc.size; chrome.runtime.sendMessage({ type: "collectCount", n: last }).catch(() => {}); }
+  };
+  scan();
+  window.__wxcTimer = setInterval(scan, 500);
+  return { done: false, n: window.__wxc.size };
+}
 chrome.action.onClicked.addListener((tab) => save(tab));
 
 async function readRoute(tab) {

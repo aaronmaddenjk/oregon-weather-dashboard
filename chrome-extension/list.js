@@ -20,7 +20,13 @@ async function load() {
   list = v.trailList; saved = v.saved;
   render();
 }
-function store() { return chrome.storage.local.set({ trailList: list }); }
+// write the list, keeping any links the collector added meanwhile (they'd be lost if we overwrote them)
+async function store() {
+  const { trailList: now = [] } = await chrome.storage.local.get("trailList");
+  const have = new Set(list.map((it) => linkKey(it.u)));
+  now.forEach((it) => { if (!have.has(linkKey(it.u))) { have.add(linkKey(it.u)); list.push(it); } });
+  return chrome.storage.local.set({ trailList: list });
+}
 const isSaved = (it) => !!saved[linkKey(it.u)];
 const todo = () => list.filter((it) => !it.opened && !it.failed && !isSaved(it));
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -76,7 +82,7 @@ $("next").addEventListener("click", async () => {
 $("reset").addEventListener("click", () => { list.forEach((it) => { if (!isSaved(it)) { it.opened = false; delete it.failed; } }); store(); render(); });
 $("clear").addEventListener("click", () => {
   if ($("clear").dataset.sure !== "1") { $("clear").dataset.sure = "1"; $("clear").textContent = "Click again to clear"; return; }
-  list = []; store(); render(); $("clear").dataset.sure = ""; $("clear").textContent = "Clear the list";
+  list = []; chrome.storage.local.set({ trailList: [] }); render(); $("clear").dataset.sure = ""; $("clear").textContent = "Clear the list";
 });
 // background.js reports each trail of the batch
 chrome.runtime.onMessage.addListener((msg) => {
@@ -90,6 +96,11 @@ chrome.runtime.onMessage.addListener((msg) => {
   } else { store(); render(); }
 });
 // a trail saved anywhere: its row turns Saved
-chrome.storage.onChanged.addListener((ch, area) => { if (area === "local" && ch.saved) { saved = ch.saved.newValue || {}; render(); } });
+chrome.storage.onChanged.addListener((ch, area) => {
+  if (area !== "local") return;
+  if (ch.saved) { saved = ch.saved.newValue || {}; render(); }
+  // links added by the collector (background.js) while this page is open; not mid-batch, which holds its own rows
+  if (ch.trailList && !running && JSON.stringify(ch.trailList.newValue) !== JSON.stringify(list)) { list = ch.trailList.newValue || []; render(); }
+});
 chrome.runtime.sendMessage({ type: "refreshSaved" }).catch(() => {});   // pull your trails.json for the Saved marks
 load();

@@ -148,6 +148,12 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   One batch per click, never continuing by itself; batch fixed at 20 (owner).
   Extension 2.0: ✓ marks read wx-trails' trails.json via the GitHub API with a key pasted in the extension's
   options (chrome.storage.local ghToken; checked against the repo before it's kept). Without it, ✓ = this browser's saves only.
+  Extension 2.2 (owner, 2026-11-08; replaces the F12 console snippet): right-click "Collect trail links as I scroll" /
+  Alt+Shift+C (assign by hand at chrome://extensions/shortcuts - new suggested keys aren't applied on reload) toggles
+  `collectToggle` in an AllTrails tab: records every /trail/ link that appears while the owner scrolls (rows that
+  scroll away are kept), the badge counts; the second click adds new ones to trailList (list.html), skipping
+  links already listed or saved. Reads link addresses only; never scrolls or opens pages. list.js store() merges
+  with storage (so a batch can't overwrite collected links); Clear writes [] directly.
 - Trail Sections tab (page6, `sections.py`, owner 2026-10-07): 57 named OR/WA areas to work through by hand
   on AllTrails. Live progress: WxMine's trails counted into the box holding most of each trail's points, drawn
   on an SVG map (no Mapbox map load); "done" ticks in sections.json in wx-trails (same wx-gh-token),

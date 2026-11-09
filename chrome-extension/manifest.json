@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trail Forecast for AllTrails, onX and Trailforks",
-  "version": "2.1",
+  "version": "2.2",
   "description": "On an AllTrails trail page, a Trailforks trail or route, or a route or track in the onX Backcountry web map, click to save it to your trails in your Oregon Weather dashboard (right-click: save and open its forecast).",
   "action": {
     "default_title": "Save this trail to your trails (right-click: save and open the forecast)",
@@ -9,7 +9,8 @@
   },
   "commands": {
     "_execute_action": { "suggested_key": { "default": "Alt+Shift+S" }, "description": "Save this trail to your trails" },
-    "save-all": { "suggested_key": { "default": "Alt+Shift+A" }, "description": "Save every trail tab in this window" }
+    "save-all": { "suggested_key": { "default": "Alt+Shift+A" }, "description": "Save every trail tab in this window" },
+    "collect": { "suggested_key": { "default": "Alt+Shift+C" }, "description": "Collect trail links as I scroll (again: add them to my trail list)" }
   },
   "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
   "background": { "service_worker": "background.js" },
