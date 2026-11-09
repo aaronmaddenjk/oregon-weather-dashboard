@@ -145,7 +145,8 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   woken, one at a time).
   Extension 1.9 (owner asked, 2026-10-08): the trail list's "Open and save next 20" opens 20 unsaved links (0.7 s
   apart), background.js saves each (saveTabs) and closes its tab; failures stay open and show their reason.
-  One batch per click, never continuing by itself; batch 50, tabs opened 1.5 s apart (owner: 20 -> 50 on 2026-11-08;
+  One batch per click, never continuing by itself; batch 20, tabs opened 4 s apart (2.4: 50 at 1.5 s triggered AllTrails'
+  "Verification Required" bot check on 2026-11-08 - don't raise it again, never automate that check; owner had 20 -> 50 earlier that day;
   declined twice: auto-continuing through the whole list, even slowly at 20 s/trail).
   Extension 2.0: ✓ marks read wx-trails' trails.json via the GitHub API with a key pasted in the extension's
   options (chrome.storage.local ghToken; checked against the repo before it's kept). Without it, ✓ = this browser's saves only.

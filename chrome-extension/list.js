@@ -1,10 +1,11 @@
-// Trail list: links you collected (a notepad file or a paste). "Open and save next 50" opens the next 50
-// unsaved links as background tabs (1.5 s apart) and hands them to background.js, which saves each one
+// Trail list: links you collected (a notepad file or a paste). "Open and save next 20" opens the next 20
+// unsaved links as background tabs (4 s apart) and hands them to background.js, which saves each one
 // (one at a time) and closes its tab; a tab that fails stays open. One batch per click, never continuing
-// by itself (owner's choice, 2026-10-08; batch 20 -> 50 on 2026-11-08). Rows turn Saved / Failed as background.js reports back.
+// by itself (owner's choice, 2026-10-08; 50 at 1.5 s got the owner AllTrails' "Verification Required" check on
+// 2026-11-08, so back to 20 at 4 s apart: about the pace of opening them by hand). Rows turn Saved / Failed as background.js reports back.
 // State in chrome.storage.local: trailList = [{u, opened, failed}].
 const $ = (id) => document.getElementById(id);
-const BATCH = 50;
+const BATCH = 20;
 let list = [], saved = {}, running = null;   // running: {total, done, ok, timer}
 
 // same key as background.js: host + path, /explore/ dropped, no trailing slash
@@ -71,7 +72,7 @@ $("next").addEventListener("click", async () => {
     const t = await chrome.tabs.create({ url: it.u, active: false });
     it.opened = true; delete it.failed;
     items.push({ tabId: t.id, url: it.u });
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 4000));
   }
   await store();
   $("msg").textContent = "Saving each one; tabs close as they're saved. You can keep using Chrome meanwhile.";

@@ -30,8 +30,8 @@
 </head>
 <body>
   <h1>Trail list</h1>
-  <p>Paste trail links (one per line, any notepad file) or load a .txt file. <b>Open and save next 50</b> opens the next 50 you haven't saved as background tabs,
-    saves each to your trails and closes its tab. One batch per click; a tab that can't be saved stays open so you can see why. Trails already in your trails are skipped.</p>
+  <p>Paste trail links (one per line, any notepad file) or load a .txt file. <b>Open and save next 20</b> opens the next 20 you haven't saved as background tabs,
+    saves each to your trails and closes its tab. One batch per click; a tab that can't be saved stays open so you can see why. Trails already in your trails are skipped. Keep it to a couple of batches per sitting: AllTrails shows a verification check when too many trails open too fast.</p>
   <textarea id="paste" placeholder="https://www.alltrails.com/trail/us/oregon/..."></textarea>
   <div class="row">
     <button id="add">Add these links</button>
@@ -39,7 +39,7 @@
     <span class="msg" id="msg"></span>
   </div>
   <div class="row">
-    <button class="go" id="next">Open and save next 50</button>
+    <button class="go" id="next">Open and save next 20</button>
     <span class="msg" id="prog"></span>
     <button id="reset" title="Let failed or opened links be tried again (saved ones stay saved)">Retry failed</button>
     <button id="clear">Clear the list</button>
