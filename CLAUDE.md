@@ -156,6 +156,23 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   scroll away are kept), the badge counts; the second click adds new ones to trailList (list.html), skipping
   links already listed or saved. Reads link addresses only; never scrolls or opens pages. list.js store() merges
   with storage (so a batch can't overwrite collected links); Clear writes [] directly.
+- PNW 1000 (owner, 2026-11-08: "my own version of AllTrails", the 1000 best OR/WA hikes, AllTrails-free):
+  `tools/pnw1000/`. hikes/<section id>.json = Claude's own list (name, type out|loop, start/via/to as
+  [OSM name, rough lat, rough lon], rough round-trip mi, rank in the area, a one-line blurb in our own words -
+  never copied from AllTrails/WTA/guidebooks). `build.py <section> [--compare trails.json]` downloads OSM for the
+  section (Overpass, User-Agent, cached 30 days in .cache/pnw1000/osm-*.json), matches every place BY NAME within
+  5 km of its rough spot (start prefers trailhead/parking, goals prefer peak/waterfall/etc.; nothing is guessed:
+  no match = FAILED), routes on OSM paths/tracks (roads cost more; loops avoid their outbound trail), elevation like
+  trail_explorer, writes .cache/pnw1000/<section>.json + gpx/. `near.py <section> lat lon [radius] [word]` lists
+  OSM's names near a spot to fix failures (my names/coords are often off: Wiesendanger, Nesmith 2 km). Features
+  missing in OSM go to "missing_in_osm" (Wind Mountain). `publish.py` merges all sections -> wx-trails pnw1000.json
+  (gh CLI). Pilot: or-columbia-gorge-west 18/18 routed; vs the owner's AllTrails copies 90-100% overlap where the
+  same hike. Plan: ~1000 hikes over the 57 sections weighted by area (40-60 big areas, 5-10 quiet ones).
+  Dashboard: `window.WxP1K` (TRAILS_JS; WxMine.file('pnw1000.json'), keyed like your trails; `use(list)` for tests)
+  - Map tab Trails panel "Show: PNW 1000" (amber #C98A1B, rows src 'p1k' with [16] blurb [17] rank [18] id [19] type;
+  card: blurb, round trip, Download GPX via window.WxGPX, OSM credit) and Trail Sections (bar "PNW 1000 in your
+  trails", per-area chip + list; "in your trails" = >=60% of the hike within 50 m of a saved trail; Forecast/GPX).
+  Credit "© OpenStreetMap contributors" wherever routes show (ODbL).
 - Trail Sections tab (page6, `sections.py`, owner 2026-10-07): 57 named OR/WA areas to work through by hand
   on AllTrails. Live progress: WxMine's trails counted into the box holding most of each trail's points, drawn
   on an SVG map (no Mapbox map load); "done" ticks in sections.json in wx-trails (same wx-gh-token),

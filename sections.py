@@ -161,6 +161,12 @@ html[data-theme=dark] .sx-row .at { color:#B9A0E0; }
 .sx-row .at:hover { text-decoration:underline; text-underline-offset:2px; }
 .sx-row .at:focus-visible, .sx-row summary:focus-visible, .sx-tr button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
 .sx-row details { grid-column:2/4; }
+.sx-row .chip.p1k { background:#F6EAD3; color:#8A5A0B; }
+html[data-theme=dark] .sx-row .chip.p1k { background:#3A2E18; color:#E2B25A; }
+.sx-row details.p1k summary { color:#A8700F; }
+html[data-theme=dark] .sx-row details.p1k summary { color:#E2B25A; }
+.sx-tr .ok { color:#2F7A45; font-weight:800; }
+html[data-theme=dark] .sx-tr .ok { color:#7FC48F; }
 .sx-row summary { width:max-content; max-width:100%; cursor:pointer; font-size:12px; font-weight:700; color:#8E2F63; }
 .sx-trs { list-style:none; margin:6px 0 2px; padding:0; columns:2 250px; column-gap:20px; }
 .sx-tr { break-inside:avoid; display:flex; align-items:baseline; gap:6px; padding:2px 0; font-size:12.5px; }
@@ -210,6 +216,24 @@ function count(){var list=window.WxMine?window.WxMine.list():[];
     var t={name:m.name||'Trail',mi:m.mi,act:m.act==='mtb'?'mtb':'hike',dif:m.dif||'',link:m.link||'',p:m.p,pts:pts,k:best};
     if(best>=0)BY[best].push(t);else if(pts.length)OUT.push(t);return t;});
   BY.forEach(function(a){a.sort(function(x,y){return x.name.localeCompare(y.name);});});}
+
+// ---------- PNW 1000 (tools/pnw1000, window.WxP1K): each hike sits in its own area (h.section). It's "in your
+// trails" when at least 60% of it lies within 50 m of a trail you've saved. Recounted only when either list changes. ----------
+var P1K_C='#C98A1B',PK=[],pkDirty=true;
+function mDist(a,b){var la=(a[1]+b[1])/2*Math.PI/180;return Math.hypot((b[0]-a[0])*111320*Math.cos(la),(b[1]-a[1])*111320);}
+function dense(pts,step){var out=[];for(var i=0;i<pts.length;i++){var p=pts[i];
+  if(i){var q=pts[i-1],n=Math.floor(mDist(q,p)/step);for(var j=1;j<=n;j++)out.push([q[0]+(p[0]-q[0])*j/(n+1),q[1]+(p[1]-q[1])*j/(n+1)]);}
+  out.push(p);}return out;}
+function countP1K(){if(!pkDirty)return;pkDirty=false;
+  var list=window.WxP1K?window.WxP1K.list():[],ix={},g={};SECS.forEach(function(s,k){ix[s.id]=k;});
+  PK=SECS.map(function(){return[];});if(!list.length)return;
+  TR.forEach(function(t){dense(t.pts,25).forEach(function(p){var c=Math.floor(p[0]*1000)+','+Math.floor(p[1]*1000);(g[c]=g[c]||[]).push(p);});});
+  list.forEach(function(h){var k=ix[h.section];if(k==null)return;var pts=decode(h.p||''),probe=dense(pts,60),hit=0;
+    probe.forEach(function(p){var cx=Math.floor(p[0]*1000),cy=Math.floor(p[1]*1000);
+      for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++){var a=g[(cx+dx)+','+(cy+dy)];
+        if(a)for(var i=0;i<a.length;i++)if(mDist(p,a[i])<=50){hit++;return;}}});
+    PK[k].push({h:h,pts:pts,ok:probe.length>0&&hit/probe.length>=0.6});});
+  PK.forEach(function(a){a.sort(function(x,y){return (x.h.rank||999)-(y.h.rank||999);});});}
 
 // ---------- done ticks: sections.json on the trails branch (same GitHub key as your trails), plus this browser ----------
 var REPO='aaronmaddenjk/wx-trails',BR='main',API='https://api.github.com/repos/'+REPO+'/contents/sections.json',LKEY='wx-sections-done';
@@ -271,25 +295,31 @@ function drawMap(){var svg='<polygon class="land" points="'+pts(OR)+'"/><polygon
     svg+='<text class="cnt" text-anchor="middle" x="'+X((b[0]+b[2])/2).toFixed(1)+'" y="'+(Y((b[1]+b[3])/2)+4).toFixed(1)+'">'+n+'</text>';});
   var m=$('sx-map');m.setAttribute('viewBox','0 0 '+VW+' '+VH);m.innerHTML=svg;}
 function bar(label,a,n,col){return '<div class="sx-pg"><div class="t">'+label+'<b>'+a+' / '+n+'</b></div><div class="bar"><i style="width:'+(n?a/n*100:0).toFixed(1)+'%;background:'+col+'"></i></div></div>';}
-function render(){if(!built)return;count();
+function render(){if(!built)return;count();countP1K();
+  var pkN=0,pkOk=0;PK.forEach(function(a){pkN+=a.length;a.forEach(function(x){if(x.ok)pkOk++;});});
   var done=SECS.filter(function(s){return DONE[s.id];}).length,started=BY.filter(function(a){return a.length;}).length;
   var hikes=TR.filter(function(t){return t.act==='hike';}).length,mtb=TR.length-hikes;
-  $('sx-prog').innerHTML=bar('Sections done',done,SECS.length,'#2F7A45')+bar('Sections with your trails',started,SECS.length,'#B0457E')+
+  $('sx-prog').innerHTML=bar('Sections done',done,SECS.length,'#2F7A45')+bar('Sections with your trails',started,SECS.length,'#B0457E')+(pkN?bar('PNW 1000 in your trails',pkOk,pkN,P1K_C):'')+
     '<div class="sx-pg"><div class="t">Your trails<b>'+TR.length+'</b></div><div class="t" style="font-weight:600;text-transform:none;letter-spacing:0">'+hikes+' hikes · '+mtb+' MTB</div></div>';
   $('sx-note').textContent='Each trail counts in the area holding most of its points'+(OUT.length?' · '+OUT.length+' of yours are outside every area':'')+
     ' · outlines are approximate and some boxes overlap a little at the edges.';
   drawMap();list();}
 function list(){var html='';
   [['OR','Oregon'],['WA','Washington']].forEach(function(g){var rows='',n=0,d=0;
-    SECS.forEach(function(s,k){if(s.st!==g[0])return;var dn=DONE[s.id],mine=BY[k]||[];n++;if(dn)d++;
+    SECS.forEach(function(s,k){if(s.st!==g[0])return;var dn=DONE[s.id],mine=BY[k]||[],pk=PK[k]||[],pkOk=pk.filter(function(x){return x.ok;}).length;n++;if(dn)d++;
       if(filter==='todo'&&dn||filter==='done'&&!dn||filter==='mine'&&!mine.length)return;
       rows+='<li class="sx-row'+(dn?' done':'')+(k===hot?' hot':'')+'" data-k="'+k+'"><input type="checkbox" data-k="'+k+'" aria-label="'+esc(s.n)+' done"'+(dn?' checked':'')+'>'+
-        '<div><div class="nm">'+esc(s.n)+(mine.length?'<span class="chip">'+mine.length+' saved</span>':'')+'</div>'+
+        '<div><div class="nm">'+esc(s.n)+(mine.length?'<span class="chip">'+mine.length+' saved</span>':'')+(pk.length?'<span class="chip p1k" title="PNW 1000 hikes here that are in your trails">PNW 1000 '+pkOk+'/'+pk.length+'</span>':'')+'</div>'+
         '<div class="co">'+coords(s.b)+(dn?' · <em>done '+when(dn)+'</em>':'')+'</div></div>'+
         '<a class="at" href="'+link(s.b)+'" target="_blank" rel="noopener">Open on AllTrails ↗</a>'+
         (mine.length?'<details'+(openSet[s.id]?' open':'')+' data-id="'+s.id+'"><summary>Your '+mine.length+' saved trail'+(mine.length>1?'s':'')+'</summary><ul class="sx-trs">'+
           mine.map(function(t,j){return '<li class="sx-tr"><i style="background:'+colOf(t)+'"></i>'+(t.link?'<a href="'+esc(t.link)+'" target="_blank" rel="noopener">'+esc(t.name)+'</a>':esc(t.name))+
             ' <span>'+(t.mi!=null?t.mi+' mi':'')+(t.act==='mtb'?' · MTB':'')+'</span> <button type="button" data-k="'+k+'" data-j="'+j+'">Forecast</button></li>';}).join('')+
+          '</ul></details>':'')+
+        (pk.length?'<details class="p1k"'+(openSet[s.id+'-p1k']?' open':'')+' data-id="'+s.id+'-p1k"><summary>PNW 1000 here: '+pkOk+' of '+pk.length+' in your trails</summary><ul class="sx-trs">'+
+          pk.map(function(x,j){var h=x.h;return '<li class="sx-tr"><i style="background:'+P1K_C+'"></i>'+(x.ok?'<b class="ok" title="In your trails">\u2713</b> ':'')+esc(h.name)+
+            ' <span>'+(h.mi!=null?h.mi+' mi':'')+(h.type==='out'?' rt':'')+'</span> <button type="button" data-p="'+k+'" data-j="'+j+'">Forecast</button>'+
+            ' <button type="button" data-p="'+k+'" data-j="'+j+'" data-gpx="1">GPX</button></li>';}).join('')+
           '</ul></details>':'')+'</li>';});
     html+='<h2 class="sx-st">'+g[1]+'<b>'+d+' / '+n+' done</b></h2><ol class="sx-list">'+(rows||'<li class="sx-empty">Nothing here with this filter.</li>')+'</ol>';});
   $('sx-list').innerHTML=html;}
@@ -308,7 +338,10 @@ function build(){built=true;
   var L=$('sx-list');
   L.addEventListener('change',function(e){var c=e.target.closest('input[data-k]');if(c)setDone(SECS[+c.dataset.k].id,c.checked);});
   L.addEventListener('toggle',function(e){var d=e.target;if(d.dataset&&d.dataset.id){if(d.open)openSet[d.dataset.id]=1;else delete openSet[d.dataset.id];}},true);
-  L.addEventListener('click',function(e){var b=e.target.closest('.sx-tr button');if(!b)return;var t=BY[+b.dataset.k][+b.dataset.j];
+  L.addEventListener('click',function(e){var b=e.target.closest('.sx-tr button');if(!b)return;
+    if(b.dataset.p!=null){var x=PK[+b.dataset.p][+b.dataset.j];if(!x)return;   // a PNW 1000 hike
+      if(b.dataset.gpx){if(window.WxGPX)window.WxGPX(x.h.name,x.pts);}else if(window.openTrailForecast)window.openTrailForecast(x.h.p,x.h.name,'');return;}
+    var t=BY[+b.dataset.k][+b.dataset.j];
     if(t&&window.openTrailForecast)window.openTrailForecast(t.p,t.name,t.link);});
   L.addEventListener('mouseover',function(e){var r=e.target.closest('.sx-row');setHot(r?+r.dataset.k:-1);});
   L.addEventListener('mouseleave',function(){setHot(-1);});
@@ -316,10 +349,12 @@ function build(){built=true;
   M.addEventListener('click',function(e){var r=e.target.closest('.box');if(r)focusRow(+r.dataset.k);});
   M.addEventListener('keydown',function(e){var r=e.target.closest('.box');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();focusRow(+r.dataset.k);}});
   render();loadDone();
-  if(window.WxMine)window.WxMine.load();}   // the latest list from GitHub; WxMine.on redraws
+  if(window.WxMine)window.WxMine.load();   // the latest list from GitHub; WxMine.on redraws
+  if(window.WxP1K)window.WxP1K.load();}
 // shown for the first time (showTab's data-init)
 window.sectionsShown=function(){if(!built)build();};
-if(window.WxMine)window.WxMine.on(function(){render();});
+if(window.WxMine)window.WxMine.on(function(){pkDirty=true;render();});
+if(window.WxP1K)window.WxP1K.on(function(){pkDirty=true;render();});
 window.addEventListener('storage',function(e){if(!built)return;if(e.key==='wx-mytrails'&&window.WxMine)window.WxMine.load();if(e.key===LKEY){DONE=localGet();render();}});
 })();
 """

@@ -480,7 +480,7 @@ TRAILS_PANEL_HTML = """
     <label>High point<select id="ex-hi"><option value="">Any</option><option value="4000">Above 4,000\u2032</option>
       <option value="6000">Above 6,000\u2032</option><option value="8000">Above 8,000\u2032</option></select></label>
     <label>Show<select id="ex-src"><option value="mine-hike" selected>Your hikes</option><option value="mine-mtb">Your MTB trails</option>
-      <option value="mine">All your trails</option></select></label>
+      <option value="mine">All your trails</option><option value="p1k">PNW 1000</option></select></label>
   </div>
   <div class="ex-mine-row"><label class="ex-add"><input type="file" id="ex-gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
     + Add your GPX</label>
@@ -491,7 +491,8 @@ TRAILS_PANEL_HTML = """
     <option value="mi">Length</option><option value="gain">Gain</option><option value="hi">High point</option></select></label></div>
   <ol class="ex-list" id="ex-list"></ol>
   <p class="ex-foot">Your trails: saved from AllTrails, onX and Trailforks with the Chrome extension, or added as GPX.
-    Gain and high point from Mapbox terrain, climbing from the low end. Kept in your private GitHub repo, so every device you connect sees them.</p>
+    Gain and high point from Mapbox terrain, climbing from the low end. Kept in your private GitHub repo, so every device you connect sees them.
+    PNW 1000: our own list of the best Oregon and Washington hikes, routed on OpenStreetMap data (© OpenStreetMap contributors, ODbL).</p>
 </aside>
 """
 
@@ -569,6 +570,8 @@ TRAILS_CSS = r"""
 .ex-list .n { font-size:13px; font-weight:700; color:var(--ink); }
 .ex-list .n span, .ex-list .m { font-size:11.5px; font-weight:400; color:var(--mut2); font-variant-numeric:tabular-nums; }
 .ex-list .more { color:var(--mut2); font-size:12px; cursor:default; }
+.ex-blurb { margin:0 0 10px; font-size:12.5px; line-height:1.5; color:var(--ink2); }
+.ex-credit { flex-basis:100%; font-size:10.5px; color:var(--faint); }
 .ex-foot { margin:0; font-size:10.5px; color:var(--faint); line-height:1.5; }
 .lyr-ctl .lyr-trl.active { background:#EFE8F8; color:#4B2A7A; box-shadow:inset 0 0 0 1px #6B3FA8; }
 @media (max-width:1000px) { .rmap-row.trl { grid-template-columns:minmax(0,1fr); } .ex-side { height:auto; min-height:0; } }
@@ -582,8 +585,11 @@ var USE={h:'Hiking',b:'Bikes',r:'Horses',m:'Motorized'};
 // your trails' colours: hikes raspberry; MTB trails by Trailforks difficulty (purple = access road / fire road)
 var HIKE_C='#B0457E',MTB_C='#1E8A5A',DIF={green:{c:'#2F9E44',k:'Green'},blue:{c:'#1C6FD9',k:'Blue'},black:{c:'#1B1B1B',k:'Black'},
   dblack:{c:'#1B1B1B',k:'Double black'},access:{c:'#7E3FB8',k:'Access / fire road'}};
-function mineCol(t){return t.act==='mtb'?(DIF[t.dif]?DIF[t.dif].c:MTB_C):HIKE_C;}
-function agOf(t){return t.src==='mine'?(t.act==='mtb'?'Your MTB trail'+(DIF[t.dif]?' \u00B7 '+DIF[t.dif].k:''):'Your hike'):AG[t.src];}
+// PNW 1000 hikes (OSM-routed, tools/pnw1000) in amber, apart from your trails
+var P1K_C='#C98A1B';
+function mineCol(t){return t.src==='p1k'?P1K_C:t.act==='mtb'?(DIF[t.dif]?DIF[t.dif].c:MTB_C):HIKE_C;}
+function agOf(t){if(t.src==='p1k')return 'PNW 1000'+(t.rank?' \u00B7 #'+t.rank+' in its area':'')+(t.ptype==='out'?' \u00B7 out and back':t.ptype==='loop'?' \u00B7 loop':'');
+  return t.src==='mine'?(t.act==='mtb'?'Your MTB trail'+(DIF[t.dif]?' \u00B7 '+DIF[t.dif].k:''):'Your hike'):AG[t.src];}
 function siteOf(u){return window.WxSiteName?window.WxSiteName(u):/onxmaps\.com/.test(u)?'onX':/trailforks\.com/.test(u)?'Trailforks':'AllTrails';}
 var MINE_KEY='wx-mytrails',DATA=null;
 // average grade of a mile of climb: one orange ramp, light to dark (downhill/flat miles stay grey)
@@ -665,15 +671,35 @@ window.WxMine=(function(){
     if(!token()&&list.some(function(x){return key(x)===k&&x.synced;}))throw new Error('Connect GitHub (below) to remove it from every device');
     if(token())merge(await push(function(c){return c.filter(function(x){return key(x)!==k;});},'Trails: remove'));
     list=list.filter(function(x){return key(x)!==k;});localSet(list);fire();}
+  async function file(name){   // another JSON file in the private repo (pnw1000.json); null if it isn't there
+    if(!token())throw new Error('nokey');
+    var r=await fetch('https://api.github.com/repos/'+REPO+'/contents/'+name+'?ref='+BR,{headers:hdr(true),cache:'no-store'});
+    if(r.status===404)return null;if(!r.ok)throw new Error('GitHub said '+r.status);return r.json();}
   async function connect(tok){   // check the key can write to the repo before keeping it
     var r=await fetch('https://api.github.com/repos/'+REPO,{headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+tok}});
     if(!r.ok)throw new Error(r.status===401?'GitHub didn’t accept that key':r.status===404?NOREPO:'GitHub said '+r.status);
     var j=await r.json();if(j.permissions&&!j.permissions.push)throw new Error('that key can read but not write: give it Contents → Read and write');
     localStorage.setItem(KEY,tok);return load();}
-  return{list:function(){return list;},load:load,save:save,remove:remove,connect:connect,key:key,error:function(){return err;},
+  return{list:function(){return list;},load:load,save:save,remove:remove,connect:connect,key:key,file:file,error:function(){return err;},
     connected:function(){return!!token();},disconnect:function(){try{localStorage.removeItem(KEY);}catch(e){}fire();},
     on:function(f){subs.push(f);}};
 })();
+// ---------- PNW 1000: pnw1000.json in the same private repo (tools/pnw1000/publish.py writes it) ----------
+// [{id, name, section, rank, type: out|loop, blurb, mi (round trip), gain, hi, lo, p (polyline), prof}]
+window.WxP1K=(function(){var list=[],p=null,subs=[];
+  function fire(){subs.forEach(function(f){try{f(list);}catch(e){}});}
+  function load(){if(!p)p=window.WxMine.file('pnw1000.json').then(function(d){list=Array.isArray(d)?d:[];fire();return list;},
+    function(){p=null;return list;});return p;}
+  return{load:load,list:function(){return list;},on:function(f){subs.push(f);},
+    use:function(d){list=d||[];p=Promise.resolve(list);fire();}};   // use(): a list handed in directly (testing)
+})();
+// a trail's line as a GPX file the browser saves
+window.WxGPX=function(name,pts){var x=function(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});};
+  var g='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Oregon Weather dashboard (OSM data \u00A9 OpenStreetMap contributors, ODbL)" xmlns="http://www.topografix.com/GPX/1/1">\n<trk><name>'+x(name)+'</name><trkseg>'+
+    pts.map(function(q){return '<trkpt lat="'+q[1].toFixed(6)+'" lon="'+q[0].toFixed(6)+'"/>';}).join('')+'</trkseg></trk>\n</gpx>\n';
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([g],{type:'application/gpx+xml'}));
+  a.download=name.replace(/[^A-Za-z0-9 ._-]+/g,'').trim().replace(/\s+/g,'-')+'.gpx';document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);};
 function allTrails(bb){   // AllTrails' explore map on this area (its search box doesn't take a URL query)
   var px=Math.max(0.01,(bb[2]-bb[0])*0.25),py=Math.max(0.008,(bb[3]-bb[1])*0.25),f=function(v){return v.toFixed(4);};
   return 'https://www.alltrails.com/explore?b_tl_lat='+f(bb[3]+py)+'&b_tl_lng='+f(bb[0]-px)+'&b_br_lat='+f(bb[1]-py)+'&b_br_lng='+f(bb[2]+px);}
@@ -688,23 +714,27 @@ window.TrailsLayer=function(map,opt){
     parts.forEach(function(p){p.forEach(function(q){if(q[0]<bb[0])bb[0]=q[0];if(q[1]<bb[1])bb[1]=q[1];if(q[0]>bb[2])bb[2]=q[0];if(q[1]>bb[3])bb[3]=q[1];});});
     var t={i:i,name:r[ix.name],num:r[ix.num]||'',src:r[ix.src],mi:r[ix.mi],uses:r[ix.uses]||'',gain:r[ix.gain],hi:r[ix.hi],lo:r[ix.lo],
       diff:ix.diff!=null?r[ix.diff]:null,line:r[ix.line],parts:parts,bb:bb,ok:true,
-      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||'',act:r[13]||'',dif:r[14]||'',loss:r[15]==null?null:r[15]};
-    // your trails: [12] source page, [13] hike | mtb, [14] Trailforks difficulty, [15] descent (ft)
+      prof:ix.prof!=null?r[ix.prof]:'',link:r[12]||'',act:r[13]||'',dif:r[14]||'',loss:r[15]==null?null:r[15],
+      blurb:r[16]||'',rank:r[17]||null,pid:r[18]||'',ptype:r[19]||''};
+    // your trails: [12] source page, [13] hike | mtb, [14] Trailforks difficulty, [15] descent (ft);
+    // PNW 1000: [16] blurb, [17] rank in its area, [18] id, [19] out | loop
     t.lc=(t.name+' '+t.num).toLowerCase();return t;}
   function mineRows(){return readMine().map(function(m){var mtb=m.act==='mtb';   // act: hike | mtb (older entries: hike)
     var loss=m.loss!=null?m.loss:window.WxDescent?window.WxDescent(m.prof||[]):null;   // older entries: from the profile
     return[m.name,'','mine',m.mi,mtb?'b':'h',m.gain,m.hi,m.lo,m.p,[],null,m.prof||[],m.link||'',mtb?'mtb':'hike',m.dif||'',loss];});}
+  function p1kRows(){return window.WxP1K.list().map(function(h){
+    return[h.name,'','p1k',h.mi,'h',h.gain,h.hi,h.lo,h.p,[],null,h.prof||[],'','hike','',null,h.blurb||'',h.rank||null,h.id,h.type];});}
   function features(){return{type:'FeatureCollection',features:T.map(function(t){return{type:'Feature',geometry:{type:'MultiLineString',coordinates:t.parts},
     properties:{i:t.i,lc:t.lc,src:t.src,act:t.act,dif:t.dif,mi:t.mi,gain:t.gain==null?-1:t.gain,hi:t.hi==null?-1:t.hi,
       b:t.uses.indexOf('b')>=0?1:0,r:t.uses.indexOf('r')>=0?1:0,m:t.uses.indexOf('m')>=0?1:0}};})};}
   function build(d){var ix={};d.fields.forEach(function(f,k){ix[f]=k;});
-    var rows=d.trails.concat(mineRows());T=rows.map(function(r,i){return trail(r,ix,i);});}
+    var rows=d.trails.concat(mineRows()).concat(p1kRows());T=rows.map(function(r,i){return trail(r,ix,i);});}
   function addLayers(){
     map.addSource('trl',{type:'geojson',data:features(),tolerance:0.6});
-    var before=opt.beforeId,mine=['==',['get','src'],'mine'];   // zoom must be the top-level input
-    var w=['interpolate',['linear'],['zoom'],5,['case',mine,0.9,0.5],9,['case',mine,2.1,1.3],14,['case',mine,4.8,3]];
+    var before=opt.beforeId,mine=['==',['get','src'],'mine'],own=['match',['get','src'],['mine','p1k'],true,false];   // zoom must be the top-level input
+    var w=['interpolate',['linear'],['zoom'],5,['case',own,0.9,0.5],9,['case',own,2.1,1.3],14,['case',own,4.8,3]];
     map.addLayer({id:'trl-line',type:'line',source:'trl',layout:{'line-join':'round','line-cap':'round',visibility:'none'},
-      paint:{'line-color':['case',['all',mine,['==',['get','act'],'mtb']],['match',['get','dif'],'green',DIF.green.c,'blue',DIF.blue.c,'black',DIF.black.c,'dblack',DIF.dblack.c,'access',DIF.access.c,MTB_C],
+      paint:{'line-color':['case',['==',['get','src'],'p1k'],P1K_C,['all',mine,['==',['get','act'],'mtb']],['match',['get','dif'],'green',DIF.green.c,'blue',DIF.blue.c,'black',DIF.black.c,'dblack',DIF.dblack.c,'access',DIF.access.c,MTB_C],
         mine,HIKE_C,'#1F3A52'],'line-width':w,'line-opacity':0.85}},before);   // your MTB trails by difficulty, your hikes raspberry
     map.addLayer({id:'trl-hover',type:'line',source:'trl',filter:['==',['get','i'],-1],layout:{'line-join':'round','line-cap':'round',visibility:'none'},
       paint:{'line-color':'#525D45','line-width':['interpolate',['linear'],['zoom'],5,2,14,5],'line-opacity':0.55}},before);
@@ -753,7 +783,7 @@ window.TrailsLayer=function(map,opt){
     rows.sort(k==='name'?function(a,b){return a.name.localeCompare(b.name);}:function(a,b){return (b[k]==null?-1:b[k])-(a[k]==null?-1:a[k]);});
     $('ex-count').innerHTML='<b>'+all.toLocaleString('en-US')+'</b> match';
     $('ex-inview').innerHTML='<b>'+rows.length.toLocaleString('en-US')+'</b> in view';
-    var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'?'mine':'')+'"'+(t.src==='mine'?' style="--mc:'+mineCol(t)+'"':'')+'><div class="n">'+esc(t.name)+
+    var html=rows.slice(0,150).map(function(t){return '<li data-i="'+t.i+'" class="'+(t.i===sel?'sel ':'')+(t.src==='mine'||t.src==='p1k'?'mine':'')+'"'+(t.src==='mine'||t.src==='p1k'?' style="--mc:'+mineCol(t)+'"':'')+'><div class="n">'+esc(t.name)+
       (t.num?' <span>#'+esc(t.num)+'</span>':'')+'</div><div class="m">'+meta(t)+' \u00B7 '+agOf(t)+'</div></li>';}).join('');
     if(rows.length>150)html+='<li class="more">Zoom in to see the other '+(rows.length-150).toLocaleString('en-US')+'</li>';
     if(!rows.length)html='<li class="more">'+(all?'None of them in view. Zoom out to find them.':'None saved yet. Save one from AllTrails, onX or Trailforks with the extension, or add a GPX.')+'</li>';
@@ -768,19 +798,22 @@ window.TrailsLayer=function(map,opt){
     if(!P){if(window.openTrailForecast&&opt.onPick)opt.onPick(t);return;}
     var uses=t.uses.split('').filter(function(u){return USE[u];}).map(function(u){return '<span>'+USE[u]+'</span>';}).join('');
     if(t.diff)uses+='<span>'+esc(t.diff)+'</span>';
-    var card=$('ex-card');card.className='ex-card'+(t.src==='mine'?' mine':'');card.style.setProperty('--mc',t.src==='mine'?mineCol(t):'');
+    var card=$('ex-card'),own=t.src==='mine'||t.src==='p1k';card.className='ex-card'+(own?' mine':'');card.style.setProperty('--mc',own?mineCol(t):'');
     card.innerHTML='<button class="ex-x" type="button" aria-label="Close">×</button><h3>'+esc(t.name)+'</h3><div class="ex-sub">'+(t.num?'Trail #'+esc(t.num)+' \u00B7 ':'')+agOf(t)+'</div>'+
-      '<div class="ex-stats"><div>Length<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
+      (t.blurb?'<p class="ex-blurb">'+esc(t.blurb)+'</p>':'')+
+      '<div class="ex-stats"><div>'+(t.ptype==='out'?'Round trip':'Length')+'<b>'+t.mi.toFixed(1)+' mi</b></div><div>Gain<b>'+fmt(t.gain)+'\u2032</b></div>'+
       (t.act==='mtb'&&t.loss!=null?'<div>Descent<b>'+fmt(t.loss)+'\u2032</b></div>':'<div>High<b>'+fmt(t.hi)+'\u2032</b></div>')+'<div>Low<b>'+fmt(t.lo)+'\u2032</b></div></div>'+
       '<div class="ex-prof"></div>'+(uses?'<div class="ex-uses">'+uses+'</div>':'')+
       '<div class="ex-acts"><button class="ex-go" type="button">Forecast this trail</button>'+
-      (t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+siteOf(t.link)+' \u2197</a>':'')+
+      (t.src==='p1k'?'<button class="ex-del ex-gpx" type="button">Download GPX</button><span class="ex-credit">Route: \u00A9 OpenStreetMap contributors</span>':
+       t.src==='mine'?(t.link?'<a target="_blank" rel="noopener" href="'+esc(t.link)+'">'+siteOf(t.link)+' \u2197</a>':'')+
         '<button class="ex-del" type="button">Remove</button>':'<a target="_blank" rel="noopener" href="'+allTrails(t.bb)+'">Nearby hikes on AllTrails \u2197</a>')+'</div>';
     card.hidden=false;
     chart(card.querySelector('.ex-prof'),t);
     if(t.src==='mine'&&!(t.prof&&t.prof.length))backfill(t,card);
     card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
-    var del=card.querySelector('.ex-del');if(del)del.onclick=function(){removeMine(t,del);};
+    var del=card.querySelector('.ex-del:not(.ex-gpx)');if(del)del.onclick=function(){removeMine(t,del);};
+    var gx=card.querySelector('.ex-gpx');if(gx)gx.onclick=function(){window.WxGPX(t.name,t.parts[0]);};
     card.querySelector('.ex-x').onclick=deselect;
     P.querySelectorAll('.ex-list li.sel').forEach(function(li){li.classList.remove('sel');});
     var li=P.querySelector('.ex-list li[data-i="'+i+'"]');if(li)li.classList.add('sel');}
@@ -892,11 +925,12 @@ window.TrailsLayer=function(map,opt){
   }
   // GitHub's list arrived or changed: redraw
   window.WxMine.on(function(){syncUI();if(ready)ready.then(refresh);});
+  window.WxP1K.on(function(){if(ready)ready.then(refresh);});
 
   return{
     show:function(v){on=v;if(P){P.hidden=!v;P.parentNode.classList.toggle('trl',v);setTimeout(function(){map.resize();},0);}
       if(v&&!ready){ready=loadData().then(function(d){build(d);addLayers();apply();}).catch(function(){if(P)$('ex-count').textContent='Trail data isn\u2019t available in this build.';});
-        window.WxMine.load();}
+        window.WxMine.load();window.WxP1K.load();}
       if(ready)ready.then(function(){vis(on);if(on)list();});
       if(!v&&tip)tip.hidden=true;},
     // the map's mousemove: a trail under the pointer gets the tip (return true), else the weather does
