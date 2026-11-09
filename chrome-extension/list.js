@@ -1,10 +1,10 @@
-// Trail list: links you collected (a notepad file or a paste). "Open and save next 20" opens the next 20
-// unsaved links as background tabs (0.7 s apart) and hands them to background.js, which saves each one
+// Trail list: links you collected (a notepad file or a paste). "Open and save next 50" opens the next 50
+// unsaved links as background tabs (1.5 s apart) and hands them to background.js, which saves each one
 // (one at a time) and closes its tab; a tab that fails stays open. One batch per click, never continuing
-// by itself (owner's choice, 2026-10-08). Rows turn Saved / Failed as background.js reports back.
+// by itself (owner's choice, 2026-10-08; batch 20 -> 50 on 2026-11-08). Rows turn Saved / Failed as background.js reports back.
 // State in chrome.storage.local: trailList = [{u, opened, failed}].
 const $ = (id) => document.getElementById(id);
-const BATCH = 20;
+const BATCH = 50;
 let list = [], saved = {}, running = null;   // running: {total, done, ok, timer}
 
 // same key as background.js: host + path, /explore/ dropped, no trailing slash
@@ -71,11 +71,11 @@ $("next").addEventListener("click", async () => {
     const t = await chrome.tabs.create({ url: it.u, active: false });
     it.opened = true; delete it.failed;
     items.push({ tabId: t.id, url: it.u });
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 1500));
   }
   await store();
   $("msg").textContent = "Saving each one; tabs close as they're saved. You can keep using Chrome meanwhile.";
-  running.timer = setTimeout(() => finish("Stopped waiting after 10 minutes; anything unfinished can be retried."), 10 * 60 * 1000);
+  running.timer = setTimeout(() => finish("Stopped waiting after 25 minutes; anything unfinished can be retried."), 25 * 60 * 1000);
   render();
   chrome.runtime.sendMessage({ type: "saveTabs", items }).catch(() => finish("Couldn't reach the extension's background; reload it at chrome://extensions."));
 });
