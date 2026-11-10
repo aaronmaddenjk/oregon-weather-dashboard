@@ -1,18 +1,18 @@
 {
- "updated": "2026-11-09T12:11+00:00",
+ "updated": "2026-11-10T12:10+00:00",
  "window": [
-  "2026-09-25",
-  "2026-11-08"
+  "2026-09-26",
+  "2026-11-09"
  ],
- "wet_station_days": 344,
+ "wet_station_days": 343,
  "trust": 0.92,
  "weights": {
-  "ncep_nbm_conus": 0.339,
-  "ecmwf_ifs": 0.239,
-  "gem_hrdps_continental": 0.157,
-  "ncep_hrrr_conus": 0.082,
-  "icon_seamless": 0.095,
-  "gfs_global": 0.088
+  "ncep_nbm_conus": 0.338,
+  "ecmwf_ifs": 0.24,
+  "gem_hrdps_continental": 0.155,
+  "ncep_hrrr_conus": 0.081,
+  "icon_seamless": 0.096,
+  "gfs_global": 0.09
  },
- "qpf_scale": 1.141
+ "qpf_scale": 1.149
 }
