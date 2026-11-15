@@ -1,0 +1,5 @@
+{"section": "wa-teanaway-cle-elum", "hikes": [
+  {"id": "bean-creek-basin", "name": "Bean Creek Basin", "type": "out", "rank": 1, "start": ["Bean Creek Trailhead", 47.325, -120.834], "to": ["Bean Creek Basin", 47.348, -120.817], "mi": 5.0, "blurb": "Up a steep creek into a hidden basin of spring flowers under Mt Stuart's southern ridges."},
+  {"id": "red-top-lookout", "name": "Red Top Lookout", "type": "out", "rank": 2, "start": ["Red Top Trailhead", 47.29667, -120.75939], "to": ["Red Top Mountain", 47.30168, -120.76075], "mi": 1.5, "blurb": "A short climb to a staffed lookout over the Teanaway, near agate beds."},
+  {"id": "earl-peak", "name": "Earl Peak", "type": "out", "rank": 4, "start": ["Stafford Creek Trailhead", 47.373, -120.8], "to": ["Earl Peak", 47.36, -120.77], "mi": 8.0, "blurb": "A big climb up a dry ridge to a summit facing the Stuart Range."}
+]}

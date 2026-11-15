@@ -167,7 +167,16 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   OSM's names near a spot to fix failures (my names/coords are often off: Wiesendanger, Nesmith 2 km). Features
   missing in OSM go to "missing_in_osm" (Wind Mountain). `publish.py` merges all sections -> wx-trails pnw1000.json
   (gh CLI). Pilot: or-columbia-gorge-west 18/18 routed; vs the owner's AllTrails copies 90-100% overlap where the
-  same hike. Plan: ~1000 hikes over the 57 sections weighted by area (40-60 big areas, 5-10 quiet ones).
+  same hike. Phase 1 (2026-11-09): hand lists for all sections, ~370 routed. build.py downloads OSM per cluster of
+  hikes (osmb-* boxes), accepts an exact name up to 12 km off, never reuses the start as the destination, and falls
+  back to the nearest named trailhead/parking/campground when "X Trailhead" isn't in OSM. `fix.py <section> '{json}'`
+  patches + reroutes hikes (null drops one). Phase 2 (owner: "tighten the filter", good hikes only, ~700 not a padded
+  1000): `candidates.py` finds named peaks/falls/lakes/lookouts reachable mostly on trail; `adopt.py` keeps only
+  `worth()` ones (falls, lookouts; summits 1,500'+ round-trip climbing at 200'/mi, or a Wikipedia article; lakes 2 mi+;
+  no 12 mi+ hauls to unremarkable hills) with factual blurbs (src "osm-candidate"); `dedupe.py`. Big runs go on the
+  Oracle server in ~/pnw1000-work (apart from ~/dash; publishing stays on the PC - no wx-trails key on the server).
+  OVERPASS: parallel builds and ~3 GB/day of downloads got both IPs blocked (2026-11-08/11) - never run more than
+  one at a time; bulk work uses Geofabrik extracts instead.
   Dashboard: `window.WxP1K` (TRAILS_JS; WxMine.file('pnw1000.json'), keyed like your trails; `use(list)` for tests)
   - Map tab Trails panel "Show: PNW 1000" (amber #C98A1B, rows src 'p1k' with [16] blurb [17] rank [18] id [19] type;
   card: blurb, round trip, Download GPX via window.WxGPX, OSM credit) and Trail Sections (bar "PNW 1000 in your

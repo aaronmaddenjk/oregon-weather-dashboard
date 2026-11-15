@@ -1,0 +1,4 @@
+{"section": "wa-olympia-tacoma-capitol-forest", "hikes": [
+  {"id": "mima-mounds", "name": "Mima Mounds", "type": "out", "rank": 2, "start": ["Mima Mounds Natural Area Preserve", 46.905, -123.048], "to": ["Mima Mounds", 46.903, -123.05], "mi": 2.0, "blurb": "A prairie of mysterious grass-covered hummocks, blue with camas in spring."},
+  {"id": "tumwater-falls", "name": "Tumwater Falls", "type": "out", "rank": 3, "start": ["Tumwater Falls Park", 47.014, -122.904], "to": ["Tumwater Falls", 47.012, -122.904], "mi": 0.8, "blurb": "A short loop down both banks of the Deschutes River's falls at the head of Budd Inlet."}
+]}

@@ -1,0 +1,199 @@
+{
+ "section": "wa-leavenworth-enchantments-wenatchee",
+ "hikes": [
+  {
+   "id": "colchuck-lake",
+   "name": "Colchuck Lake",
+   "type": "out",
+   "rank": 1,
+   "start": [
+    "Stuart Lake Trailhead",
+    47.528,
+    -120.821
+   ],
+   "to": [
+    "Colchuck Lake",
+    47.498,
+    -120.834
+   ],
+   "mi": 8.0,
+   "blurb": "A steep, rocky climb to a glacier-green lake under Dragontail and Colchuck Peaks."
+  },
+  {
+   "id": "aasgard-pass",
+   "name": "Aasgard Pass",
+   "type": "out",
+   "rank": 4,
+   "start": [
+    "Stuart Lake Trailhead",
+    47.528,
+    -120.821
+   ],
+   "via": [
+    [
+     "Colchuck Lake",
+     47.498,
+     -120.834
+    ]
+   ],
+   "to": [
+    "Aasgard Pass",
+    47.488,
+    -120.823
+   ],
+   "mi": 11.0,
+   "blurb": "Past Colchuck Lake and straight up a 2,000-foot boulder gully to the edge of the Enchantments' upper basin."
+  },
+  {
+   "id": "lake-stuart",
+   "name": "Lake Stuart",
+   "type": "out",
+   "rank": 5,
+   "start": [
+    "Stuart Lake Trailhead",
+    47.528,
+    -120.821
+   ],
+   "to": [
+    "Lake Stuart",
+    47.513,
+    -120.869
+   ],
+   "mi": 9.0,
+   "blurb": "Up Mountaineer Creek through meadows to a long lake with Mt Stuart's granite face at its head."
+  },
+  {
+   "id": "lake-ingalls",
+   "name": "Ingalls Pass",
+   "type": "out",
+   "rank": 2,
+   "start": [
+    "Esmeralda Trailhead",
+    47.436,
+    -120.936
+   ],
+   "to": [
+    "Ingalls Pass",
+    47.45933,
+    -120.93537
+   ],
+   "mi": 7.0,
+   "blurb": "Up switchbacks to a larch-filled pass facing Mt Stuart, with Lake Ingalls in the basin beyond."
+  },
+  {
+   "id": "snow-lakes",
+   "name": "Nada and Snow Lakes",
+   "type": "out",
+   "rank": 3,
+   "start": [
+    "Snow Lakes Trailhead",
+    47.543,
+    -120.71
+   ],
+   "via": [
+    [
+     "Nada Lake",
+     47.513,
+     -120.741
+    ]
+   ],
+   "to": [
+    "Snow Lakes Backcountry Camping",
+    47.48146,
+    -120.75639
+   ],
+   "mi": 13.0,
+   "blurb": "The long, hot climb from Icicle Creek to two lake basins on the doorstep of the Enchantments."
+  },
+  {
+   "id": "eightmile-lake",
+   "name": "Eightmile Lake",
+   "type": "out",
+   "rank": 6,
+   "start": [
+    "Eightmile Trailhead",
+    47.553,
+    -120.776
+   ],
+   "to": [
+    "Eightmile Lake",
+    47.542,
+    -120.815
+   ],
+   "mi": 6.6,
+   "blurb": "Through the regrowing 2012 burn to a lake in a granite cirque."
+  },
+  {
+   "id": "longs-pass",
+   "name": "Longs Pass",
+   "type": "out",
+   "rank": 7,
+   "start": [
+    "Esmeralda Trailhead",
+    47.436,
+    -120.936
+   ],
+   "to": [
+    "Longs Pass",
+    47.451,
+    -120.93
+   ],
+   "mi": 4.6,
+   "blurb": "A short, steep pull to a pass that looks straight across Ingalls Creek at Mt Stuart."
+  },
+  {
+   "id": "navaho-pass",
+   "name": "Navaho Pass",
+   "type": "out",
+   "rank": 9,
+   "start": [
+    "Stafford Creek Trailhead",
+    47.373,
+    -120.8
+   ],
+   "to": [
+    "Navaho Pass",
+    47.426,
+    -120.759
+   ],
+   "mi": 13.0,
+   "blurb": "Up Stafford Creek to an open pass of flowers and rock with the Stuart Range in a long line to the north."
+  },
+  {
+   "id": "sauers-mountain",
+   "name": "Sauer's Mountain",
+   "type": "out",
+   "rank": 10,
+   "start": [
+    "Sauer's Mountain Trailhead",
+    47.595,
+    -120.617
+   ],
+   "to": [
+    "Sauer's Mountain",
+    47.606,
+    -120.628
+   ],
+   "mi": 6.0,
+   "blurb": "Spring balsamroot slopes above Peshastin to a summit looking up the Icicle at the Enchantments."
+  },
+  {
+   "id": "saddle-rock",
+   "name": "Saddle Rock",
+   "type": "out",
+   "rank": 11,
+   "start": [
+    "Saddle Rock Trailhead",
+    47.403,
+    -120.329
+   ],
+   "to": [
+    "Saddle Rock",
+    47.398,
+    -120.336
+   ],
+   "mi": 2.6,
+   "blurb": "A short, steep climb in the Wenatchee foothills to a rock gap over the city and the Columbia."
+  }
+ ]
+}

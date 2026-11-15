@@ -1,0 +1,4 @@
+{"section": "wa-spokane-mt-spokane", "hikes": [
+  {"id": "bowl-and-pitcher", "name": "Bowl and Pitcher", "type": "out", "rank": 1, "start": ["Bowl and Pitcher", 47.6965, -117.4965], "to": ["Bowl and Pitcher", 47.6995, -117.4985], "mi": 2.0, "blurb": "Over a swinging bridge on the Spokane River to giant basalt boulders in Riverside State Park."},
+  {"id": "mount-spokane", "name": "Mount Spokane", "type": "out", "rank": 3, "start": ["Bald Knob Campground", 47.91, -117.12], "to": ["Mount Spokane", 47.922, -117.113], "mi": 3.0, "blurb": "To the top of the Spokane area's mountain, a stone vista house and four states in view."}
+]}

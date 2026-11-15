@@ -1,0 +1,11 @@
+{
+  "section": "wa-mt-adams-indian-heaven",
+  "hikes": [
+    {"id": "mount-adams-south-climb", "name": "Mount Adams South Climb", "type": "out", "rank": 1, "start": ["Cold Springs Campground", 46.135, -121.497], "via": [["Lunch Counter", 46.176, -121.49]], "to": ["Mount Adams", 46.2025, -121.4909], "mi": 12.0, "blurb": "Washington's second-highest peak without ropes for most: a long snow climb past the Lunch Counter to a flat 12,276-foot summit (climbing permit)."},
+    {"id": "killen-creek", "name": "Killen Creek to High Camp", "type": "out", "rank": 2, "start": ["Killen Creek Trailhead", 46.288, -121.553], "to": ["High Camp", 46.241, -121.532], "mi": 8.0, "blurb": "Up meadows on Adams' north side to a high bench right under the Adams Glacier's icefall."},
+    {"id": "bird-creek-meadows", "name": "Bird Creek Meadows", "type": "out", "rank": 3, "start": ["Bird Lake", 46.163, -121.487], "to": ["Hellroaring Viewpoint", 46.17, -121.47], "mi": 5.0, "blurb": "Wildflower meadows and waterfalls on Yakama Nation land, to a rim above Hellroaring Canyon and the Mazama Glacier."},
+    {"id": "thomas-lake", "name": "Thomas Lake and Indian Heaven Lakes", "type": "out", "rank": 4, "start": ["Thomas Lake Trailhead", 45.958, -121.813], "via": [["Thomas Lake", 45.964, -121.794]], "to": ["Blue Lake", 45.986, -121.778], "mi": 7.0, "blurb": "Into Indian Heaven's maze of lakes and huckleberry meadows on a gentle volcanic plateau."},
+    {"id": "sleeping-beauty", "name": "Sleeping Beauty", "type": "out", "rank": 5, "start": ["Sleeping Beauty Trailhead", 46.096, -121.67], "to": ["Sleeping Beauty", 46.11, -121.659], "mi": 2.8, "blurb": "A short, steep climb to an old lookout site on a rock knob facing Mt Adams."},
+    {"id": "sawtooth-mountain", "name": "Sawtooth Mountain", "type": "out", "rank": 6, "start": ["Sawtooth Trailhead", 46.07, -121.792], "to": ["Sawtooth Mountain", 46.058, -121.782], "mi": 3.0, "blurb": "Above the huckleberry fields to a jagged ridge with Adams, St Helens, Rainier and Hood."}
+  ]
+}

@@ -1,0 +1,5 @@
+{"section": "wa-kitsap-hood-canal-port-townsend", "hikes": [
+  {"id": "mount-walker", "name": "Mount Walker", "type": "out", "rank": 1, "start": ["Mount Walker Trailhead", 47.781, -122.913], "to": ["Mount Walker", 47.787, -122.914], "mi": 4.0, "blurb": "A steady climb through rhododendrons to two viewpoints, one over the Olympics and one across Puget Sound to Rainier."},
+  {"id": "fort-worden", "name": "Fort Worden and Point Wilson", "type": "out", "rank": 3, "start": ["Fort Worden State Park", 48.136, -122.765], "to": ["Point Wilson Lighthouse", 48.144, -122.755], "mi": 2.0, "blurb": "Past old coastal gun batteries on a bluff to a lighthouse where the Strait meets Puget Sound."},
+  {"id": "green-mountain-kitsap", "name": "Green Mountain", "type": "out", "rank": 4, "start": ["Green Mountain Trailhead", 47.555, -122.815], "to": ["Green Mountain", 47.564, -122.82], "mi": 4.0, "blurb": "Kitsap's best viewpoint, over the Sound to Seattle, Rainier and Baker."}
+]}

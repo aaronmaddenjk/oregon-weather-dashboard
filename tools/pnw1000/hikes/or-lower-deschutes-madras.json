@@ -1,0 +1,4 @@
+{"section": "or-lower-deschutes-madras", "hikes": [
+  {"id": "white-river-falls", "name": "White River Falls", "type": "out", "rank": 1, "start": ["White River Falls State Park", 45.243, -121.096], "to": ["White River Falls", 45.242, -121.097], "mi": 0.6, "blurb": "Down to a desert falls and an old powerhouse in a basalt canyon above the Deschutes."},
+  {"id": "tam-a-lau", "name": "Tam-a-lau Trail (Cove Palisades)", "type": "out", "rank": 2, "start": ["Tam-a-lau Trailhead", 44.548, -121.282], "to": ["The Peninsula", 44.552, -121.311], "mi": 6.6, "blurb": "Up onto a plateau between the Crooked and Deschutes canyons, Lake Billy Chinook below and Jefferson beyond."}
+]}

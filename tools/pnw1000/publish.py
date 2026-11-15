@@ -25,7 +25,7 @@ def gh(*args, input_file=None):
 def main():
     hikes = []
     for f in sorted(glob.glob(os.path.join(CACHE, "*.json"))):
-        if os.path.basename(f).startswith("osm-"):
+        if not os.path.exists(os.path.join(ROOT, "tools", "pnw1000", "hikes", os.path.basename(f))):   # only routed sections, not OSM downloads
             continue
         with open(f, encoding="utf-8") as fh:
             hikes.extend(json.load(fh))

@@ -1,0 +1,4 @@
+{"section": "or-steens-alvord", "hikes": [
+  {"id": "wildhorse-lake", "name": "Wildhorse Lake", "type": "out", "rank": 1, "start": ["Wildhorse Lake Trailhead", 42.635, -118.58], "to": ["Wildhorse Lake", 42.628, -118.59], "mi": 2.6, "blurb": "Steeply down from Steens Mountain's summit road into a glacial cirque cradling a high-desert lake."},
+  {"id": "steens-summit", "name": "Steens Mountain Summit", "type": "out", "rank": 2, "start": ["Wildhorse Lake Trailhead", 42.635, -118.58], "to": ["Steens Mountain", 42.6366, -118.5774], "mi": 1.0, "blurb": "A short walk to the top of a 50-mile fault block, a mile above the white Alvord Desert."}
+]}

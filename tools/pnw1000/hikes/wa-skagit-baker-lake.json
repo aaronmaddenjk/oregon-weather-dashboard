@@ -1,0 +1,4 @@
+{"section": "wa-skagit-baker-lake", "hikes": [
+  {"id": "sauk-mountain", "name": "Sauk Mountain", "type": "out", "rank": 1, "start": ["Sauk Mountain Trailhead", 48.517, -121.606], "to": ["Sauk Mountain", 48.522, -121.605], "mi": 4.2, "blurb": "Switchbacks up a meadow face of flowers to a summit over the Skagit with Baker, Shuksan and Glacier Peak."},
+  {"id": "little-mountain", "name": "Little Mountain", "type": "out", "rank": 2, "start": ["Little Mountain Park", 48.4, -122.31], "to": ["Little Mountain", 48.404, -122.302], "mi": 3.0, "blurb": "A forested in-town summit with a lookout over the Skagit flats and the San Juans."}
+]}

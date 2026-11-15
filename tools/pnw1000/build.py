@@ -47,24 +47,84 @@ def section_box(sid):
     raise SystemExit(f"no section {sid}")
 
 
-def osm(sid):
-    path = os.path.join(CACHE, f"osm-{sid}.json")
+def _fetch(path, w, s, e, n):
     if os.path.exists(path) and time.time() - os.path.getmtime(path) < 30 * 86400:
         with open(path, encoding="utf-8") as f:
             return json.load(f)
-    w, s, e, n = section_box(sid)
-    bb = f"{s - .05},{w - .05},{n + .05},{e + .05}"
+    bb = f"{s},{w},{n},{e}"
     q = (f'[out:json][timeout:240];'
          f'way["highway"~"^({"|".join(COST)})$"]({bb})->.w; .w out geom;'
          f'(node["name"]({bb}); way["name"]["natural"]({bb}); way["name"]["amenity"="parking"]({bb});'
          f' way["name"]["highway"="trailhead"]({bb}); way["name"]["waterway"="waterfall"]({bb});'
-         f' way["name"]["tourism"]({bb}); way["name"]["leisure"]({bb}););out center;')
-    r = requests.post("https://overpass-api.de/api/interpreter", data={"data": q}, headers=UA, timeout=300)
-    r.raise_for_status()
+         f' way["name"]["tourism"]({bb}); way["name"]["leisure"]({bb}); relation["name"]["natural"]({bb}););out center;')
+    for attempt in range(12):
+        try:
+            r = requests.post("https://overpass-api.de/api/interpreter", data={"data": q}, headers=UA, timeout=300)
+            if r.status_code in (429, 502, 503, 504):
+                raise requests.HTTPError(str(r.status_code))
+            r.raise_for_status()
+            break
+        except (requests.RequestException, ValueError) as ex:
+            if attempt == 11:
+                raise
+            print(f"  (Overpass {ex}; retrying)", flush=True)
+            time.sleep(min(120, 20 * (attempt + 1)))
     os.makedirs(CACHE, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         f.write(r.text)
+    time.sleep(8)   # be gentle with the public Overpass server (parallel builds got this IP blocked once)
     return r.json()
+
+
+def osm(sid):
+    """the whole section in one download (the pilot); big sections use osm_box per cluster of hikes"""
+    w, s, e, n = section_box(sid)
+    return _fetch(os.path.join(CACHE, f"osm-{sid}.json"), w - .05, s - .05, e + .05, n + .05)
+
+
+def osm_box(box):
+    """OSM for a box (w, s, e, n), cached by its rounded corners; reuses the pilot's section file when it covers it"""
+    w, s, e, n = box
+    for sid_file in os.listdir(CACHE) if os.path.isdir(CACHE) else ():
+        if sid_file.startswith("osm-or-") or sid_file.startswith("osm-wa-"):
+            sw, ss, se, sn = section_box(sid_file[4:-5])
+            if sw - .05 <= w and ss - .05 <= s and se + .05 >= e and sn + .05 >= n:
+                return _fetch(os.path.join(CACHE, sid_file), sw - .05, ss - .05, se + .05, sn + .05)
+    for f in os.listdir(CACHE) if os.path.isdir(CACHE) else ():   # an earlier download that already covers it
+        if f.startswith("osmb-"):
+            cw, cs, ce, cn = map(float, f[5:-5].split("_"))
+            if cw <= w + .02 and cs <= s + .02 and ce >= e - .02 and cn >= n - .02:
+                return _fetch(os.path.join(CACHE, f), cw, cs, ce, cn)
+    k = "_".join(f"{v:.2f}" for v in box)
+    return _fetch(os.path.join(CACHE, f"osmb-{k}.json"), w, s, e, n)
+
+
+PAD = 0.045   # degrees around a hike's places (~4-5 km), so routes can wander and rough spots can be off
+
+
+def clusters(hikes):
+    """group hikes whose padded boxes overlap into one OSM download each -> [(box, [hikes])]"""
+    out = []
+    for h in hikes:
+        pl = [h["start"]] + h.get("via", []) + ([h["to"]] if h.get("to") else [])
+        b = [min(p[2] for p in pl) - PAD, min(p[1] for p in pl) - PAD, max(p[2] for p in pl) + PAD, max(p[1] for p in pl) + PAD]
+        out.append((b, [h]))
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(out)):
+            for j in range(i + 1, len(out)):
+                a, b = out[i][0], out[j][0]
+                if a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]:
+                    u = [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
+                    if (u[2] - u[0]) * (u[3] - u[1]) <= 0.16:   # keep each download moderate
+                        out[i] = (u, out[i][1] + out[j][1])
+                        del out[j]
+                        merged = True
+                        break
+            if merged:
+                break
+    return [([round(v, 2) for v in b], hs) for b, hs in out]
 
 
 def m(a, b):   # metres between (lon, lat) points
@@ -106,16 +166,25 @@ class Net:
             if nid in self.adj:
                 self.grid[(int(p[0] * 100), int(p[1] * 100))].append(nid)
 
-    def find(self, name, lat, lon, start=False, radius=5000):   # rough locations can be a few km off
-        """the OSM feature matching `name` near (lat, lon) -> (name, (lon, lat), kind) or None"""
+    def find(self, name, lat, lon, start=False, radius=5000, avoid=()):   # rough locations can be a few km off
+        """the OSM feature matching `name` near (lat, lon) -> (name, (lon, lat), kind) or None.
+        Partial matches count within `radius`; an exact name up to 12 km away (my rough spots can be that far off),
+        scored a little lower the farther it is. `avoid` = points already used (a destination isn't the trailhead)."""
         q = norm(name)
         qt = set(q.split())
         best = None
         for nn, raw, p, kind in self.places:
+            if p in avoid:
+                continue
+            if start and "trailhead" in q and kind not in TRAILHEADISH and "trailhead" not in nn:
+                continue   # 'X Trailhead' is never X itself (the summit, falls or hot spring); else the nearest trailhead
             d = m((lon, lat), p)
             if d > radius:
-                continue
-            if nn == q:
+                if nn == q and d <= 12000:
+                    sc = 2.9 - (d - radius) / 20000
+                else:
+                    continue
+            elif nn == q:
                 sc = 3
             elif q in nn:
                 sc = 2
@@ -135,6 +204,29 @@ class Net:
             if best is None or key > best[0]:
                 best = (key, raw, p, kind)
         return best and best[1:]
+
+    GENERIC = {"trail", "trailhead", "th", "the", "of", "and", "falls", "lake", "mt", "peak", "creek", "park", "point",
+               "parking", "lookout", "loop", "river", "mountain", "butte", "ridge", "rock", "state", "area", "national"}
+
+    def suggest(self, name, lat, lon, radius=9000):
+        """OSM places near (lat, lon) sharing a real word with `name` - what to put in the hike list instead"""
+        qt = set(norm(name).split())
+        key = qt - self.GENERIC or qt
+        rows = []
+        for nn, raw, p, kind in self.places:
+            d = m((lon, lat), p)
+            if d <= radius and key & set(nn.split()):
+                rows.append((-len(key & set(nn.split())), d, raw, kind, p))
+        rows.sort()
+        seen, out = set(), []
+        for _, d, raw, kind, p in rows:
+            if (raw, kind) in seen:
+                continue
+            seen.add((raw, kind))
+            out.append(f"{raw} [{kind}] {p[1]:.5f},{p[0]:.5f} {d / 1000:.1f} km")
+            if len(out) == 5:
+                break
+        return out
 
     def snap(self, p, k=12, limit=450):
         """the nearest graph nodes to p (lon, lat), closest first, within `limit` metres"""
@@ -177,15 +269,31 @@ def route(net, hike):
         stops.append(("end", hike["start"]))
     else:
         stops.append(("to", hike["to"]))
-    found, nodes, notes = [], [], []
+    found, nodes, notes, start_f = [], [], [], None
     for role, (name, lat, lon) in stops:
-        f = net.find(name, lat, lon, start=role in ("start", "end"))
+        if role == "end":
+            f = start_f
+        else:
+            f = net.find(name, lat, lon, start=role == "start", avoid=() if role == "start" else used)
+        if not f and role == "start":   # the named trailhead isn't in OSM: the nearest named trailhead / parking instead
+            near = sorted((m((lon, lat), p), raw, p, kind) for nn, raw, p, kind in net.places
+                          if kind in ("trailhead", "parking", "camp_site") and m((lon, lat), p) <= 2500)
+            for d0, raw, p, kind in near:
+                if net.snap(p, limit=150)[0]:
+                    f = (raw, p, kind)
+                    notes = [f"start: no '{name}' in OSM, used the nearest trailhead '{raw}' ({d0 / 1000:.1f} km away)"]
+                    break
+        if role == "start":
+            start_f = f
         if not f:
-            return None, f"no OSM place named like '{name}' near there", found
-        cand, d = net.snap(f[1])
+            s = net.suggest(name, lat, lon)
+            return None, f"no OSM place named like '{name}' near there" + ("\n            try: " + "\n                 ".join(s) if s else " (nothing similar within 9 km)"), found
+        cand, d = net.snap(f[1], limit=800 if role == "to" else 450)   # a summit can sit a little off the trail's end
         if not cand:
-            return None, f"'{f[0]}' is more than 450 m from any trail", found
-        found.append((role, name, f[0], f[2], round(d)))
+            return None, f"'{f[0]}' is more than {800 if role == 'to' else 450} m from any trail", found
+        if role == "start":
+            used = {f[1]}
+        found.append((role, name, f[0], f[2], round(d), round(m((lon, lat), f[1]))))
         nodes.append(cand)
     extra, line, oneway_m = {}, [], 0.0
     for i in range(len(nodes) - 1):
@@ -290,24 +398,45 @@ def gpx(h, line):
 
 
 def main():
+    if os.name == "nt":   # keep the PC from sleeping while this runs (ES_CONTINUOUS | ES_SYSTEM_REQUIRED), like publish.ps1
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000001)
     ap = argparse.ArgumentParser()
     ap.add_argument("section")
     ap.add_argument("--compare", help="your trails.json, to score against your saved routes")
+    ap.add_argument("--only", help="comma-separated hike ids (the others keep their last result)")
+    ap.add_argument("--verbose", action="store_true", help="list every matched place, not just doubtful ones")
     args = ap.parse_args()
     from dotenv import load_dotenv
     load_dotenv(os.path.join(ROOT, ".env"))
     token = os.environ.get("MAPBOX_TOKEN")
     with open(os.path.join(HIKES, args.section + ".json"), encoding="utf-8") as f:
         spec = json.load(f)
-    net = Net(osm(args.section))
+    hikes = spec["hikes"]
+    if args.only:
+        hikes = [h for h in hikes if h["id"] in args.only.split(",")]
+    nets = {}
+    if os.path.exists(os.path.join(CACHE, f"osm-{args.section}.json")):
+        whole = Net(osm(args.section))
+        for h in hikes:
+            nets[h["id"]] = whole
+    else:
+        want = {h["id"] for h in hikes}
+        cl = [(b, [h for h in hs if h["id"] in want]) for b, hs in clusters(spec["hikes"])]   # same boxes as the full run
+        cl = [c for c in cl if c[1]]
+        print(f"{len(hikes)} hikes, {len(cl)} OSM downloads", flush=True)
+        for box, hs in cl:
+            net = Net(osm_box(box))
+            for h in hs:
+                nets[h["id"]] = net
     saved = []
     if args.compare:
         with open(args.compare, encoding="utf-8-sig") as f:
             saved = json.load(f)
     os.makedirs(os.path.join(CACHE, "gpx"), exist_ok=True)
     out, rows = [], []
-    for h in spec["hikes"]:
-        line, why, found = route(net, h)
+    for h in hikes:
+        line, why, found = route(nets[h["id"]], h)
         if not line:
             rows.append((h, None, why, found, None))
             continue
@@ -317,6 +446,8 @@ def main():
         gain = ev["up"] + ev["down"] if h["type"] == "out" else (ev["up"] if line[0] == line[-1] else max(ev["up"], ev["down"]))
         ratio = mi / h["mi"] if h.get("mi") else 1
         flag = "" if 0.65 <= ratio <= 1.5 else f"length {mi:.1f} mi vs ~{h['mi']} expected"
+        if why:   # route notes, e.g. a substituted trailhead
+            flag = "; ".join([flag] + why if flag else why)
         cmp = None
         s = best_saved(h, saved)
         if s:
@@ -329,7 +460,13 @@ def main():
         with open(os.path.join(CACHE, "gpx", h["id"] + ".gpx"), "w", encoding="utf-8") as f:
             f.write(gpx(h, line))
         rows.append((h, rec, flag, found, cmp))
-    with open(os.path.join(CACHE, args.section + ".json"), "w", encoding="utf-8") as f:
+    outp = os.path.join(CACHE, args.section + ".json")
+    if args.only and os.path.exists(outp):   # keep the hikes not rebuilt this time
+        with open(outp, encoding="utf-8") as f:
+            keep = [r for r in json.load(f) if r["id"] not in {h["id"] for h in hikes}]
+        order = {h["id"]: i for i, h in enumerate(spec["hikes"])}
+        out = sorted(keep + out, key=lambda r: order.get(r["id"], 999))
+    with open(outp, "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"))
     ok = sum(1 for r in rows if r[1])
     print(f"{args.section}: {ok} of {len(rows)} routed\n")
@@ -339,9 +476,12 @@ def main():
             continue
         c = f"  vs your '{cmp[0]}': {cmp[1]:.0%} of this on yours, {cmp[2]:.0%} of yours on this" if cmp else ""
         print(f"  {'CHECK ' if note else 'ok    '}{h['name'][:44]:44} {rec['mi']:5.1f} mi (~{h['mi']}) {rec['gain']:6,}' gain{c}{'  <- ' + note if note else ''}")
-    print("\nplaces matched (role: asked for -> OSM name [kind], metres to the nearest trail):")
+    print("\nplaces matched" + ("" if args.verbose else " that look doubtful (over 2 km from the rough spot, or 150 m+ off the trail)")
+          + ": asked for -> OSM name [kind], m to trail, m from rough spot")
     for h, rec, note, found, cmp in rows:
-        print(f"  {h['id']}: " + "; ".join(f"{r}: {a} -> {b} [{k}] {d} m" for r, a, b, k, d in found))
+        f = [x for x in found if args.verbose or x[4] > 150 or x[5] > 2000]
+        if f:
+            print(f"  {h['id']}: " + "; ".join(f"{r}: {a} -> {b} [{k}] {d} m, {o} m" for r, a, b, k, d, o in f))
 
 
 if __name__ == "__main__":

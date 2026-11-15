@@ -1,0 +1,7 @@
+{
+  "section": "wa-lake-chelan",
+  "hikes": [
+    {"id": "spider-meadow", "name": "Spider Meadow", "type": "out", "rank": 1, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "to": ["Spider Meadow", 48.105, -120.857], "mi": 10.0, "blurb": "Up Phelps Creek into a long, flat meadow ringed by waterfalls and peaks, a gentle way into the high Glacier Peak country."},
+    {"id": "spider-gap", "name": "Spider Gap", "type": "out", "rank": 2, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "via": [["Spider Meadow", 48.105, -120.857]], "to": ["Spider Gap", 48.127, -120.881], "mi": 15.0, "blurb": "Past Spider Meadow and up a snow-filled gully to a notch above Lyman Glacier's lakes."}
+  ]
+}

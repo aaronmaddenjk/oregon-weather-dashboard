@@ -1,0 +1,4 @@
+{"section": "or-coos-bay-bandon", "hikes": [
+  {"id": "shore-acres-cape-arago", "name": "Sunset Bay to Shore Acres", "type": "out", "rank": 1, "start": ["Sunset Bay State Park", 43.333, -124.374], "to": ["Shore Acres State Park", 43.323, -124.38], "mi": 3.0, "blurb": "Along wave-carved sandstone cliffs where winter storms throw spray a hundred feet high, to a formal garden on the bluff."},
+  {"id": "john-dellenback-dunes", "name": "John Dellenback Dunes", "type": "out", "rank": 2, "start": ["John Dellenback Dunes Trailhead", 43.57, -124.196], "to": ["Tenmile Creek", 43.56, -124.23], "mi": 6.0, "blurb": "Across the coast's tallest open sand dunes and a tree island to a wild beach."}
+]}

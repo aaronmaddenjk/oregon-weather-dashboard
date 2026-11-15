@@ -1,0 +1,4 @@
+{"section": "wa-kettle-crest-colville", "hikes": [
+  {"id": "sherman-peak", "name": "Sherman Peak", "type": "out", "rank": 1, "start": ["Sherman Pass", 48.606, -118.463], "to": ["Sherman Peak", 48.592, -118.457], "mi": 5.0, "blurb": "Along the Kettle Crest through old burns and meadows to a summit over the empty northeast corner."},
+  {"id": "copper-butte", "name": "Copper Butte", "type": "out", "rank": 2, "start": ["Kettle Crest North Trailhead", 48.61, -118.47], "to": ["Copper Butte", 48.701, -118.464], "mi": 14.0, "blurb": "North along the crest to the Kettle Range's highest point."}
+]}
