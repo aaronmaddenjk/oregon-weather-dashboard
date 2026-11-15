@@ -1,199 +1,26 @@
-{
- "section": "wa-leavenworth-enchantments-wenatchee",
- "hikes": [
-  {
-   "id": "colchuck-lake",
-   "name": "Colchuck Lake",
-   "type": "out",
-   "rank": 1,
-   "start": [
-    "Stuart Lake Trailhead",
-    47.528,
-    -120.821
-   ],
-   "to": [
-    "Colchuck Lake",
-    47.498,
-    -120.834
-   ],
-   "mi": 8.0,
-   "blurb": "A steep, rocky climb to a glacier-green lake under Dragontail and Colchuck Peaks."
-  },
-  {
-   "id": "aasgard-pass",
-   "name": "Aasgard Pass",
-   "type": "out",
-   "rank": 4,
-   "start": [
-    "Stuart Lake Trailhead",
-    47.528,
-    -120.821
-   ],
-   "via": [
-    [
-     "Colchuck Lake",
-     47.498,
-     -120.834
-    ]
-   ],
-   "to": [
-    "Aasgard Pass",
-    47.488,
-    -120.823
-   ],
-   "mi": 11.0,
-   "blurb": "Past Colchuck Lake and straight up a 2,000-foot boulder gully to the edge of the Enchantments' upper basin."
-  },
-  {
-   "id": "lake-stuart",
-   "name": "Lake Stuart",
-   "type": "out",
-   "rank": 5,
-   "start": [
-    "Stuart Lake Trailhead",
-    47.528,
-    -120.821
-   ],
-   "to": [
-    "Lake Stuart",
-    47.513,
-    -120.869
-   ],
-   "mi": 9.0,
-   "blurb": "Up Mountaineer Creek through meadows to a long lake with Mt Stuart's granite face at its head."
-  },
-  {
-   "id": "lake-ingalls",
-   "name": "Ingalls Pass",
-   "type": "out",
-   "rank": 2,
-   "start": [
-    "Esmeralda Trailhead",
-    47.436,
-    -120.936
-   ],
-   "to": [
-    "Ingalls Pass",
-    47.45933,
-    -120.93537
-   ],
-   "mi": 7.0,
-   "blurb": "Up switchbacks to a larch-filled pass facing Mt Stuart, with Lake Ingalls in the basin beyond."
-  },
-  {
-   "id": "snow-lakes",
-   "name": "Nada and Snow Lakes",
-   "type": "out",
-   "rank": 3,
-   "start": [
-    "Snow Lakes Trailhead",
-    47.543,
-    -120.71
-   ],
-   "via": [
-    [
-     "Nada Lake",
-     47.513,
-     -120.741
-    ]
-   ],
-   "to": [
-    "Snow Lakes Backcountry Camping",
-    47.48146,
-    -120.75639
-   ],
-   "mi": 13.0,
-   "blurb": "The long, hot climb from Icicle Creek to two lake basins on the doorstep of the Enchantments."
-  },
-  {
-   "id": "eightmile-lake",
-   "name": "Eightmile Lake",
-   "type": "out",
-   "rank": 6,
-   "start": [
-    "Eightmile Trailhead",
-    47.553,
-    -120.776
-   ],
-   "to": [
-    "Eightmile Lake",
-    47.542,
-    -120.815
-   ],
-   "mi": 6.6,
-   "blurb": "Through the regrowing 2012 burn to a lake in a granite cirque."
-  },
-  {
-   "id": "longs-pass",
-   "name": "Longs Pass",
-   "type": "out",
-   "rank": 7,
-   "start": [
-    "Esmeralda Trailhead",
-    47.436,
-    -120.936
-   ],
-   "to": [
-    "Longs Pass",
-    47.451,
-    -120.93
-   ],
-   "mi": 4.6,
-   "blurb": "A short, steep pull to a pass that looks straight across Ingalls Creek at Mt Stuart."
-  },
-  {
-   "id": "navaho-pass",
-   "name": "Navaho Pass",
-   "type": "out",
-   "rank": 9,
-   "start": [
-    "Stafford Creek Trailhead",
-    47.373,
-    -120.8
-   ],
-   "to": [
-    "Navaho Pass",
-    47.426,
-    -120.759
-   ],
-   "mi": 13.0,
-   "blurb": "Up Stafford Creek to an open pass of flowers and rock with the Stuart Range in a long line to the north."
-  },
-  {
-   "id": "sauers-mountain",
-   "name": "Sauer's Mountain",
-   "type": "out",
-   "rank": 10,
-   "start": [
-    "Sauer's Mountain Trailhead",
-    47.595,
-    -120.617
-   ],
-   "to": [
-    "Sauer's Mountain",
-    47.606,
-    -120.628
-   ],
-   "mi": 6.0,
-   "blurb": "Spring balsamroot slopes above Peshastin to a summit looking up the Icicle at the Enchantments."
-  },
-  {
-   "id": "saddle-rock",
-   "name": "Saddle Rock",
-   "type": "out",
-   "rank": 11,
-   "start": [
-    "Saddle Rock Trailhead",
-    47.403,
-    -120.329
-   ],
-   "to": [
-    "Saddle Rock",
-    47.398,
-    -120.336
-   ],
-   "mi": 2.6,
-   "blurb": "A short, steep climb in the Wenatchee foothills to a rock gap over the city and the Columbia."
-  }
- ]
-}
+{"section": "wa-leavenworth-enchantments-wenatchee", "hikes": [
+  {"id": "colchuck-lake", "name": "Colchuck Lake", "type": "out", "rank": 1, "start": ["Stuart Lake Trailhead", 47.528, -120.821], "to": ["Colchuck Lake", 47.498, -120.834], "mi": 8.0, "blurb": "A steep, rocky climb to a glacier-green lake under Dragontail and Colchuck Peaks."},
+  {"id": "aasgard-pass", "name": "Aasgard Pass", "type": "out", "rank": 4, "start": ["Stuart Lake Trailhead", 47.528, -120.821], "via": [["Colchuck Lake", 47.498, -120.834]], "to": ["Aasgard Pass", 47.488, -120.823], "mi": 11.0, "blurb": "Past Colchuck Lake and straight up a 2,000-foot boulder gully to the edge of the Enchantments' upper basin."},
+  {"id": "lake-stuart", "name": "Lake Stuart", "type": "out", "rank": 5, "start": ["Stuart Lake Trailhead", 47.528, -120.821], "to": ["Lake Stuart", 47.513, -120.869], "mi": 9.0, "blurb": "Up Mountaineer Creek through meadows to a long lake with Mt Stuart's granite face at its head."},
+  {"id": "lake-ingalls", "name": "Ingalls Pass", "type": "out", "rank": 2, "start": ["Esmeralda Trailhead", 47.436, -120.936], "to": ["Ingalls Pass", 47.45933, -120.93537], "mi": 7.0, "blurb": "Up switchbacks to a larch-filled pass facing Mt Stuart, with Lake Ingalls in the basin beyond."},
+  {"id": "snow-lakes", "name": "Nada and Snow Lakes", "type": "out", "rank": 3, "start": ["Snow Lakes Trailhead", 47.543, -120.71], "via": [["Nada Lake", 47.513, -120.741]], "to": ["Snow Lakes Backcountry Camping", 47.48146, -120.75639], "mi": 13.0, "blurb": "The long, hot climb from Icicle Creek to two lake basins on the doorstep of the Enchantments."},
+  {"id": "eightmile-lake", "name": "Eightmile Lake", "type": "out", "rank": 6, "start": ["Eightmile Trailhead", 47.553, -120.776], "to": ["Eightmile Lake", 47.542, -120.815], "mi": 6.6, "blurb": "Through the regrowing 2012 burn to a lake in a granite cirque."},
+  {"id": "longs-pass", "name": "Longs Pass", "type": "out", "rank": 7, "start": ["Esmeralda Trailhead", 47.436, -120.936], "to": ["Longs Pass", 47.451, -120.93], "mi": 4.6, "blurb": "A short, steep pull to a pass that looks straight across Ingalls Creek at Mt Stuart."},
+  {"id": "navaho-pass", "name": "Navaho Pass", "type": "out", "rank": 9, "start": ["Stafford Creek Trailhead", 47.373, -120.8], "to": ["Navaho Pass", 47.426, -120.759], "mi": 13.0, "blurb": "Up Stafford Creek to an open pass of flowers and rock with the Stuart Range in a long line to the north."},
+  {"id": "sauers-mountain", "name": "Sauer's Mountain", "type": "out", "rank": 10, "start": ["Sauer's Mountain Trailhead", 47.595, -120.617], "to": ["Sauer's Mountain", 47.606, -120.628], "mi": 6.0, "blurb": "Spring balsamroot slopes above Peshastin to a summit looking up the Icicle at the Enchantments."},
+  {"id": "saddle-rock", "name": "Saddle Rock", "type": "out", "rank": 11, "start": ["Saddle Rock Trailhead", 47.403, -120.329], "to": ["Saddle Rock", 47.398, -120.336], "mi": 2.6, "blurb": "A short, steep climb in the Wenatchee foothills to a rock gap over the city and the Columbia."},
+  {"id": "lake-ingalls-lake", "name": "Lake Ingalls", "type": "out", "rank": 2, "start": ["Esmeralda Trailhead", 47.436, -120.936], "via": [["Ingalls Pass", 47.45933, -120.93537]], "to": ["Lake Ingalls", 47.471214, -120.9381403], "mi": 9.0, "blurb": "Over a larch-filled pass to a granite lake at the foot of Mt Stuart, mountain goats likely."},
+  {"id": "lake-caroline", "name": "Lake Caroline", "type": "out", "rank": 8, "start": ["Eightmile Trailhead", 47.553, -120.776], "to": ["Lake Caroline", 47.539, -120.835], "mi": 11.0, "blurb": "Past Eightmile Lake and up switchbacks to a high lake with Cashmere Mountain and the Stuart Range around it."},
+  {"id": "lake-ethel", "name": "Lake Ethel", "type": "out", "rank": 12, "start": ["Lake Ethel Trailhead", 47.77281, -120.83234], "to": ["Lake Ethel", 47.75049, -120.88897], "mi": 9.3, "blurb": "From Lake Ethel Trailhead, a 9.3-mile round trip to Lake Ethel, with about 3,600 feet of climbing.", "src": "osm-candidate"},
+  {"id": "ingalls-peak", "name": "Ingalls Peak", "type": "out", "rank": 13, "start": ["Esmeralda Trailhead", 47.43673, -120.93703], "to": ["Ingalls Peak", 47.47234, -120.94634], "mi": 9.1, "blurb": "From Esmeralda Trailhead, a 9.1-mile round trip to the top of Ingalls Peak (7,326 ft), with about 3,750 feet of climbing.", "src": "osm-candidate"},
+  {"id": "mount-stuart", "name": "Mount Stuart", "type": "out", "rank": 14, "start": ["Esmeralda Trailhead", 47.43673, -120.93703], "to": ["Mount Stuart", 47.47515, -120.90199], "mi": 11.1, "blurb": "From Esmeralda Trailhead, an 11.1-mile round trip to the top of Mount Stuart (9,326 ft), with about 7,700 feet of climbing.", "src": "osm-candidate"},
+  {"id": "cape-horn", "name": "Cape Horn", "type": "out", "rank": 15, "start": ["Chatter Creek Trailhead", 47.60858, -120.88194], "to": ["Cape Horn", 47.65727, -120.91783], "mi": 12.2, "blurb": "From Chatter Creek Trailhead, a 12.2-mile round trip to the top of Cape Horn (7,271 ft), with about 5,500 feet of climbing.", "src": "osm-candidate"},
+  {"id": "dragontail-peak", "name": "Dragontail Peak", "type": "out", "rank": 16, "start": ["Stuart Lake Trailhead", 47.52775, -120.82087], "to": ["Dragontail Peak", 47.47903, -120.83293], "mi": 12.3, "blurb": "From Stuart Lake Trailhead, a 12.3-mile round trip to the top of Dragontail Peak (8,813 ft), with about 5,650 feet of climbing.", "src": "osm-candidate"},
+  {"id": "navaho-peak", "name": "Navaho Peak", "type": "out", "rank": 17, "start": ["Stafford Creek Trailhead", 47.36647, -120.80196], "to": ["Navaho Peak", 47.42308, -120.80371], "mi": 12.8, "blurb": "From Stafford Creek Trailhead, a 12.8-mile round trip to the top of Navaho Peak (7,200 ft), with about 4,250 feet of climbing.", "src": "osm-candidate"},
+  {"id": "little-annapurna", "name": "Little Annapurna", "type": "out", "rank": 18, "start": ["Stuart Lake Trailhead", 47.52775, -120.82087], "to": ["Little Annapurna", 47.46808, -120.81458], "mi": 14.9, "blurb": "From Stuart Lake Trailhead, a 14.9-mile round trip to the top of Little Annapurna (8,460 ft), with about 6,000 feet of climbing.", "src": "osm-candidate"},
+  {"id": "rock-mountain", "name": "Rock Mountain", "type": "out", "rank": 19, "start": ["Snowy Creek Trailhead", 47.808, -120.99698], "to": ["Rock Mountain", 47.79975, -120.97453], "mi": 8.3, "blurb": "From Snowy Creek Trailhead, an 8.3-mile round trip to the top of Rock Mountain (6,841 ft), with about 3,300 feet of climbing.", "src": "osm-candidate"},
+  {"id": "bills-peak", "name": "Bills Peak", "type": "out", "rank": 20, "start": ["Iron Peak Trailhead", 47.42142, -120.93726], "to": ["Bills Peak", 47.42779, -120.89201], "mi": 7.3, "blurb": "From Iron Peak Trailhead, a 7.3-mile round trip to the top of Bills Peak (6,150 ft), with about 2,900 feet of climbing.", "src": "osm-candidate"},
+  {"id": "teanaway-peak", "name": "Teanaway Peak", "type": "out", "rank": 21, "start": ["Iron Peak Trailhead", 47.42142, -120.93726], "to": ["Teanaway Peak", 47.42535, -120.907], "mi": 5.2, "blurb": "From Iron Peak Trailhead, a 5.2-mile round trip to the top of Teanaway Peak (6,094 ft), with about 2,100 feet of climbing.", "src": "osm-candidate"},
+  {"id": "rock-lake", "name": "Rock Lake", "type": "out", "rank": 22, "start": ["Rock Mountain Trailhead", 47.77565, -120.95807], "to": ["Rock Lake", 47.79761, -120.96397], "mi": 8.0, "blurb": "From Rock Mountain Trailhead, an 8.0-mile round trip to Rock Lake, with about 3,650 feet of climbing.", "src": "osm-candidate"},
+  {"id": "lost-lake", "name": "Lost Lake", "type": "out", "rank": 23, "start": ["Merritt Lake Trailhead", 47.79098, -120.88503], "to": ["Lost Lake", 47.81491, -120.92018], "mi": 7.1, "blurb": "From Merritt Lake Trailhead, a 7.1-mile round trip to Lost Lake, with about 3,050 feet of climbing.", "src": "osm-candidate"}
+]}

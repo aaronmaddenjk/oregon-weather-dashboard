@@ -28,6 +28,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, ROOT)
 import sections          # noqa: E402
 import trail_explorer as te   # noqa: E402  (elevation helpers)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import osmlocal   # noqa: E402
 
 CACHE = os.path.join(ROOT, ".cache", "pnw1000")
 HIKES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hikes")
@@ -48,6 +50,8 @@ def section_box(sid):
 
 
 def _fetch(path, w, s, e, n):
+    if osmlocal.available():   # the Geofabrik tiles (osmlocal.py) instead of the public Overpass API
+        return osmlocal.query(w, s, e, n)
     if os.path.exists(path) and time.time() - os.path.getmtime(path) < 30 * 86400:
         with open(path, encoding="utf-8") as f:
             return json.load(f)

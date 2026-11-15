@@ -176,7 +176,15 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   no 12 mi+ hauls to unremarkable hills) with factual blurbs (src "osm-candidate"); `dedupe.py`. Big runs go on the
   Oracle server in ~/pnw1000-work (apart from ~/dash; publishing stays on the PC - no wx-trails key on the server).
   OVERPASS: parallel builds and ~3 GB/day of downloads got both IPs blocked (2026-11-08/11) - never run more than
-  one at a time; bulk work uses Geofabrik extracts instead.
+  one at a time; bulk work uses Geofabrik extracts instead: `osmlocal.py prepare <pbf> or|wa` (pyosmium, in the
+  server's ~/osm/osmenv; extracts in ~/osm) cuts them into 0.1-degree tiles (~2 GB, ~/pnw1000-work/.cache/osmlocal);
+  when those exist build.py / candidates.py read them instead of Overpass (a section takes ~1 min, and big lakes
+  stored as relations are found). Candidates come only from the section's own state. ~/pnw1000-work/fill.sh = per
+  section: reroute unrouted hand hikes, candidates, adopt (12 big areas / 6 others); restore.py re-added 35 hikes
+  dropped for missing OSM data. Result 2026-11-15: 718 hikes (about 390 hand-picked + 330 found), all 56 sections.
+  Extra rules learned: start must be a trailhead or a car park named as one (no garages, park-and-rides, stations);
+  non-summits <= 10 mi round trip; lakes need 500'+ of climbing; reject sawtooth routes (climb > 2x relief + 600').
+  After a run, check routed lengths against the list's rough miles: detours of 3-5x happened (Loowit Falls 45 mi).
   Dashboard: `window.WxP1K` (TRAILS_JS; WxMine.file('pnw1000.json'), keyed like your trails; `use(list)` for tests)
   - Map tab Trails panel "Show: PNW 1000" (amber #C98A1B, rows src 'p1k' with [16] blurb [17] rank [18] id [19] type;
   card: blurb, round trip, Download GPX via window.WxGPX, OSM credit) and Trail Sections (bar "PNW 1000 in your

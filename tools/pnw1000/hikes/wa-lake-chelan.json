@@ -1,7 +1,10 @@
-{
-  "section": "wa-lake-chelan",
-  "hikes": [
-    {"id": "spider-meadow", "name": "Spider Meadow", "type": "out", "rank": 1, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "to": ["Spider Meadow", 48.105, -120.857], "mi": 10.0, "blurb": "Up Phelps Creek into a long, flat meadow ringed by waterfalls and peaks, a gentle way into the high Glacier Peak country."},
-    {"id": "spider-gap", "name": "Spider Gap", "type": "out", "rank": 2, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "via": [["Spider Meadow", 48.105, -120.857]], "to": ["Spider Gap", 48.127, -120.881], "mi": 15.0, "blurb": "Past Spider Meadow and up a snow-filled gully to a notch above Lyman Glacier's lakes."}
-  ]
-}
+{"section": "wa-lake-chelan", "hikes": [
+  {"id": "spider-meadow", "name": "Spider Meadow", "type": "out", "rank": 1, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "to": ["Spider Meadow", 48.105, -120.857], "mi": 10.0, "blurb": "Up Phelps Creek into a long, flat meadow ringed by waterfalls and peaks, a gentle way into the high Glacier Peak country."},
+  {"id": "spider-gap", "name": "Spider Gap", "type": "out", "rank": 2, "start": ["Phelps Creek Trailhead", 48.071, -120.837], "via": [["Spider Meadow", 48.105, -120.857]], "to": ["Spider Gap", 48.127, -120.881], "mi": 15.0, "blurb": "Past Spider Meadow and up a snow-filled gully to a notch above Lyman Glacier's lakes."},
+  {"id": "seven-fingered-jack", "name": "Seven Fingered Jack", "type": "out", "rank": 3, "start": ["Phelps Creek Trailhead", 48.08291, -120.83493], "to": ["Seven Fingered Jack", 48.15049, -120.81431], "mi": 12.3, "blurb": "From Phelps Creek Trailhead, a 12.3-mile round trip to the top of Seven Fingered Jack (9,077 ft), with about 5,750 feet of climbing.", "src": "osm-candidate"},
+  {"id": "switchback-mountain", "name": "Switchback Mountain", "type": "out", "rank": 4, "start": ["Foggy Dew Trailhead", 48.17924, -120.25317], "to": ["Switchback Mountain", 48.17562, -120.35821], "mi": 14.0, "blurb": "From Foggy Dew Trailhead, a 14.0-mile round trip to the top of Switchback Mountain (8,020 ft), with about 4,600 feet of climbing.", "src": "osm-candidate"},
+  {"id": "fifth-of-july-mountain", "name": "Fifth of July Mountain", "type": "out", "rank": 5, "start": ["Basalt Pass Trailhead", 47.97858, -120.72636], "to": ["Fifth of July Mountain", 48.04846, -120.74149], "mi": 14.3, "blurb": "From Basalt Pass Trailhead, a 14.3-mile round trip to the top of Fifth of July Mountain (7,439 ft), with about 7,000 feet of climbing.", "src": "osm-candidate"},
+  {"id": "mount-maude", "name": "Mount Maude", "type": "out", "rank": 6, "start": ["Phelps Creek Trailhead", 48.08291, -120.83493], "to": ["Mount Maude", 48.13768, -120.80365], "mi": 15.3, "blurb": "From Phelps Creek Trailhead, a 15.3-mile round trip to the top of Mount Maude (9,052 ft), with about 6,150 feet of climbing.", "src": "osm-candidate"},
+  {"id": "myrtle-lake", "name": "Myrtle Lake", "type": "out", "rank": 7, "start": ["Entiat River Trail", 48.02442, -120.6508], "to": ["Myrtle Lake", 48.05588, -120.7036], "mi": 8.5, "blurb": "From Entiat River Trail, an 8.5-mile round trip to Myrtle Lake, with about 1,300 feet of climbing.", "src": "osm-candidate"},
+  {"id": "schaefer-lake", "name": "Schaefer Lake", "type": "out", "rank": 8, "start": ["Schaefer Lake Trailhead", 47.95227, -120.77298], "to": ["Schaefer Lake", 47.96231, -120.84209], "mi": 8.2, "blurb": "From Schaefer Lake Trailhead, an 8.2-mile round trip to Schaefer Lake, with about 2,850 feet of climbing.", "src": "osm-candidate"}
+]}

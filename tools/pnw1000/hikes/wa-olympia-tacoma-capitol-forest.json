@@ -1,4 +1,5 @@
 {"section": "wa-olympia-tacoma-capitol-forest", "hikes": [
   {"id": "mima-mounds", "name": "Mima Mounds", "type": "out", "rank": 2, "start": ["Mima Mounds Natural Area Preserve", 46.905, -123.048], "to": ["Mima Mounds", 46.903, -123.05], "mi": 2.0, "blurb": "A prairie of mysterious grass-covered hummocks, blue with camas in spring."},
-  {"id": "tumwater-falls", "name": "Tumwater Falls", "type": "out", "rank": 3, "start": ["Tumwater Falls Park", 47.014, -122.904], "to": ["Tumwater Falls", 47.012, -122.904], "mi": 0.8, "blurb": "A short loop down both banks of the Deschutes River's falls at the head of Budd Inlet."}
+  {"id": "tumwater-falls", "name": "Tumwater Falls", "type": "out", "rank": 3, "start": ["Tumwater Falls Park", 47.014, -122.904], "to": ["Tumwater Falls", 47.012, -122.904], "mi": 0.8, "blurb": "A short loop down both banks of the Deschutes River's falls at the head of Budd Inlet."},
+  {"id": "larch-mountain", "name": "Larch Mountain", "type": "out", "rank": 4, "start": ["Rock Candy Trailhead", 47.03197, -123.09387], "to": ["Larch Mountain", 46.98732, -123.13765], "mi": 14.9, "blurb": "From Rock Candy Trailhead, a 14.9-mile round trip to the top of Larch Mountain (2,537 ft), with about 3,050 feet of climbing.", "src": "osm-candidate"}
 ]}

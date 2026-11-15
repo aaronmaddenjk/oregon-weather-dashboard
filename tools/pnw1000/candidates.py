@@ -22,11 +22,41 @@ KINDS = {"peak": "summit", "volcano": "summit", "waterfall": "falls", "water": "
          "saddle": "pass", "cliff": "cliff", "tower": "lookout", "beach": "beach", "rock": "rock"}
 
 
+def local_notable(t, el):
+    """the same picks as the Overpass query in notable()"""
+    if not t.get("name") or el["type"] == "way" and "center" not in el:
+        return False
+    nat, wiki = t.get("natural"), bool(t.get("wikidata"))
+    if wiki and nat in ("peak", "volcano", "water", "spring", "hot_spring", "arch", "glacier", "cave_entrance", "saddle", "cliff", "beach", "rock"):
+        return True
+    if t.get("waterway") == "waterfall" or t.get("tourism") == "viewpoint" or nat == "hot_spring":
+        return True
+    if t.get("man_made") == "tower" and t.get("tower:type") == "observation" and "lookout" in t["name"].lower():
+        return True
+    if nat in ("peak", "volcano") and el["type"] == "node":
+        return True
+    return nat == "water" and t.get("water") == "lake"
+
+
+START_OK = ("trail", "park", "day use", "sno", "camp", "picnic", "lot", "parking", "overlook", "viewpoint", "access",
+            "staging", "lake", "falls", "beach", "wayside", "area", "recreation", "pass", "summit", "lodge", "visitor")
+
+
+def start_ok(name, kind):
+    """a start people would recognise: a trailhead, or a car park whose name says what it is (not 'U.S. Coast Guard')"""
+    n = name.lower()
+    if any(w in n for w in ("garage", "overflow", "station", "school", "store", "hospital", "park and ride", "park & ride")):
+        return False
+    return kind == "trailhead" or any(w in n for w in START_OK)
+
+
 def notable(sid):
     """named features with a wikipedia/wikidata tag in the section box (one small Overpass query, cached)"""
     w, s, e, n = build.section_box(sid)
     path = os.path.join(build.CACHE, f"notable2-{sid}.json")   # v2: also plain named peaks, lakes, viewpoints
-    if not os.path.exists(path):
+    if build.osmlocal.available():   # local tiles: this section's own state only (no Washington beaches in Oregon)
+        els = [el for el in build.osmlocal.elements(w, s, e, n, states=(sid[:2],)) if local_notable(el.get("tags", {}), el)]
+    elif not os.path.exists(path):
         bb = f"{s},{w},{n},{e}"
         q = (f'[out:json][timeout:180];('
              f'nwr["wikidata"]["natural"~"^(peak|volcano|water|spring|hot_spring|arch|glacier|cave_entrance|saddle|cliff|beach|rock)$"]["name"]({bb});'
@@ -54,8 +84,9 @@ def notable(sid):
                 time.sleep(min(120, 20 * (attempt + 1)))
         with open(path, "w", encoding="utf-8") as f:
             f.write(r.text)
-    with open(path, encoding="utf-8") as f:
-        els = json.load(f)["elements"]
+    if not build.osmlocal.available():
+        with open(path, encoding="utf-8") as f:
+            els = json.load(f)["elements"]
     out = []
     for el in els:
         t = el.get("tags", {})
@@ -151,6 +182,8 @@ def route_one(net, c, token):
                      if kind in ("trailhead", "parking") and 400 < build.m(c["p"], pp) < 9000))[:6]
     best = None
     for _, raw, pp, kind in starts:
+        if not start_ok(raw, kind):
+            continue
         sn, sd = net.snap(pp, limit=200)
         if not sn:
             continue
@@ -170,7 +203,7 @@ def route_one(net, c, token):
     return {"name": c["name"], "kind": KINDS.get(c["kind"], c["kind"]), "score": c["score"],
             "start": [sname, round(spp[1], 5), round(spp[0], 5)], "to": [c["name"], round(lat, 5), round(lon, 5)],
             "mi": round(2 * metres / 1609.344, 1), "gain": round((ev["up"] + ev["down"]) * 3.28084),
-            "hi": round(ev["hi"] * 3.28084), "trail": round(share, 2)}
+            "hi": round(ev["hi"] * 3.28084), "lo": round(ev["lo"] * 3.28084), "trail": round(share, 2)}
 
 
 if __name__ == "__main__":

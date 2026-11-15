@@ -1,3 +1,3 @@
 {"section": "wa-long-beach-willapa-hills", "hikes": [
-
+  {"id": "rainbow-falls", "name": "Rainbow Falls", "type": "out", "rank": 1, "start": ["Willapa Hills Trail Meskill Road Parking Area", 46.63735, -123.17654], "to": ["Rainbow Falls", 46.63077, -123.23218], "mi": 6.5, "blurb": "From Willapa Hills Trail Meskill Road Parking Area, a 6.5-mile round trip to Rainbow Falls.", "src": "osm-candidate"}
 ]}

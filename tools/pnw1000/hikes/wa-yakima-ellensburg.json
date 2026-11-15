@@ -1,3 +1,5 @@
 {"section": "wa-yakima-ellensburg", "hikes": [
-  {"id": "cowiche-canyon", "name": "Cowiche Canyon", "type": "out", "rank": 1, "start": ["Cowiche Canyon Trailhead", 46.623, -120.63], "to": ["Cowiche Canyon Winery Trailhead", 46.64, -120.67], "mi": 6.0, "blurb": "An old rail bed through a basalt and andesite canyon west of Yakima, crossing the creek on bridges."}
+  {"id": "cowiche-canyon", "name": "Cowiche Canyon", "type": "out", "rank": 1, "start": ["Cowiche Canyon Trailhead", 46.623, -120.63], "to": ["Cowiche Canyon Winery Trailhead", 46.64, -120.67], "mi": 6.0, "blurb": "An old rail bed through a basalt and andesite canyon west of Yakima, crossing the creek on bridges."},
+  {"id": "umtanum-creek-falls", "name": "Umtanum Creek Falls", "type": "out", "rank": 2, "start": ["Umtanum Falls Trailhead", 46.89935, -120.64296], "to": ["Umtanum Creek Falls", 46.89294, -120.62865], "mi": 1.8, "blurb": "From Umtanum Falls Trailhead, a 1.8-mile round trip to Umtanum Creek Falls.", "src": "osm-candidate"},
+  {"id": "baldy-mountain", "name": "Baldy Mountain", "type": "out", "rank": 3, "start": ["Mile Post 10 Water Access", 46.79805, -120.46258], "to": ["Baldy Mountain", 46.79915, -120.42761], "mi": 4.5, "blurb": "From Mile Post 10 Water Access, a 4.5-mile round trip to the top of Baldy Mountain (3,231 ft), with about 2,000 feet of climbing.", "src": "osm-candidate"}
 ]}

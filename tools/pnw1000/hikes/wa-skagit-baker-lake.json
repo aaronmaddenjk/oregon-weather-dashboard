@@ -1,4 +1,6 @@
 {"section": "wa-skagit-baker-lake", "hikes": [
   {"id": "sauk-mountain", "name": "Sauk Mountain", "type": "out", "rank": 1, "start": ["Sauk Mountain Trailhead", 48.517, -121.606], "to": ["Sauk Mountain", 48.522, -121.605], "mi": 4.2, "blurb": "Switchbacks up a meadow face of flowers to a summit over the Skagit with Baker, Shuksan and Glacier Peak."},
-  {"id": "little-mountain", "name": "Little Mountain", "type": "out", "rank": 2, "start": ["Little Mountain Park", 48.4, -122.31], "to": ["Little Mountain", 48.404, -122.302], "mi": 3.0, "blurb": "A forested in-town summit with a lookout over the Skagit flats and the San Juans."}
+  {"id": "little-mountain", "name": "Little Mountain", "type": "out", "rank": 2, "start": ["Little Mountain Park", 48.4, -122.31], "to": ["Little Mountain", 48.404, -122.302], "mi": 3.0, "blurb": "A forested in-town summit with a lookout over the Skagit flats and the San Juans."},
+  {"id": "myrtle-lake", "name": "Myrtle Lake", "type": "out", "rank": 3, "start": ["Mount Higgins Trailhead", 48.31017, -121.85079], "to": ["Myrtle Lake", 48.32103, -121.81496], "mi": 6.0, "blurb": "From Mount Higgins Trailhead, a 6.0-mile round trip to Myrtle Lake, with about 2,500 feet of climbing.", "src": "osm-candidate"},
+  {"id": "sauk-lake", "name": "Sauk Lake", "type": "out", "rank": 4, "start": ["Sauk Mountain Trailhead", 48.52135, -121.60731], "to": ["Sauk Lake", 48.5239, -121.59031], "mi": 5.8, "blurb": "From Sauk Mountain Trailhead, a 5.8-mile round trip to Sauk Lake, with about 2,200 feet of climbing.", "src": "osm-candidate"}
 ]}

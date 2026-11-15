@@ -31,6 +31,10 @@ def worth(c):
     k, mi, gain, score = c["kind"], c["mi"], c["gain"], c["score"]
     if c.get("trail", 1) < 0.8:
         return False
+    if k != "summit" and mi > 10:
+        return False   # a long beach or road walk to a falls / lake / viewpoint (Hug Point Falls; Suttle Lake, 12.5 mi)
+    if gain / max(mi, 0.1) > 900 or ("lo" in c and gain > 2 * (c["hi"] - c["lo"]) + 600):
+        return False   # a route sawing up and down over ridges, not a real trail (Sardine Mountain: 6,350 ft of climbing, ~2,900 ft of relief)
     if k == "falls":
         return 0.5 <= mi <= 16
     if not 0.8 <= mi <= 16:
@@ -42,7 +46,7 @@ def worth(c):
     if k == "summit":
         return (gain >= 1500 and gain / mi >= 200) or (score == 3 and gain >= 800)
     if k == "lake":
-        return mi >= 2 and (gain >= 500 or score == 3)
+        return mi >= 2 and gain >= 500   # (a Wikipedia article doesn't help: town lakes have them)
     if k == "viewpoint":
         return gain >= 600 or score == 3
     return score == 3 or gain >= 1200
