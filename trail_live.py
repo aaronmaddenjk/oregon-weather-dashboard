@@ -229,7 +229,13 @@ function trailStats(pts){
   return{km:d,dist:dist,gain:gain,lo:lo,hi:hi};}
 
 // ---------- fetching ----------
-async function getJSON(u){var r=await fetch(u);
+// a request that stalls (seen: Open-Meteo hanging 38 s on a dead connection, then "Failed to fetch") gets
+// 20 s, then one fresh try; a real answer (even an error status) is never retried
+async function fetchRetry(u){for(var k=0;;k++){var ac=window.AbortController?new AbortController():null,tm=ac&&setTimeout(function(){ac.abort();},20000);
+  try{return await fetch(u,ac?{signal:ac.signal,cache:k?'reload':'default'}:{});}
+  catch(e){if(k>=1)throw new Error('The forecast service didn’t answer ('+u.split('/')[2]+'). Try again in a minute.');}
+  finally{if(tm)clearTimeout(tm);}}}
+async function getJSON(u){var r=await fetchRetry(u);
   if(r.status===429&&u.indexOf('open-meteo')>=0)throw new Error('Open-Meteo’s free forecast limit is used up for this connection today. It resets daily (about 5 PM Pacific); try again after that.');
   if(!r.ok)throw new Error(r.status+' from '+u.split('?')[0]);return r.json();}
 function q(o){return Object.keys(o).map(function(k){return k+'='+encodeURIComponent(o[k]);}).join('&');}
@@ -449,7 +455,9 @@ function keepTrail(poly,name,link,pts,s,act,dif){var prof=profileFt(pts);
 async function load(src,link,save,keep){
   var kept=null;
   try{
-    var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx),name=src.name||nameFromLink(link)||g.name||'Your trail';
+    var g=src.poly?{pts:decodePolyline(src.poly),name:src.name||''}:parseGPX(src.gpx);
+    if(src.out)g.pts=g.pts.concat(g.pts.slice(0,-1).reverse().map(function(p){return Object.assign({},p);}));   // there and back
+    var name=src.name||nameFromLink(link)||g.name||'Your trail';
     $('tl-link').value=link||'';st.act=src.act||'';
     await run(g.pts,name,link||'',keep&&src.poly?function(pts,s){kept=keepTrail(src.poly,name,link,pts,s,src.act,src.dif);}:null);
     if(kept)kept.then(function(r){$('tl-stats').insertAdjacentHTML('beforeend',r.cloud?' · <b>saved to your trails</b> on every device (Map → Trails)'
@@ -495,8 +503,9 @@ window.WxTrail={parseGPX:parseGPX,fillElevation:fillElevation,trailStats:trailSt
 // then table(point) = the 7-day table, icon(hours) = the condition icon
 window.WxPoint={forecast:forecast,table:table,icon:icon,days:days};
 // the Map tab's Trails panel "Forecast this trail": a polyline + name, opened here
-window.openTrailForecast=function(poly,name,link){
-  pending={src:{poly:poly,name:name||''},link:link||''};
+// out: an out-and-back stored one way (PNW 1000), forecast as the full round trip
+window.openTrailForecast=function(poly,name,link,out){
+  pending={src:{poly:poly,name:name||'',out:!!out},link:link||''};
   showTab(TRAIL_TAB);   // the first visit runs trailLiveShown, which takes `pending`
   if(pending){var pd=pending;pending=null;restored=true;$('tl-load').hidden=true;load(pd.src,pd.link,true);}
   window.scrollTo(0,0);};

@@ -811,7 +811,7 @@ window.TrailsLayer=function(map,opt){
     card.hidden=false;
     chart(card.querySelector('.ex-prof'),t);
     if(t.src==='mine'&&!(t.prof&&t.prof.length))backfill(t,card);
-    card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'');};
+    card.querySelector('.ex-go').onclick=function(){if(window.openTrailForecast)window.openTrailForecast(t.line,t.name+(t.num&&t.name.indexOf(t.num)<0?' (#'+t.num+')':''),t.link||'',t.src==='p1k'&&t.ptype==='out');};
     var del=card.querySelector('.ex-del:not(.ex-gpx)');if(del)del.onclick=function(){removeMine(t,del);};
     var gx=card.querySelector('.ex-gpx');if(gx)gx.onclick=function(){window.WxGPX(t.name,t.parts[0]);};
     card.querySelector('.ex-x').onclick=deselect;

@@ -340,7 +340,7 @@ function build(){built=true;
   L.addEventListener('toggle',function(e){var d=e.target;if(d.dataset&&d.dataset.id){if(d.open)openSet[d.dataset.id]=1;else delete openSet[d.dataset.id];}},true);
   L.addEventListener('click',function(e){var b=e.target.closest('.sx-tr button');if(!b)return;
     if(b.dataset.p!=null){var x=PK[+b.dataset.p][+b.dataset.j];if(!x)return;   // a PNW 1000 hike
-      if(b.dataset.gpx){if(window.WxGPX)window.WxGPX(x.h.name,x.pts);}else if(window.openTrailForecast)window.openTrailForecast(x.h.p,x.h.name,'');return;}
+      if(b.dataset.gpx){if(window.WxGPX)window.WxGPX(x.h.name,x.pts);}else if(window.openTrailForecast)window.openTrailForecast(x.h.p,x.h.name,'',x.h.type==='out');return;}
     var t=BY[+b.dataset.k][+b.dataset.j];
     if(t&&window.openTrailForecast)window.openTrailForecast(t.p,t.name,t.link);});
   L.addEventListener('mouseover',function(e){var r=e.target.closest('.sx-row');setHot(r?+r.dataset.k:-1);});
