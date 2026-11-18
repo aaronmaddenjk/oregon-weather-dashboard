@@ -83,6 +83,22 @@ def ttl_class(url, params=None):
     return "live"
 
 
+STALE_HOURS = 72   # the Map grid refreshes once a day, so allow a day-old grid plus a long outage
+_down = set()   # hosts that timed out / dropped the connection after every retry this build
+
+
+def _stale(path):
+    try:
+        if time.time() - os.path.getmtime(path) < STALE_HOURS * 3600:
+            with open(path, encoding="utf-8") as f:
+                c = json.load(f)
+            _stats["stale (service down)"] += 1
+            return CachedResponse(c["status"], c["text"], c["url"])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def install(ttl_hours=None):
     if os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("WX_CACHE") == "0":
         requests.get = _counting_get
@@ -103,7 +119,22 @@ def install(ttl_hours=None):
                 return CachedResponse(c["status"], c["text"], c["url"])
         except OSError:
             pass
-        r = _counting_get(url, params=params, **kw)
+        host = urlparse(url).netloc
+        if host in _down:   # this host already gave up once this build: straight to the last good copy
+            r = _stale(path)
+            if r is not None:
+                return r
+        try:
+            r = _counting_get(url, params=params, **kw)
+        except (requests.Timeout, requests.ConnectionError):
+            # a service that stops answering (Open-Meteo's forecast API, 2026-11-16/17: ~27 h of failed builds)
+            # shouldn't stop the whole site: use the last good answer up to STALE_HOURS old, else fail as before
+            r = _stale(path)
+            if r is None:
+                raise
+            _down.add(host)
+            print(f"  {host} not answering: using saved answers up to {STALE_HOURS} h old for the rest of this build", flush=True)
+            return r
         ctype = r.headers.get("Content-Type", "")
         binary = "octet-stream" in ctype or ctype.startswith("image/")   # stored as text, bytes would be mangled
         if r.status_code == 200 and not binary:

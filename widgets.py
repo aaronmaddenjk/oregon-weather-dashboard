@@ -2,7 +2,9 @@
 Home-screen widgets as pictures (owner, 2026-10-13): each build draws them as PNGs next to the
 dashboard, and the phone shows them with KWGT's image element pointed at the URL (refreshed hourly).
 
-  widget-week.png    Portland, 6 days: the day's weather art, the high/low bar on one scale, rain chance
+  widget-week.png    Portland, the next 24 hours in 3-hour steps (owner, 2026-11-17: the week view wasn't needed;
+                     the file name is kept so the phone's KWGT image keeps working): art (moon at night),
+                     temperature curve, rain chance. week() (the old 6-day view) is the fallback.
   widget-snow.png    Meadows Base snow timeline: the last 7 days' snow-depth gain at the Mt Hood Test Site
                      SNOTEL (5,370 ft, at the base area; the model's estimate if SNOTEL is down) | today |
                      the next 7 days' forecast new snow
@@ -12,7 +14,7 @@ same-colour stroke). The art follows cyArt() in CITY_JS: sun behind, clouds in f
 """
 import math
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -89,6 +91,15 @@ def _art(d, ox, oy, k, day):
                     P(x + math.cos(a) * (r + 2.3), y + math.sin(a) * (r + 2.3))], fill=(242, 165, 22), width=max(1, int(R(0.9))))
         c = P(x, y)
         d.ellipse([c[0] - R(r), c[1] - R(r), c[0] + R(r), c[1] + R(r)], fill=(255, 200, 61), outline=(224, 147, 26), width=max(1, int(R(0.55))))
+
+    if day.get("night"):
+        def sun(x, y, r):   # night: a crescent moon (a pale disc with the card colour cut out of one side)
+            r *= 0.95
+            c = P(x, y)
+            d.ellipse([c[0] - R(r), c[1] - R(r), c[0] + R(r), c[1] + R(r)], fill=(236, 232, 212),
+                      outline=(196, 190, 160), width=max(1, int(R(0.5))))
+            c2 = P(x + r * 0.55, y - r * 0.35)
+            d.ellipse([c2[0] - R(r * 0.85), c2[1] - R(r * 0.85), c2[0] + R(r * 0.85), c2[1] + R(r * 0.85)], fill=day["cut"])
 
     def cloud(x, y, sc, col):   # three puffs on a flat base; outlined by drawing it a little larger in ink first
         parts = [(-2.3, 0.1, 2.0), (0.1, -1.2, 2.6), (2.7, 0.2, 1.8)]
@@ -183,6 +194,66 @@ def week(name, days, path, today, theme="dark"):
     _save(im, path)
 
 
+def hours3(name, hrs, sun, path, now, theme="dark"):
+    """The next 24 h in 3-hour steps from the page's hour columns (hour_cols: t0, temp, pop, p x1000, s x100,
+    sky, gust). Each step = its 3 hours: temperature at its first hour, the highest chance, the summed rain /
+    snow, the mean cloud; night (moon) when the step's middle is outside sunrise-sunset (sun = [[rise, set] iso])."""
+    global SHADOW
+    T = THEMES[theme]
+    SHADOW = T["shadow"]
+    t0 = datetime.fromisoformat(hrs["t0"])
+    skip = max(0, int((now - t0).total_seconds() // 3600))   # (a cached forecast can start earlier than now)
+    days = [(datetime.fromisoformat(a).replace(tzinfo=None), datetime.fromisoformat(b).replace(tzinfo=None)) for a, b in sun]
+    cut = T["bg"] if isinstance(T["bg"], tuple) else (20, 25, 34, 200)
+    steps = []
+    for k in range(8):
+        i0 = skip + 3 * k
+        ix = [i for i in range(i0, i0 + 3) if i < len(hrs["temp"]) and hrs["temp"][i] is not None]
+        if not ix:
+            break
+
+        def g(key):
+            return [hrs[key][i] for i in ix if hrs.get(key) and hrs[key][i] is not None]
+        t = t0 + timedelta(hours=i0)
+        mid = t + timedelta(hours=1.5)
+        steps.append({"t": t, "temp": hrs["temp"][ix[0]], "sky": sum(g("sky")) / max(1, len(g("sky"))),
+                      "r": sum(g("p")) / 1000, "s": sum(g("s")) / 100, "pop": max(g("pop") or [0]),
+                      "g": max(g("gust") or [0]), "night": not any(r <= mid <= s for r, s in days), "cut": cut})
+    im, d = _card(T, steps[0]["sky"])
+    _header(d, name, ORANGE if theme not in ("sky", "none") else T["today"],
+            "next 24 h \u00b7 " + now.strftime("%I %p").lstrip("0"), T["mut"])
+    cw = (W - 24) / len(steps)
+    lo, hi = min(x["temp"] for x in steps), max(x["temp"] for x in steps)
+    span = max(8, hi - lo)
+    top, bot = 272, 356   # the temperature curve's band
+    pad = (span - (hi - lo)) / 2
+    ys = [bot - (x["temp"] - lo + pad) / span * (bot - top) for x in steps]
+    xs = [12 + cw * i + cw / 2 for i in range(len(steps))]
+    prev = None
+    for i, x in enumerate(steps):
+        cx = xs[i]
+        _text(d, (cx, 84), "NOW" if i == 0 else x["t"].strftime("%I %p").lstrip("0"), 28,
+              T["today"] if i == 0 else T["ink"], True, "mm")
+        if prev is not None and x["t"].date() != prev:   # a new day: a faint divider and its name
+            dx = cx - cw / 2
+            for y in range(66, 470, 14):
+                d.line([(dx * SS, y * SS), (dx * SS, (y + 6) * SS)], fill=T["track"], width=2 * SS)
+            _text(d, (dx + 8, 112), DOW[x["t"].weekday()], 20, T["mut"], True, "lm")
+        prev = x["t"].date()
+        _art(d, cx - 66, 116, 3.5, x)
+    for i in range(len(steps) - 1):   # the curve, each segment coloured from its start temperature
+        d.line([(xs[i] * SS, ys[i] * SS), (xs[i + 1] * SS, ys[i + 1] * SS)], fill=_temp_col(steps[i]["temp"]), width=5 * SS)
+    for i, x in enumerate(steps):
+        c = (xs[i] * SS, ys[i] * SS)
+        d.ellipse([c[0] - 9 * SS, c[1] - 9 * SS, c[0] + 9 * SS, c[1] + 9 * SS], fill=_temp_col(x["temp"]) + (255,),
+                  outline=T["ink"], width=2 * SS)
+        _text(d, (xs[i], ys[i] - 34), f"{x['temp']:.0f}°", 38, T["ink"], True, "mm")
+        p = round(x["pop"] or 0)
+        _text(d, (xs[i], 444), f"{p}%", 31, T["pop"] if p >= 10 else T["pop0"], True, "mm")
+    SHADOW = False
+    _save(im, path)
+
+
 def snotel_gain(today, n=7):
     """[(date, inches)] - the last n days' snow-depth gain at the Mt Hood Test Site, or None."""
     try:
@@ -236,18 +307,23 @@ def snow_timeline(past, fut, path, today, measured=True):
     _save(im, path)
 
 
-def render(out_dir, city_days, hood_past, hood_fut, today):
+def render(out_dir, city_days, hood_past, hood_fut, today, city_hrs=None, city_sun=None, now=None):
     try:   # what was drawn, so `python widgets.py` can redraw without a build
         import json
         os.makedirs(".cache", exist_ok=True)
         with open(os.path.join(".cache", "widget_data.json"), "w", encoding="utf-8") as f:
-            json.dump({"today": today.isoformat(), "city_days": city_days,
+            json.dump({"today": today.isoformat(), "city_days": city_days, "city_hrs": city_hrs, "city_sun": city_sun,
+                       "now": (now or datetime.now()).isoformat(),
                        "past": [(d.isoformat(), v) for d, v in hood_past], "fut": [(d.isoformat(), v) for d, v in hood_fut]}, f)
     except Exception:
         pass
     """Draw both widgets into out_dir; any failure only costs that widget (the build goes on)."""
     try:
-        week("Portland", city_days, os.path.join(out_dir, "widget-week.png"), today)
+        try:
+            hours3("Portland", city_hrs, city_sun, os.path.join(out_dir, "widget-week.png"), now or datetime.now())
+        except Exception as exc:   # (no hours ahead, e.g. a stale forecast): the 6-day view instead
+            print(f"  WARNING: 3-hourly widget not drawn ({exc}); drawing the 6-day one")
+            week("Portland", city_days, os.path.join(out_dir, "widget-week.png"), today)
     except Exception as exc:
         print(f"  WARNING: week widget not drawn ({exc})")
     try:
@@ -263,5 +339,6 @@ if __name__ == "__main__":   # redraw from the last build's data (tuning the loo
         D = json.load(f)
     t = date.fromisoformat(D["today"])
     render("docs", D["city_days"], [(date.fromisoformat(a), v) for a, v in D["past"]],
-           [(date.fromisoformat(a), v) for a, v in D["fut"]], t)
+           [(date.fromisoformat(a), v) for a, v in D["fut"]], t, D.get("city_hrs"), D.get("city_sun"),
+           datetime.fromisoformat(D["now"]) if D.get("now") else None)
     print("redrawn")

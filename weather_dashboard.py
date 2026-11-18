@@ -2336,6 +2336,10 @@ def build_cities_page():
         sm["name"] = city["name"]; sm["lat"] = city["lat"]; sm["lon"] = city["lon"]
         if city["name"] == "Portland":
             WIDGET["city_days"] = sm.get("days") or []
+            WIDGET["city_hrs"] = sm.get("hrs") or {}   # every hour from now (the 3-hourly widget)
+            _d0 = datetime.now(ZoneInfo("America/Los_Angeles")).date()
+            WIDGET["city_sun"] = [[x.isoformat() for x in sun_times(city["lat"], city["lon"], _d0 + timedelta(days=k), "America/Los_Angeles")]
+                                  for k in range(3)]
         summaries.append(sm)
         if ci == 0:
             css_m = re.search(r'<style>(.*?)</style>', full_html, re.DOTALL)
@@ -5029,7 +5033,8 @@ def main():
         shutil.copytree(hood3d, os.path.join(os.path.dirname(OUTPUT_PATH), "hood3d"), dirs_exist_ok=True)
     if WIDGET.get("city_days") and WIDGET.get("hood_fut"):
         widgets.render(os.path.dirname(OUTPUT_PATH), WIDGET["city_days"], WIDGET.get("hood_past", []), WIDGET["hood_fut"],
-                       datetime.now(ZoneInfo("America/Los_Angeles")).date())
+                       datetime.now(ZoneInfo("America/Los_Angeles")).date(), WIDGET.get("city_hrs"), WIDGET.get("city_sun"),
+                       datetime.now(ZoneInfo("America/Los_Angeles")).replace(tzinfo=None))
     if NEWS.get("hood"):   # what newsletter.py sends (after the 6 AM build, tools/publish.sh)
         os.makedirs(".cache", exist_ok=True)
         with open(os.path.join(".cache", "newsletter_data.json"), "w", encoding="utf-8") as f:

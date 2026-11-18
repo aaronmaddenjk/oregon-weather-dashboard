@@ -321,7 +321,9 @@ Sidebar button order must match page index. `data-init` / `data-lazy` build maps
   Gale stops 2018); NYT via WCCLS 72-hour passes; WaPo / Guardian / New York Mag / Businessweek on PressReader -
   owner kept it to Economist + New Yorker for now.
 - HOME-SCREEN WIDGETS (owner, 2026-10-13; picked from mockups): `widgets.py` draws PNGs each build next to
-  index.html - `widget-week.png` (Portland, 6 days from today: art, high/low bars on one scale, rain %) and
+  index.html - `widget-week.png` (Portland; since 2026-11-17 the NEXT 24 H IN 3-HOUR STEPS, owner: art with a moon at
+  night, temperature curve, rain %; `hours3()` from Portland's hour columns + sun times; file name kept for KWGT; the
+  6-day `week()` is the fallback) and
   `widget-snow.png` (Meadows Base: last 7 days' snow-depth GAIN at SNOTEL 651:OR:SNTL Mt Hood Test Site
   5,370 ft, falling back to the model's past estimate labelled "estimated"; | today | today + 6 days of
   forecast new snow, days 6-7 paler). Data via the global WIDGET dict: Portland's `sm["days"]` (the
@@ -431,6 +433,8 @@ video poster). Page scripts are wrapped in IIFEs: expose anything cross-script v
   densified to 10 m), gain from elevations averaged over 100 m. Matched AllTrails within ~1%
   (St Helens 4,687' vs 4,639'; South Sister 5,036' vs 5,036'); Open-Meteo's 90 m DEM overcounted
   ~15%. Open-Meteo elevation is only the fallback. Owner watches Mapbox usage: keep tile counts low.
+- A service that stops answering (Open-Meteo's forecast API hung ~27 h, 2026-11-16/17, every build failed) no longer
+  kills the build: http_cache uses the last good cached answer (<= 72 h, STALE_HOURS) for that host for the rest of the run.
 - Open-Meteo's ~10k/day is per IP: a fresh full build (~4,600) plus dev work can exhaust it,
   after which the Trail tab's forecasts fail from home until the daily reset.
 
